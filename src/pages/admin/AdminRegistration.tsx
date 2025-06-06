@@ -31,16 +31,25 @@ const AdminRegistration = () => {
     emailOTP: '',
     phoneOTP: ''
   });
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordData, setPasswordData] = useState({
+    password: '',
+    confirmPassword: ''
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'firstName' || name === 'lastName') {
+      // Convert to uppercase for names
+      setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const validatePersonalDetails = () => {
-    if (!formData.firstName || formData.firstName.length < 1) {
+    // Validate first name - at least 1 character
+    if (!formData.firstName || formData.firstName.trim().length < 1) {
       toast({
         title: "Validation Error",
         description: "First name must be at least 1 character.",
@@ -49,7 +58,8 @@ const AdminRegistration = () => {
       return false;
     }
 
-    if (!formData.lastName || formData.lastName.length < 1) {
+    // Validate last name - at least 1 character
+    if (!formData.lastName || formData.lastName.trim().length < 1) {
       toast({
         title: "Validation Error",
         description: "Last name must be at least 1 character.",
@@ -58,6 +68,7 @@ const AdminRegistration = () => {
       return false;
     }
 
+    // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       toast({
@@ -68,6 +79,7 @@ const AdminRegistration = () => {
       return false;
     }
 
+    // Validate phone number - must start with +91 and have 10 digits after
     const phoneRegex = /^\+91[6-9]\d{9}$/;
     if (!phoneRegex.test(formData.phone)) {
       toast({
@@ -147,7 +159,7 @@ const AdminRegistration = () => {
   };
 
   const validatePassword = () => {
-    if (password.length < 6) {
+    if (passwordData.password.length < 6) {
       toast({
         title: "Validation Error",
         description: "Password must be at least 6 characters long.",
@@ -156,10 +168,10 @@ const AdminRegistration = () => {
       return false;
     }
 
-    if (password !== confirmPassword) {
+    if (passwordData.password !== passwordData.confirmPassword) {
       toast({
         title: "Password Mismatch",
-        description: "Passwords do not match.",
+        description: "Passwords do not match. Please enter the same password in both fields.",
         variant: "destructive"
       });
       return false;
@@ -175,7 +187,7 @@ const AdminRegistration = () => {
 
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, passwordData.password);
       const user = userCredential.user;
 
       // Update user profile
@@ -235,6 +247,7 @@ const AdminRegistration = () => {
                   placeholder="Enter first name"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">Will be converted to uppercase</p>
               </div>
               <div>
                 <Label htmlFor="lastName">Last Name *</Label>
@@ -246,6 +259,7 @@ const AdminRegistration = () => {
                   placeholder="Enter last name"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">Will be converted to uppercase</p>
               </div>
             </div>
             <div>
@@ -328,14 +342,18 @@ const AdminRegistration = () => {
       case 'password':
         return (
           <div className="space-y-4">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold">Set Your Password</h3>
+              <p className="text-sm text-gray-600">Create a secure password for your admin account</p>
+            </div>
             <div>
               <Label htmlFor="password">Password * (minimum 6 characters)</Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={passwordData.password}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, password: e.target.value }))}
                   placeholder="Enter your password"
                   required
                 />
@@ -356,8 +374,8 @@ const AdminRegistration = () => {
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                   placeholder="Confirm your password"
                   required
                 />
