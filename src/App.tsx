@@ -14,7 +14,6 @@ import NoticeBoard from "./pages/NoticeBoard";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminRegistration from "./pages/admin/AdminRegistration";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
