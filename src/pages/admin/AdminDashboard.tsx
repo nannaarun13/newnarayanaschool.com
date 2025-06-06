@@ -12,12 +12,10 @@ import {
   Phone,
   Shield,
   Home,
-  LogOut,
-  Upload,
-  Download
+  LogOut
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useSchool } from '@/contexts/SchoolContext';
@@ -32,6 +30,22 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const { state } = useSchool();
   const [activeTab, setActiveTab] = useState('overview');
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        setLoading(false);
+      } else {
+        // User is not authenticated, redirect to login
+        navigate('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
 
   const handleLogout = async () => {
     try {
@@ -49,6 +63,17 @@ const AdminDashboard = () => {
       });
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Shield className="h-16 w-16 text-school-blue mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-600">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   const dashboardStats = [
     { title: "Total Inquiries", value: "45", icon: Users, color: "text-school-blue" },
@@ -68,13 +93,16 @@ const AdminDashboard = () => {
               <div>
                 <h1 className="text-2xl font-bold text-school-blue">Admin Dashboard</h1>
                 <p className="text-gray-600">New Narayana School Management</p>
+                {user && (
+                  <p className="text-sm text-gray-500">Welcome, {user.displayName || user.email}</p>
+                )}
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <Button 
                 variant="outline" 
                 onClick={() => navigate('/')}
-                className="border-school-blue text-school-blue"
+                className="border-school-blue text-school-blue hover:bg-school-blue hover:text-white"
               >
                 <Home className="h-4 w-4 mr-2" />
                 View Site

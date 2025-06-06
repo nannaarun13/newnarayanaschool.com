@@ -6,17 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Phone, Mail, User, Lock } from 'lucide-react';
+import { Shield, Eye, EyeOff } from 'lucide-react';
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { useNavigate } from 'react-router-dom';
 
 type RegistrationStep = 'details' | 'otp-verification' | 'password' | 'success';
 
 const AdminRegistration = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [step, setStep] = useState<RegistrationStep>('details');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -35,14 +39,63 @@ const AdminRegistration = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const validatePersonalDetails = () => {
+    if (!formData.firstName || formData.firstName.length < 1) {
+      toast({
+        title: "Validation Error",
+        description: "First name must be at least 1 character.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    if (!formData.lastName || formData.lastName.length < 1) {
+      toast({
+        title: "Validation Error",
+        description: "Last name must be at least 1 character.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    const phoneRegex = /^\+91[6-9]\d{9}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      toast({
+        title: "Validation Error",
+        description: "Phone number must be in format +91XXXXXXXXXX with valid Indian mobile number.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const sendOTPs = async () => {
+    if (!validatePersonalDetails()) {
+      return;
+    }
+
     setLoading(true);
     try {
-      // In a real implementation, you would send OTPs via your backend
-      // For demo purposes, we'll simulate this
+      // Here you would integrate with your SMS service for phone OTP
+      // For now, we'll simulate OTP generation
+      console.log('Sending OTP to email:', formData.email);
+      console.log('Sending OTP to phone:', formData.phone);
+      
       toast({
         title: "OTPs Sent",
-        description: "Verification codes sent to your email and phone.",
+        description: "Verification codes sent to your email and phone. Please check both.",
       });
       setStep('otp-verification');
     } catch (error) {
@@ -56,18 +109,33 @@ const AdminRegistration = () => {
   };
 
   const verifyOTPs = async () => {
+    if (otpData.emailOTP.length !== 6) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter complete email OTP (6 digits).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (otpData.phoneOTP.length !== 6) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter complete phone OTP (6 digits).",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      // In a real implementation, verify OTPs with your backend
-      if (otpData.emailOTP.length === 6 && otpData.phoneOTP.length === 6) {
-        toast({
-          title: "Verification Successful",
-          description: "OTPs verified successfully.",
-        });
-        setStep('password');
-      } else {
-        throw new Error('Invalid OTPs');
-      }
+      // Here you would verify OTPs with your backend/Firebase
+      // For demo purposes, we'll accept any 6-digit OTP
+      toast({
+        title: "Verification Successful",
+        description: "OTPs verified successfully. Please set your password.",
+      });
+      setStep('password');
     } catch (error) {
       toast({
         title: "Verification Failed",
@@ -78,13 +146,30 @@ const AdminRegistration = () => {
     setLoading(false);
   };
 
-  const completeRegistration = async () => {
+  const validatePassword = () => {
+    if (password.length < 6) {
+      toast({
+        title: "Validation Error",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
     if (password !== confirmPassword) {
       toast({
         title: "Password Mismatch",
         description: "Passwords do not match.",
         variant: "destructive"
       });
+      return false;
+    }
+
+    return true;
+  };
+
+  const completeRegistration = async () => {
+    if (!validatePassword()) {
       return;
     }
 
@@ -114,12 +199,20 @@ const AdminRegistration = () => {
       
       toast({
         title: "Registration Successful",
-        description: "Admin account created successfully!",
+        description: "Admin account created successfully! Please verify your email.",
       });
     } catch (error: any) {
+      let errorMessage = "Registration failed. Please try again.";
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "Email is already registered. Please use a different email.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Password is too weak. Please choose a stronger password.";
+      }
+
       toast({
         title: "Registration Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -133,50 +226,55 @@ const AdminRegistration = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="firstName">First Name *</Label>
                 <Input
                   id="firstName"
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleInputChange}
+                  placeholder="Enter first name"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="lastName">Last Name *</Label>
                 <Input
                   id="lastName"
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleInputChange}
+                  placeholder="Enter last name"
                   required
                 />
               </div>
             </div>
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email Address *</Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
                 value={formData.email}
                 onChange={handleInputChange}
+                placeholder="Enter your email"
                 required
               />
             </div>
             <div>
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="phone">Phone Number *</Label>
               <Input
                 id="phone"
                 name="phone"
                 type="tel"
                 value={formData.phone}
                 onChange={handleInputChange}
+                placeholder="+91XXXXXXXXXX"
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">Format: +91 followed by 10 digits</p>
             </div>
-            <Button onClick={sendOTPs} disabled={loading} className="w-full">
-              Send Verification Codes
+            <Button onClick={sendOTPs} disabled={loading} className="w-full bg-school-blue hover:bg-school-blue/90">
+              {loading ? 'Sending OTPs...' : 'Send Verification Codes'}
             </Button>
           </div>
         );
@@ -190,7 +288,7 @@ const AdminRegistration = () => {
             </div>
             <div className="space-y-4">
               <div>
-                <Label>Email OTP</Label>
+                <Label>Email OTP (6 digits) *</Label>
                 <InputOTP maxLength={6} value={otpData.emailOTP} onChange={(value) => setOtpData(prev => ({ ...prev, emailOTP: value }))}>
                   <InputOTPGroup>
                     <InputOTPSlot index={0} />
@@ -203,7 +301,7 @@ const AdminRegistration = () => {
                 </InputOTP>
               </div>
               <div>
-                <Label>Phone OTP</Label>
+                <Label>Phone OTP (6 digits) *</Label>
                 <InputOTP maxLength={6} value={otpData.phoneOTP} onChange={(value) => setOtpData(prev => ({ ...prev, phoneOTP: value }))}>
                   <InputOTPGroup>
                     <InputOTPSlot index={0} />
@@ -216,9 +314,14 @@ const AdminRegistration = () => {
                 </InputOTP>
               </div>
             </div>
-            <Button onClick={verifyOTPs} disabled={loading} className="w-full">
-              Verify Codes
-            </Button>
+            <div className="flex space-x-4">
+              <Button variant="outline" onClick={() => setStep('details')} className="flex-1">
+                Back
+              </Button>
+              <Button onClick={verifyOTPs} disabled={loading} className="flex-1 bg-school-blue hover:bg-school-blue/90">
+                {loading ? 'Verifying...' : 'Verify Codes'}
+              </Button>
+            </div>
           </div>
         );
 
@@ -226,28 +329,57 @@ const AdminRegistration = () => {
         return (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <Label htmlFor="password">Password * (minimum 6 characters)</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
             <div>
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
+              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your password"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
-            <Button onClick={completeRegistration} disabled={loading} className="w-full">
-              Complete Registration
-            </Button>
+            <div className="flex space-x-4">
+              <Button variant="outline" onClick={() => setStep('otp-verification')} className="flex-1">
+                Back
+              </Button>
+              <Button onClick={completeRegistration} disabled={loading} className="flex-1 bg-school-blue hover:bg-school-blue/90">
+                {loading ? 'Creating Account...' : 'Complete Registration'}
+              </Button>
+            </div>
           </div>
         );
 
@@ -258,10 +390,10 @@ const AdminRegistration = () => {
               <Shield className="h-16 w-16 mx-auto mb-4" />
               <h3 className="text-xl font-bold">Registration Successful!</h3>
               <p className="text-gray-600 mt-2">
-                Your admin account has been created successfully.
+                Your admin account has been created successfully. Please check your email to verify your account.
               </p>
             </div>
-            <Button onClick={() => window.location.href = '/login'} className="w-full">
+            <Button onClick={() => navigate('/login')} className="w-full bg-school-blue hover:bg-school-blue/90">
               Go to Login
             </Button>
           </div>

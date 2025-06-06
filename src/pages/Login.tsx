@@ -25,15 +25,42 @@ const Login = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const validateForm = () => {
+    if (!formData.email) {
+      toast({
+        title: "Validation Error",
+        description: "Email is required.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    if (!formData.password) {
+      toast({
+        title: "Validation Error", 
+        description: "Password is required.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all fields.",
-        variant: "destructive"
-      });
+    if (!validateForm()) {
       return;
     }
 
@@ -44,11 +71,24 @@ const Login = () => {
         title: "Login Successful",
         description: "Welcome to the admin panel!",
       });
+      // Redirect to admin dashboard
       navigate('/admin');
     } catch (error: any) {
+      let errorMessage = "Login failed. Please try again.";
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = "No account found with this email.";
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect password.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email address.";
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = "This account has been disabled.";
+      }
+
       toast({
         title: "Login Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -72,9 +112,15 @@ const Login = () => {
         description: "Check your email for password reset instructions.",
       });
     } catch (error: any) {
+      let errorMessage = "Failed to send reset email.";
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = "No account found with this email.";
+      }
+
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -100,7 +146,7 @@ const Login = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">Email Address *</Label>
                 <Input
                   id="email"
                   name="email"
@@ -113,7 +159,7 @@ const Login = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Password *</Label>
                 <div className="relative">
                   <Input
                     id="password"
