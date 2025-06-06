@@ -6,10 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Shield } from 'lucide-react';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -20,7 +25,7 @@ const Login = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.email || !formData.password) {
@@ -32,13 +37,47 @@ const Login = () => {
       return;
     }
 
-    // Here you would typically authenticate with backend
-    console.log('Login attempt:', { email: formData.email });
-    
-    toast({
-      title: "Login Attempted",
-      description: "Authentication system will be integrated with admin panel.",
-    });
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      toast({
+        title: "Login Successful",
+        description: "Welcome to the admin panel!",
+      });
+      navigate('/admin');
+    } catch (error: any) {
+      toast({
+        title: "Login Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email to reset password.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, formData.email);
+      toast({
+        title: "Reset Email Sent",
+        description: "Check your email for password reset instructions.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -103,38 +142,34 @@ const Login = () => {
 
               <Button 
                 type="submit" 
+                disabled={loading}
                 className="w-full bg-school-blue hover:bg-school-blue/90 text-white py-3"
               >
-                Sign In
+                {loading ? 'Signing In...' : 'Sign In'}
               </Button>
             </form>
 
             {/* Additional Options */}
             <div className="mt-6 space-y-4">
               <div className="text-center">
-                <Button variant="link" className="text-school-blue">
+                <Button variant="link" className="text-school-blue" onClick={handleForgotPassword}>
                   Forgot Password?
                 </Button>
               </div>
               
               <div className="text-center text-sm text-gray-600">
                 <p>Need admin access? Contact system administrator</p>
+                <Button 
+                  variant="link" 
+                  className="text-school-orange"
+                  onClick={() => navigate('/admin/register')}
+                >
+                  Admin Registration
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* Note */}
-        <div className="mt-6 text-center">
-          <Card className="bg-school-blue-light border-school-blue">
-            <CardContent className="p-4">
-              <p className="text-sm text-school-blue">
-                <strong>Note:</strong> Complete admin authentication system with OTP verification 
-                will be implemented in the admin dashboard.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );
