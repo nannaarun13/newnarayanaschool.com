@@ -65,6 +65,12 @@ const Login = () => {
     if (name === 'firstName' || name === 'lastName') {
       // Convert any type of letters to uppercase
       setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
+    } else if (name === 'phone') {
+      // Only allow numbers for phone input
+      const numericValue = value.replace(/[^0-9]/g, '');
+      if (numericValue.length <= 10) {
+        setFormData(prev => ({ ...prev, [name]: numericValue }));
+      }
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -139,12 +145,11 @@ const Login = () => {
       return false;
     }
 
-    // Phone validation - must start with +91 and have 10 digits after
-    const phoneRegex = /^\+91[6-9]\d{9}$/;
-    if (!phoneRegex.test(formData.phone)) {
+    // Phone validation - must be exactly 10 digits
+    if (!formData.phone || formData.phone.length !== 10 || !/^[6-9]\d{9}$/.test(formData.phone)) {
       toast({
         title: "Validation Error",
-        description: "Phone number must be in format +91XXXXXXXXXX (starting with +91 followed by valid 10-digit Indian mobile number).",
+        description: "Phone number must be exactly 10 digits starting with 6, 7, 8, or 9.",
         variant: "destructive"
       });
       return false;
@@ -154,10 +159,53 @@ const Login = () => {
   };
 
   const validatePassword = () => {
-    if (!passwordData.password || passwordData.password.length < 6) {
+    const password = passwordData.password;
+
+    // Check minimum length
+    if (!password || password.length < 8) {
       toast({
         title: "Validation Error",
-        description: "Password must be at least 6 characters long.",
+        description: "Password must be at least 8 characters long.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Check for uppercase letter
+    if (!/[A-Z]/.test(password)) {
+      toast({
+        title: "Validation Error",
+        description: "Password must contain at least one uppercase letter.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Check for lowercase letter
+    if (!/[a-z]/.test(password)) {
+      toast({
+        title: "Validation Error",
+        description: "Password must contain at least one lowercase letter.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Check for number
+    if (!/\d/.test(password)) {
+      toast({
+        title: "Validation Error",
+        description: "Password must contain at least one number.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Check for special character
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      toast({
+        title: "Validation Error",
+        description: "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;':\",./<>?).",
         variant: "destructive"
       });
       return false;
@@ -221,13 +269,14 @@ const Login = () => {
 
     setLoading(true);
     try {
-      // Simulate sending OTPs
+      // Note: In real implementation, you would integrate with SMS and Email services
+      // For now, we simulate sending OTPs
       console.log('Sending OTP to email:', formData.email);
-      console.log('Sending OTP to phone:', formData.phone);
+      console.log('Sending OTP to phone: +91' + formData.phone);
       
       toast({
         title: "OTPs Sent",
-        description: "Verification codes have been sent to your email and phone. Please check both.",
+        description: "Verification codes have been sent to your email and phone. Please check both. (Note: This is simulated for demo)",
       });
       setStep('otp-verification');
     } catch (error) {
@@ -261,7 +310,8 @@ const Login = () => {
 
     setLoading(true);
     try {
-      // Simulate OTP verification
+      // Note: In real implementation, you would verify OTPs with your backend
+      // For demo purposes, we simulate verification
       console.log('Verifying email OTP:', otpData.emailOTP);
       console.log('Verifying phone OTP:', otpData.phoneOTP);
       
@@ -301,7 +351,7 @@ const Login = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
-        phone: formData.phone,
+        phone: `+91${formData.phone}`,
         role: 'admin',
         createdAt: new Date(),
         verified: true
@@ -325,8 +375,11 @@ const Login = () => {
         errorMessage = "Password is too weak. Please choose a stronger password.";
       } else if (error.code === 'auth/invalid-email') {
         errorMessage = "Invalid email format.";
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = "Email/password authentication is not enabled in Firebase. Please contact support.";
       }
 
+      console.error('Registration error:', error);
       toast({
         title: "Registration Failed",
         description: errorMessage,
@@ -474,16 +527,23 @@ const Login = () => {
             </div>
             <div>
               <Label htmlFor="phone">Phone Number *</Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleRegistrationInputChange}
-                placeholder="+91XXXXXXXXXX"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-1">Format: +91 followed by 10 digits</p>
+              <div className="flex">
+                <div className="flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
+                  <span className="text-sm font-medium">+91</span>
+                </div>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleRegistrationInputChange}
+                  placeholder="Enter 10-digit number"
+                  className="rounded-l-none"
+                  maxLength={10}
+                  required
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Enter 10 digits starting with 6, 7, 8, or 9</p>
             </div>
             <Button onClick={sendOTPs} disabled={loading} className="w-full bg-school-blue hover:bg-school-blue/90">
               {loading ? 'Sending OTPs...' : 'Send Verification Codes'}
@@ -497,6 +557,7 @@ const Login = () => {
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-2">Verify Your Identity</h3>
               <p className="text-sm text-gray-600">Enter the verification codes sent to your email and phone</p>
+              <p className="text-xs text-orange-600 mt-1">(Note: Real OTP integration requires SMS/Email service setup)</p>
             </div>
             <div className="space-y-4">
               <div>
@@ -545,7 +606,7 @@ const Login = () => {
               <p className="text-sm text-gray-600">Create a secure password for your admin account</p>
             </div>
             <div>
-              <Label htmlFor="password">Password * (minimum 6 characters)</Label>
+              <Label htmlFor="password">Password *</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -564,6 +625,16 @@ const Login = () => {
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
+              </div>
+              <div className="text-xs text-gray-500 mt-1 space-y-1">
+                <p>Password must contain:</p>
+                <ul className="list-disc list-inside ml-2">
+                  <li>At least 8 characters</li>
+                  <li>One uppercase letter (A-Z)</li>
+                  <li>One lowercase letter (a-z)</li>
+                  <li>One number (0-9)</li>
+                  <li>One special character (!@#$%^&*)</li>
+                </ul>
               </div>
             </div>
             <div>
