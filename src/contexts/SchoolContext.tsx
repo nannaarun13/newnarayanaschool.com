@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 
 interface SchoolData {
   schoolName: string;
@@ -34,6 +34,16 @@ interface SchoolData {
     url: string;
     caption: string;
     date: string;
+  }>;
+  admissionInquiries: Array<{
+    id: string;
+    studentName: string;
+    classApplied: string;
+    fatherName: string;
+    motherName: string;
+    primaryContact: string;
+    submittedDate: string;
+    [key: string]: any;
   }>;
 }
 
@@ -89,7 +99,8 @@ const initialState: SchoolState = {
         caption: "School Building",
         date: "2024-01-01"
       }
-    ]
+    ],
+    admissionInquiries: []
   },
   isAdmin: false,
   currentUser: null
@@ -102,31 +113,46 @@ type SchoolAction =
   | { type: 'UPDATE_NOTICE'; payload: { id: string; notice: any } }
   | { type: 'DELETE_NOTICE'; payload: string }
   | { type: 'ADD_GALLERY_IMAGE'; payload: any }
-  | { type: 'DELETE_GALLERY_IMAGE'; payload: string };
+  | { type: 'DELETE_GALLERY_IMAGE'; payload: string }
+  | { type: 'ADD_ADMISSION_INQUIRY'; payload: any }
+  | { type: 'DELETE_ADMISSION_INQUIRY'; payload: string }
+  | { type: 'LOAD_PERSISTED_DATA'; payload: SchoolData }
+  | { type: 'CLEANUP_OLD_INQUIRIES' };
 
 function schoolReducer(state: SchoolState, action: SchoolAction): SchoolState {
+  let newState: SchoolState;
+  
   switch (action.type) {
-    case 'UPDATE_SCHOOL_DATA':
-      return {
+    case 'LOAD_PERSISTED_DATA':
+      newState = {
         ...state,
         data: { ...state.data, ...action.payload }
       };
+      break;
+    case 'UPDATE_SCHOOL_DATA':
+      newState = {
+        ...state,
+        data: { ...state.data, ...action.payload }
+      };
+      break;
     case 'SET_ADMIN':
-      return {
+      newState = {
         ...state,
         isAdmin: action.payload.isAdmin,
         currentUser: action.payload.user
       };
+      break;
     case 'ADD_NOTICE':
-      return {
+      newState = {
         ...state,
         data: {
           ...state.data,
           notices: [action.payload, ...state.data.notices]
         }
       };
+      break;
     case 'UPDATE_NOTICE':
-      return {
+      newState = {
         ...state,
         data: {
           ...state.data,
@@ -135,33 +161,74 @@ function schoolReducer(state: SchoolState, action: SchoolAction): SchoolState {
           )
         }
       };
+      break;
     case 'DELETE_NOTICE':
-      return {
+      newState = {
         ...state,
         data: {
           ...state.data,
           notices: state.data.notices.filter(notice => notice.id !== action.payload)
         }
       };
+      break;
     case 'ADD_GALLERY_IMAGE':
-      return {
+      newState = {
         ...state,
         data: {
           ...state.data,
           galleryImages: [action.payload, ...state.data.galleryImages]
         }
       };
+      break;
     case 'DELETE_GALLERY_IMAGE':
-      return {
+      newState = {
         ...state,
         data: {
           ...state.data,
           galleryImages: state.data.galleryImages.filter(img => img.id !== action.payload)
         }
       };
+      break;
+    case 'ADD_ADMISSION_INQUIRY':
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          admissionInquiries: [action.payload, ...state.data.admissionInquiries]
+        }
+      };
+      break;
+    case 'DELETE_ADMISSION_INQUIRY':
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          admissionInquiries: state.data.admissionInquiries.filter(inquiry => inquiry.id !== action.payload)
+        }
+      };
+      break;
+    case 'CLEANUP_OLD_INQUIRIES':
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          admissionInquiries: state.data.admissionInquiries.filter(inquiry => {
+            const inquiryDate = new Date(inquiry.submittedDate);
+            return inquiryDate > sixMonthsAgo;
+          })
+        }
+      };
+      break;
     default:
       return state;
   }
+
+  // Persist to localStorage
+  localStorage.setItem('schoolData', JSON.stringify(newState.data));
+  return newState;
 }
 
 const SchoolContext = createContext<{
@@ -171,6 +238,31 @@ const SchoolContext = createContext<{
 
 export function SchoolContextProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(schoolReducer, initialState);
+
+  // Load persisted data on mount
+  useEffect(() => {
+    try {
+      const persistedData = localStorage.getItem('schoolData');
+      if (persistedData) {
+        const parsedData = JSON.parse(persistedData);
+        dispatch({ type: 'LOAD_PERSISTED_DATA', payload: parsedData });
+      }
+    } catch (error) {
+      console.error('Error loading persisted data:', error);
+    }
+
+    // Cleanup old inquiries on mount
+    dispatch({ type: 'CLEANUP_OLD_INQUIRIES' });
+  }, []);
+
+  // Auto-cleanup old inquiries daily
+  useEffect(() => {
+    const interval = setInterval(() => {
+      dispatch({ type: 'CLEANUP_OLD_INQUIRIES' });
+    }, 24 * 60 * 60 * 1000); // Run daily
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <SchoolContext.Provider value={{ state, dispatch }}>
