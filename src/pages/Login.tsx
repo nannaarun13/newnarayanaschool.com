@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,11 +51,7 @@ const Login = () => {
 
   // Forgot password data
   const [forgotPasswordData, setForgotPasswordData] = useState({
-    email: '',
-    phone: '',
-    otp: '',
-    newPassword: '',
-    confirmNewPassword: ''
+    email: ''
   });
 
   const handleLoginInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +63,7 @@ const Login = () => {
     const { name, value } = e.target;
     
     if (name === 'firstName' || name === 'lastName') {
+      // Convert any type of letters to uppercase
       setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -80,7 +76,7 @@ const Login = () => {
   };
 
   const validateLoginForm = () => {
-    if (!loginData.email) {
+    if (!loginData.email.trim()) {
       toast({
         title: "Validation Error",
         description: "Email is required.",
@@ -89,7 +85,7 @@ const Login = () => {
       return false;
     }
 
-    if (!loginData.password) {
+    if (!loginData.password.trim()) {
       toast({
         title: "Validation Error", 
         description: "Password is required.",
@@ -112,6 +108,7 @@ const Login = () => {
   };
 
   const validatePersonalDetails = () => {
+    // First name validation - at least 1 character
     if (!formData.firstName || formData.firstName.trim().length < 1) {
       toast({
         title: "Validation Error",
@@ -121,6 +118,7 @@ const Login = () => {
       return false;
     }
 
+    // Last name validation - at least 1 character
     if (!formData.lastName || formData.lastName.trim().length < 1) {
       toast({
         title: "Validation Error",
@@ -130,6 +128,7 @@ const Login = () => {
       return false;
     }
 
+    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       toast({
@@ -140,11 +139,12 @@ const Login = () => {
       return false;
     }
 
+    // Phone validation - must start with +91 and have 10 digits after
     const phoneRegex = /^\+91[6-9]\d{9}$/;
     if (!phoneRegex.test(formData.phone)) {
       toast({
         title: "Validation Error",
-        description: "Phone number must be in format +91XXXXXXXXXX with valid Indian mobile number.",
+        description: "Phone number must be in format +91XXXXXXXXXX (starting with +91 followed by valid 10-digit Indian mobile number).",
         variant: "destructive"
       });
       return false;
@@ -154,7 +154,7 @@ const Login = () => {
   };
 
   const validatePassword = () => {
-    if (passwordData.password.length < 6) {
+    if (!passwordData.password || passwordData.password.length < 6) {
       toast({
         title: "Validation Error",
         description: "Password must be at least 6 characters long.",
@@ -201,6 +201,8 @@ const Login = () => {
         errorMessage = "Invalid email address.";
       } else if (error.code === 'auth/user-disabled') {
         errorMessage = "This account has been disabled.";
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid email or password.";
       }
 
       toast({
@@ -219,12 +221,13 @@ const Login = () => {
 
     setLoading(true);
     try {
+      // Simulate sending OTPs
       console.log('Sending OTP to email:', formData.email);
       console.log('Sending OTP to phone:', formData.phone);
       
       toast({
         title: "OTPs Sent",
-        description: "Verification codes sent to your email and phone. Please check both.",
+        description: "Verification codes have been sent to your email and phone. Please check both.",
       });
       setStep('otp-verification');
     } catch (error) {
@@ -238,7 +241,7 @@ const Login = () => {
   };
 
   const verifyOTPs = async () => {
-    if (otpData.emailOTP.length !== 6) {
+    if (!otpData.emailOTP || otpData.emailOTP.length !== 6) {
       toast({
         title: "Validation Error",
         description: "Please enter complete email OTP (6 digits).",
@@ -247,7 +250,7 @@ const Login = () => {
       return;
     }
 
-    if (otpData.phoneOTP.length !== 6) {
+    if (!otpData.phoneOTP || otpData.phoneOTP.length !== 6) {
       toast({
         title: "Validation Error",
         description: "Please enter complete phone OTP (6 digits).",
@@ -258,6 +261,10 @@ const Login = () => {
 
     setLoading(true);
     try {
+      // Simulate OTP verification
+      console.log('Verifying email OTP:', otpData.emailOTP);
+      console.log('Verifying phone OTP:', otpData.phoneOTP);
+      
       toast({
         title: "Verification Successful",
         description: "OTPs verified successfully. Please set your password.",
@@ -280,13 +287,16 @@ const Login = () => {
 
     setLoading(true);
     try {
+      // Create Firebase user
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, passwordData.password);
       const user = userCredential.user;
 
+      // Update user profile
       await updateProfile(user, {
         displayName: `${formData.firstName} ${formData.lastName}`
       });
 
+      // Store admin data in Firestore
       await setDoc(doc(db, 'admins', user.uid), {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -297,20 +307,24 @@ const Login = () => {
         verified: true
       });
 
+      // Send email verification
       await sendEmailVerification(user);
+      
       setStep('success');
       
       toast({
         title: "Registration Successful",
-        description: "Admin account created successfully! Please verify your email.",
+        description: "Admin account created successfully! You can now log in.",
       });
     } catch (error: any) {
       let errorMessage = "Registration failed. Please try again.";
       
       if (error.code === 'auth/email-already-in-use') {
-        errorMessage = "Email is already registered. Please use a different email.";
+        errorMessage = "Email is already registered. Please use a different email or try logging in.";
       } else if (error.code === 'auth/weak-password') {
         errorMessage = "Password is too weak. Please choose a stronger password.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email format.";
       }
 
       toast({
@@ -323,7 +337,7 @@ const Login = () => {
   };
 
   const handleForgotPassword = async () => {
-    if (!forgotPasswordData.email) {
+    if (!forgotPasswordData.email.trim()) {
       toast({
         title: "Email Required",
         description: "Please enter your email to reset password.",
@@ -332,12 +346,24 @@ const Login = () => {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotPasswordData.email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
     try {
       await sendPasswordResetEmail(auth, forgotPasswordData.email);
       toast({
         title: "Reset Email Sent",
         description: "Check your email for password reset instructions.",
       });
+      setMode('login');
     } catch (error: any) {
       let errorMessage = "Failed to send reset email.";
       
@@ -351,6 +377,7 @@ const Login = () => {
         variant: "destructive"
       });
     }
+    setLoading(false);
   };
 
   const renderLoginForm = () => (
@@ -579,12 +606,16 @@ const Login = () => {
               <Shield className="h-16 w-16 mx-auto mb-4" />
               <h3 className="text-xl font-bold">Registration Successful!</h3>
               <p className="text-gray-600 mt-2">
-                Your admin account has been created successfully. Please check your email to verify your account.
+                Your admin account has been created successfully. You can now log in to access the admin panel.
               </p>
             </div>
             <Button onClick={() => {
               setMode('login');
               setStep('details');
+              // Reset all form data
+              setFormData({ firstName: '', lastName: '', email: '', phone: '' });
+              setOtpData({ emailOTP: '', phoneOTP: '' });
+              setPasswordData({ password: '', confirmPassword: '' });
             }} className="w-full bg-school-blue hover:bg-school-blue/90">
               Go to Login
             </Button>
