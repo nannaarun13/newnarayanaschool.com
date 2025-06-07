@@ -82,6 +82,22 @@ const AdminDashboard = () => {
     { title: "Page Updates", value: "12", icon: FileText, color: "text-purple-600" }
   ];
 
+  const handleActivityClick = (activity: string) => {
+    switch (activity) {
+      case 'admission':
+        setActiveTab('admissions');
+        break;
+      case 'gallery':
+        setActiveTab('gallery');
+        break;
+      case 'notice':
+        setActiveTab('notices');
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Admin Header */}
@@ -158,21 +174,30 @@ const AdminDashboard = () => {
               <Card>
                 <CardContent className="p-6">
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+                    <div 
+                      className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+                      onClick={() => handleActivityClick('admission')}
+                    >
                       <Bell className="h-5 w-5 text-school-blue" />
                       <div>
                         <p className="font-medium">New admission inquiry received</p>
                         <p className="text-sm text-gray-600">2 hours ago</p>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg">
+                    <div 
+                      className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors"
+                      onClick={() => handleActivityClick('gallery')}
+                    >
                       <Image className="h-5 w-5 text-school-orange" />
                       <div>
                         <p className="font-medium">Gallery updated with new images</p>
                         <p className="text-sm text-gray-600">5 hours ago</p>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
+                    <div 
+                      className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg cursor-pointer hover:bg-green-100 transition-colors"
+                      onClick={() => handleActivityClick('notice')}
+                    >
                       <FileText className="h-5 w-5 text-green-600" />
                       <div>
                         <p className="font-medium">Notice board updated</p>

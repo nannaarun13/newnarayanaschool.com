@@ -6,18 +6,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus } from 'lucide-react';
+import ImageUpload from './ImageUpload';
 
 const GalleryManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
   const [newImage, setNewImage] = useState({ url: '', caption: '' });
 
+  const handleImageUpload = (imageUrl: string) => {
+    setNewImage(prev => ({ ...prev, url: imageUrl }));
+  };
+
   const handleAddImage = () => {
     if (!newImage.url || !newImage.caption) {
       toast({
         title: "Missing Information",
-        description: "Please provide both image URL and caption.",
+        description: "Please provide both image and caption.",
         variant: "destructive"
       });
       return;
@@ -65,15 +70,12 @@ const GalleryManager = () => {
           <CardTitle>Add New Image</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="imageUrl">Image URL</Label>
-            <Input
-              id="imageUrl"
-              value={newImage.url}
-              onChange={(e) => setNewImage(prev => ({ ...prev, url: e.target.value }))}
-              placeholder="Enter image URL"
-            />
-          </div>
+          <ImageUpload
+            label="Upload Gallery Image"
+            currentImage={newImage.url}
+            onImageUpload={handleImageUpload}
+          />
+          
           <div>
             <Label htmlFor="imageCaption">Caption</Label>
             <Input

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useSchool } from '@/contexts/SchoolContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 const Gallery = () => {
   const { state } = useSchool();
@@ -66,17 +66,6 @@ const Gallery = () => {
           </div>
         </div>
       )}
-
-      {/* Upload Section (Admin will control this) */}
-      <section className="text-center bg-school-blue-light py-8 px-4 rounded-lg animate-fade-in">
-        <Upload className="h-12 w-12 text-school-blue mx-auto mb-4" />
-        <h3 className="text-2xl font-bold text-school-blue mb-2">
-          Gallery Management
-        </h3>
-        <p className="text-gray-700">
-          Gallery images are managed through the admin panel
-        </p>
-      </section>
     </div>
   );
 };

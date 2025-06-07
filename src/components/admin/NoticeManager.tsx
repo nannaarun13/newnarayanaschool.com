@@ -7,13 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 
 const NoticeManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
   const [newNotice, setNewNotice] = useState({ title: '', content: '' });
   const [editingNotice, setEditingNotice] = useState<string | null>(null);
+  const [editData, setEditData] = useState({ title: '', content: '' });
 
   const handleAddNotice = () => {
     if (!newNotice.title || !newNotice.content) {
@@ -42,6 +43,39 @@ const NoticeManager = () => {
       title: "Notice Added",
       description: "New notice has been published.",
     });
+  };
+
+  const handleEditNotice = (notice: any) => {
+    setEditingNotice(notice.id);
+    setEditData({ title: notice.title, content: notice.content });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editData.title || !editData.content) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide both title and content.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    dispatch({
+      type: 'UPDATE_NOTICE',
+      payload: { id: editingNotice, notice: editData }
+    });
+
+    setEditingNotice(null);
+    setEditData({ title: '', content: '' });
+    toast({
+      title: "Notice Updated",
+      description: "Notice has been updated successfully.",
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNotice(null);
+    setEditData({ title: '', content: '' });
   };
 
   const handleDeleteNotice = (id: string) => {
@@ -102,25 +136,51 @@ const NoticeManager = () => {
           <div className="space-y-4">
             {state.data.notices.map((notice) => (
               <div key={notice.id} className="border rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{notice.title}</h3>
-                    <p className="text-gray-600 mt-2">{notice.content}</p>
-                    <p className="text-sm text-gray-500 mt-2">Posted on {notice.date}</p>
+                {editingNotice === notice.id ? (
+                  <div className="space-y-4">
+                    <Input
+                      value={editData.title}
+                      onChange={(e) => setEditData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Notice title"
+                    />
+                    <Textarea
+                      value={editData.content}
+                      onChange={(e) => setEditData(prev => ({ ...prev, content: e.target.value }))}
+                      placeholder="Notice content"
+                      rows={3}
+                    />
+                    <div className="flex space-x-2">
+                      <Button onClick={handleSaveEdit} size="sm" className="bg-green-600 hover:bg-green-700">
+                        <Save className="h-4 w-4 mr-1" />
+                        Save
+                      </Button>
+                      <Button onClick={handleCancelEdit} variant="outline" size="sm">
+                        <X className="h-4 w-4 mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeleteNotice(notice.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg">{notice.title}</h3>
+                      <p className="text-gray-600 mt-2">{notice.content}</p>
+                      <p className="text-sm text-gray-500 mt-2">Posted on {notice.date}</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => handleEditNotice(notice)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteNotice(notice.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ))}
           </div>

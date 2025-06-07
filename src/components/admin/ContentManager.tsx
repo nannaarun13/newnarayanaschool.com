@@ -7,13 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Upload } from 'lucide-react';
+import { Save } from 'lucide-react';
+import ImageUpload from './ImageUpload';
 
 const ContentManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     schoolName: state.data.schoolName,
+    schoolLogo: state.data.schoolLogo,
     welcomeMessage: state.data.welcomeMessage,
     welcomeImage: state.data.welcomeImage,
     schoolHistory: state.data.schoolHistory,
@@ -25,6 +27,10 @@ const ContentManager = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageUpload = (field: string, imageUrl: string) => {
+    setFormData(prev => ({ ...prev, [field]: imageUrl }));
   };
 
   const handleSave = () => {
@@ -64,6 +70,13 @@ const ContentManager = () => {
                 onChange={handleInputChange}
               />
             </div>
+            
+            <ImageUpload
+              label="School Logo"
+              currentImage={formData.schoolLogo}
+              onImageUpload={(url) => handleImageUpload('schoolLogo', url)}
+            />
+            
             <div>
               <Label htmlFor="yearEstablished">Year Established</Label>
               <Input
@@ -101,15 +114,12 @@ const ContentManager = () => {
                 rows={3}
               />
             </div>
-            <div>
-              <Label htmlFor="welcomeImage">Welcome Image URL</Label>
-              <Input
-                id="welcomeImage"
-                name="welcomeImage"
-                value={formData.welcomeImage}
-                onChange={handleInputChange}
-              />
-            </div>
+            
+            <ImageUpload
+              label="Welcome Image"
+              currentImage={formData.welcomeImage}
+              onImageUpload={(url) => handleImageUpload('welcomeImage', url)}
+            />
           </CardContent>
         </Card>
 

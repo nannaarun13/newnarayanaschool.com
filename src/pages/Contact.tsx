@@ -1,9 +1,13 @@
 
+import { useSchool } from '@/contexts/SchoolContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
 const Contact = () => {
+  const { state } = useSchool();
+  const { contactInfo } = state.data;
+
   return (
     <div className="container mx-auto px-4 py-8 space-y-12">
       {/* Page Header */}
@@ -23,10 +27,8 @@ const Contact = () => {
             <CardContent className="p-6">
               <MapPin className="h-12 w-12 text-school-blue mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-school-blue mb-2">Address</h3>
-              <p className="text-gray-600">
-                New Narayana School,<br />
-                Main Street, Education District,<br />
-                City - 123456
+              <p className="text-gray-600 whitespace-pre-line">
+                {contactInfo.address}
               </p>
             </CardContent>
           </Card>
@@ -36,8 +38,7 @@ const Contact = () => {
               <Phone className="h-12 w-12 text-school-blue mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-school-blue mb-2">Phone</h3>
               <p className="text-gray-600">
-                +91 98765 43210<br />
-                +91 87654 32109
+                {contactInfo.phone}
               </p>
             </CardContent>
           </Card>
@@ -47,8 +48,7 @@ const Contact = () => {
               <Mail className="h-12 w-12 text-school-blue mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-school-blue mb-2">Email</h3>
               <p className="text-gray-600">
-                info@newnarayanaschool.edu<br />
-                admissions@newnarayanaschool.edu
+                {contactInfo.email}
               </p>
             </CardContent>
           </Card>
@@ -75,12 +75,19 @@ const Contact = () => {
               <CardTitle className="text-2xl text-school-blue">Find Us</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64 bg-gray-200 rounded-lg flex items-center justify-center">
-                <p className="text-gray-500">
-                  Interactive map will be embedded here<br />
-                  (Admin can update location through admin panel)
-                </p>
-              </div>
+              {contactInfo.mapEmbed ? (
+                <div 
+                  className="h-64 rounded-lg overflow-hidden"
+                  dangerouslySetInnerHTML={{ __html: contactInfo.mapEmbed }}
+                />
+              ) : (
+                <div className="h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+                  <p className="text-gray-500 text-center">
+                    Map will be displayed here<br />
+                    (Admin can update location through admin panel)
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
