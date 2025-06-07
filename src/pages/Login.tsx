@@ -161,6 +161,8 @@ const Login = () => {
   const validatePassword = () => {
     const password = passwordData.password;
 
+    console.log('Validating password:', { length: password.length, password: password.substring(0, 3) + '...' });
+
     // Check minimum length
     if (!password || password.length < 8) {
       toast({
@@ -220,6 +222,7 @@ const Login = () => {
       return false;
     }
 
+    console.log('Password validation passed');
     return true;
   };
 
@@ -267,12 +270,14 @@ const Login = () => {
       return;
     }
 
+    console.log('Sending OTPs for registration:', { email: formData.email, phone: formData.phone });
     setLoading(true);
+    
     try {
       // Note: In real implementation, you would integrate with SMS and Email services
       // For now, we simulate sending OTPs
-      console.log('Sending OTP to email:', formData.email);
-      console.log('Sending OTP to phone: +91' + formData.phone);
+      console.log('Simulating OTP send to email:', formData.email);
+      console.log('Simulating OTP send to phone: +91' + formData.phone);
       
       toast({
         title: "OTPs Sent",
@@ -280,6 +285,7 @@ const Login = () => {
       });
       setStep('otp-verification');
     } catch (error) {
+      console.error('Error sending OTPs:', error);
       toast({
         title: "Error",
         description: "Failed to send OTPs. Please try again.",
@@ -308,12 +314,13 @@ const Login = () => {
       return;
     }
 
+    console.log('Verifying OTPs:', { emailOTP: otpData.emailOTP, phoneOTP: otpData.phoneOTP });
     setLoading(true);
+    
     try {
       // Note: In real implementation, you would verify OTPs with your backend
       // For demo purposes, we simulate verification
-      console.log('Verifying email OTP:', otpData.emailOTP);
-      console.log('Verifying phone OTP:', otpData.phoneOTP);
+      console.log('Simulating OTP verification successful');
       
       toast({
         title: "Verification Successful",
@@ -321,6 +328,7 @@ const Login = () => {
       });
       setStep('password');
     } catch (error) {
+      console.error('OTP verification error:', error);
       toast({
         title: "Verification Failed",
         description: "Invalid OTPs. Please try again.",
@@ -335,19 +343,35 @@ const Login = () => {
       return;
     }
 
+    console.log('Starting Firebase registration process...');
+    console.log('Registration data:', {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      passwordLength: passwordData.password.length
+    });
+
     setLoading(true);
     try {
+      console.log('Creating Firebase user with email:', formData.email);
+      
       // Create Firebase user
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, passwordData.password);
       const user = userCredential.user;
+      
+      console.log('Firebase user created successfully:', user.uid);
 
       // Update user profile
+      console.log('Updating user profile...');
       await updateProfile(user, {
         displayName: `${formData.firstName} ${formData.lastName}`
       });
+      console.log('User profile updated successfully');
 
       // Store admin data in Firestore
-      await setDoc(doc(db, 'admins', user.uid), {
+      console.log('Storing admin data in Firestore...');
+      const adminData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
@@ -355,10 +379,15 @@ const Login = () => {
         role: 'admin',
         createdAt: new Date(),
         verified: true
-      });
+      };
+      
+      await setDoc(doc(db, 'admins', user.uid), adminData);
+      console.log('Admin data stored in Firestore successfully');
 
       // Send email verification
+      console.log('Sending email verification...');
       await sendEmailVerification(user);
+      console.log('Email verification sent successfully');
       
       setStep('success');
       
@@ -366,7 +395,16 @@ const Login = () => {
         title: "Registration Successful",
         description: "Admin account created successfully! You can now log in.",
       });
+      
+      console.log('Registration completed successfully');
+      
     } catch (error: any) {
+      console.error('Registration error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
+      
       let errorMessage = "Registration failed. Please try again.";
       
       if (error.code === 'auth/email-already-in-use') {
@@ -377,9 +415,12 @@ const Login = () => {
         errorMessage = "Invalid email format.";
       } else if (error.code === 'auth/operation-not-allowed') {
         errorMessage = "Email/password authentication is not enabled in Firebase. Please contact support.";
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (error.code === 'permission-denied') {
+        errorMessage = "Database permission denied. Please check Firestore security rules.";
       }
 
-      console.error('Registration error:', error);
       toast({
         title: "Registration Failed",
         description: errorMessage,
