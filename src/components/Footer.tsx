@@ -13,6 +13,9 @@ const Footer = () => {
     }
   };
 
+  // Add safety check for contactNumbers
+  const contactNumbers = contactInfo?.contactNumbers || [];
+
   return (
     <footer className="bg-gradient-to-r from-school-blue to-school-orange text-white py-8 mt-16">
       <div className="container mx-auto px-4">
@@ -23,7 +26,7 @@ const Footer = () => {
             <div>
               <h4 className="font-semibold mb-2">Address</h4>
               <p className="text-sm opacity-90 whitespace-pre-line">
-                {contactInfo.address}
+                {contactInfo?.address || 'Address not available'}
               </p>
               <button 
                 onClick={handleMapClick}
@@ -40,12 +43,12 @@ const Footer = () => {
             <div>
               <h4 className="font-semibold mb-2">Contact Numbers</h4>
               <div className="space-y-1">
-                {contactInfo.contactNumbers.map((contact) => (
+                {contactNumbers.map((contact) => (
                   <div key={contact.id} className="text-sm opacity-90">
                     <span className="font-medium">{contact.label}:</span> {contact.number}
                   </div>
                 ))}
-                {contactInfo.contactNumbers.length === 0 && (
+                {contactNumbers.length === 0 && contactInfo?.phone && (
                   <p className="text-sm opacity-90">{contactInfo.phone}</p>
                 )}
               </div>
@@ -57,7 +60,7 @@ const Footer = () => {
             <Mail className="h-6 w-6 mt-1 flex-shrink-0" />
             <div>
               <h4 className="font-semibold mb-2">Email</h4>
-              <p className="text-sm opacity-90">{contactInfo.email}</p>
+              <p className="text-sm opacity-90">{contactInfo?.email || 'Email not available'}</p>
             </div>
           </div>
         </div>
