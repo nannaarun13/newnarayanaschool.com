@@ -27,19 +27,21 @@ const Admissions = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    // Convert to uppercase for specific fields
-    const uppercaseFields = ['studentName', 'fatherName', 'motherName', 'previousSchool', 'location'];
-    const processedValue = uppercaseFields.includes(name) ? value.toUpperCase() : value;
     
-    setFormData(prev => ({ ...prev, [name]: processedValue }));
+    // Convert specific fields to uppercase
+    if (['studentName', 'fatherName', 'motherName', 'location'].includes(name)) {
+      setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const inquiryData = {
-      ...formData,
       id: Date.now().toString(),
+      ...formData,
       submittedAt: new Date().toISOString()
     };
 
@@ -67,7 +69,7 @@ const Admissions = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-school-blue-light via-white to-school-orange-light">
       <div className="container mx-auto px-4 py-8 space-y-12">
         {/* Page Header */}
         <section className="text-center animate-fade-in">
@@ -75,48 +77,17 @@ const Admissions = () => {
             Admissions
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Join our community of learners and embark on an educational journey of excellence
+            Join our family of learners and embark on a journey of excellence
           </p>
         </section>
 
-        {/* Admission Process */}
+        {/* Admission Form */}
         <section className="animate-fade-in">
-          <Card className="hover:shadow-lg transition-shadow duration-300">
+          <Card className="max-w-4xl mx-auto bg-white/80 backdrop-blur-sm border border-school-blue/20">
             <CardHeader>
-              <CardTitle className="text-3xl text-school-blue text-center">Admission Process</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-4 gap-6 text-center">
-                <div>
-                  <div className="w-16 h-16 bg-school-blue text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">1</div>
-                  <h3 className="text-lg font-semibold text-school-blue mb-2">Submit Application</h3>
-                  <p className="text-gray-600">Fill out the admission inquiry form below</p>
-                </div>
-                <div>
-                  <div className="w-16 h-16 bg-school-orange text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">2</div>
-                  <h3 className="text-lg font-semibold text-school-blue mb-2">Document Review</h3>
-                  <p className="text-gray-600">Our admissions team reviews your application</p>
-                </div>
-                <div>
-                  <div className="w-16 h-16 bg-school-blue text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">3</div>
-                  <h3 className="text-lg font-semibold text-school-blue mb-2">Interview & Assessment</h3>
-                  <p className="text-gray-600">Student interview and assessment if required</p>
-                </div>
-                <div>
-                  <div className="w-16 h-16 bg-school-orange text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">4</div>
-                  <h3 className="text-lg font-semibold text-school-blue mb-2">Admission Decision</h3>
-                  <p className="text-gray-600">Receive admission decision and enrollment details</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Admission Inquiry Form */}
-        <section className="animate-fade-in">
-          <Card className="hover:shadow-lg transition-shadow duration-300">
-            <CardHeader>
-              <CardTitle className="text-3xl text-school-blue text-center">Admission Inquiry Form</CardTitle>
+              <CardTitle className="text-2xl text-school-blue text-center">
+                Admission Inquiry Form
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -142,12 +113,13 @@ const Admissions = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="presentClass">Present Class</Label>
+                    <Label htmlFor="presentClass">Present Class *</Label>
                     <Input
                       id="presentClass"
                       name="presentClass"
                       value={formData.presentClass}
                       onChange={handleInputChange}
+                      required
                     />
                   </div>
                   <div>
@@ -189,7 +161,7 @@ const Admissions = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="primaryContact">Primary Contact Number *</Label>
+                    <Label htmlFor="primaryContact">Primary Contact *</Label>
                     <Input
                       id="primaryContact"
                       name="primaryContact"
@@ -200,7 +172,7 @@ const Admissions = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="secondaryContact">Secondary Contact Number</Label>
+                    <Label htmlFor="secondaryContact">Secondary Contact</Label>
                     <Input
                       id="secondaryContact"
                       name="secondaryContact"
@@ -229,18 +201,15 @@ const Admissions = () => {
                     value={formData.additionalInfo}
                     onChange={handleInputChange}
                     rows={4}
-                    placeholder="Any additional information you'd like to share..."
                   />
                 </div>
 
-                <div className="text-center">
-                  <Button 
-                    type="submit" 
-                    className="bg-school-blue hover:bg-school-blue/90 text-white px-8 py-3 text-lg"
-                  >
-                    Submit Inquiry
-                  </Button>
-                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-school-blue hover:bg-school-blue/90 text-white"
+                >
+                  Submit Application
+                </Button>
               </form>
             </CardContent>
           </Card>

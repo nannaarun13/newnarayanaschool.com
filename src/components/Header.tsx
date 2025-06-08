@@ -3,7 +3,7 @@ import { useSchool } from '@/contexts/SchoolContext';
 
 const Header = () => {
   const { state } = useSchool();
-  const { schoolLogo, schoolNameImage } = state.data;
+  const { schoolLogo, schoolNameImage, schoolName } = state.data;
 
   return (
     <header className="bg-gradient-to-r from-school-blue via-school-blue to-school-orange text-white py-6 shadow-lg">
@@ -23,7 +23,7 @@ const Header = () => {
               />
             ) : (
               <h1 className="text-3xl md:text-4xl font-bold tracking-wide">
-                New Narayana School
+                {schoolName || "New Narayana School"}
               </h1>
             )}
           </div>

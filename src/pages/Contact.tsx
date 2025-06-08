@@ -1,7 +1,6 @@
 
 import { useSchool } from '@/contexts/SchoolContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
 const Contact = () => {
@@ -10,7 +9,7 @@ const Contact = () => {
   const contactNumbers = contactInfo?.contactNumbers || [];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-school-blue-light via-white to-school-orange-light">
       <div className="container mx-auto px-4 py-8 space-y-12">
         {/* Page Header */}
         <section className="text-center animate-fade-in">
@@ -25,7 +24,7 @@ const Contact = () => {
         {/* Contact Information Grid */}
         <section className="animate-fade-in">
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            <Card className="text-center hover:shadow-lg transition-shadow duration-300">
+            <Card className="text-center hover:shadow-lg transition-shadow duration-300 bg-white/80 backdrop-blur-sm border border-school-blue/20">
               <CardContent className="p-6">
                 <MapPin className="h-12 w-12 text-school-blue mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-school-blue mb-2">Address</h3>
@@ -35,12 +34,12 @@ const Contact = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center hover:shadow-lg transition-shadow duration-300">
+            <Card className="text-center hover:shadow-lg transition-shadow duration-300 bg-white/80 backdrop-blur-sm border border-school-blue/20">
               <CardContent className="p-6">
                 <Phone className="h-12 w-12 text-school-blue mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-school-blue mb-2">Phone</h3>
                 <div className="space-y-1">
-                  {contactNumbers.map((contact) => (
+                  {contactNumbers.slice(0, 5).map((contact) => (
                     <div key={contact.id} className="text-sm text-gray-600">
                       <span className="font-medium">{contact.label}:</span> {contact.number}
                     </div>
@@ -52,7 +51,7 @@ const Contact = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center hover:shadow-lg transition-shadow duration-300">
+            <Card className="text-center hover:shadow-lg transition-shadow duration-300 bg-white/80 backdrop-blur-sm border border-school-blue/20">
               <CardContent className="p-6">
                 <Mail className="h-12 w-12 text-school-blue mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-school-blue mb-2">Email</h3>
@@ -62,7 +61,7 @@ const Contact = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center hover:shadow-lg transition-shadow duration-300">
+            <Card className="text-center hover:shadow-lg transition-shadow duration-300 bg-white/80 backdrop-blur-sm border border-school-blue/20">
               <CardContent className="p-6">
                 <Clock className="h-12 w-12 text-school-blue mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-school-blue mb-2">School Times</h3>
@@ -76,11 +75,8 @@ const Contact = () => {
 
         {/* Map */}
         <section className="animate-fade-in">
-          <Card className="hover:shadow-lg transition-shadow duration-300">
-            <CardHeader>
-              <CardTitle className="text-2xl text-school-blue">Find Us</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="hover:shadow-lg transition-shadow duration-300 bg-white/80 backdrop-blur-sm border border-school-blue/20">
+            <CardContent className="p-6">
               <div className="h-96 rounded-lg overflow-hidden">
                 <div className="embed-map-responsive">
                   <div className="embed-map-container">

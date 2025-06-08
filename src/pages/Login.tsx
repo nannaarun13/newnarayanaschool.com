@@ -4,15 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Shield } from 'lucide-react';
-import { signInWithEmailAndPassword, sendPasswordResetEmail, createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth';
-import { doc, setDoc, addDoc, collection } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
 
-type LoginMode = 'login' | 'register' | 'forgot-password';
+type LoginMode = 'login' | 'forgot-password';
 
 const Login = () => {
   const { toast } = useToast();
@@ -29,15 +27,6 @@ const Login = () => {
   const [loginData, setLoginData] = useState({
     email: AUTO_LOGIN_EMAIL,
     password: AUTO_LOGIN_PASSWORD
-  });
-
-  // Registration form data
-  const [registrationData, setRegistrationData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    password: ''
   });
 
   // Forgot password data
@@ -64,21 +53,6 @@ const Login = () => {
     setLoginData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleRegistrationInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    
-    if (name === 'firstName' || name === 'lastName') {
-      setRegistrationData(prev => ({ ...prev, [name]: value.toUpperCase() }));
-    } else if (name === 'phone') {
-      const numericValue = value.replace(/[^0-9]/g, '');
-      if (numericValue.length <= 10) {
-        setRegistrationData(prev => ({ ...prev, [name]: numericValue }));
-      }
-    } else {
-      setRegistrationData(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
   const handleForgotPasswordInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForgotPasswordData(prev => ({ ...prev, [name]: value }));
@@ -99,44 +73,6 @@ const Login = () => {
       toast({
         title: "Login Failed",
         description: "Invalid email or password.",
-        variant: "destructive"
-      });
-    }
-    setLoading(false);
-  };
-
-  const handleRegistration = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      // Send registration request to admin
-      await addDoc(collection(db, 'adminRequests'), {
-        firstName: registrationData.firstName,
-        lastName: registrationData.lastName,
-        email: registrationData.email,
-        phone: `+91${registrationData.phone}`,
-        requestedAt: new Date(),
-        status: 'pending'
-      });
-      
-      toast({
-        title: "Registration Request Sent",
-        description: "Your request has been sent to admin for approval.",
-      });
-      
-      setMode('login');
-      setRegistrationData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        password: ''
-      });
-    } catch (error) {
-      toast({
-        title: "Registration Failed",
-        description: "Failed to send registration request.",
         variant: "destructive"
       });
     }
@@ -211,72 +147,6 @@ const Login = () => {
     </form>
   );
 
-  const renderRegistrationForm = () => (
-    <form onSubmit={handleRegistration} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="firstName">First Name *</Label>
-          <Input
-            id="firstName"
-            name="firstName"
-            value={registrationData.firstName}
-            onChange={handleRegistrationInputChange}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="lastName">Last Name *</Label>
-          <Input
-            id="lastName"
-            name="lastName"
-            value={registrationData.lastName}
-            onChange={handleRegistrationInputChange}
-            required
-          />
-        </div>
-      </div>
-      
-      <div>
-        <Label htmlFor="email">Email Address *</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          value={registrationData.email}
-          onChange={handleRegistrationInputChange}
-          required
-        />
-      </div>
-      
-      <div>
-        <Label htmlFor="phone">Phone Number *</Label>
-        <div className="flex">
-          <div className="flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
-            <span className="text-sm font-medium">+91</span>
-          </div>
-          <Input
-            id="phone"
-            name="phone"
-            type="tel"
-            value={registrationData.phone}
-            onChange={handleRegistrationInputChange}
-            className="rounded-l-none"
-            maxLength={10}
-            required
-          />
-        </div>
-      </div>
-
-      <Button 
-        type="submit" 
-        disabled={loading}
-        className="w-full bg-school-blue hover:bg-school-blue/90"
-      >
-        {loading ? 'Sending Request...' : 'Send Registration Request'}
-      </Button>
-    </form>
-  );
-
   const renderForgotPasswordForm = () => (
     <form onSubmit={handleForgotPassword} className="space-y-4">
       <div>
@@ -316,19 +186,18 @@ const Login = () => {
         <div className="text-center mb-8">
           <Shield className="h-16 w-16 text-school-blue mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-school-blue mb-2">
-            {mode === 'login' ? 'Admin Login' : mode === 'register' ? 'Admin Registration Request' : 'Reset Password'}
+            {mode === 'login' ? 'Admin Login' : 'Reset Password'}
           </h1>
         </div>
 
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl text-center text-school-blue">
-              {mode === 'login' ? 'Sign In' : mode === 'register' ? 'Request Access' : 'Password Reset'}
+              {mode === 'login' ? 'Sign In' : 'Password Reset'}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {mode === 'login' && renderLoginForm()}
-            {mode === 'register' && renderRegistrationForm()}
             {mode === 'forgot-password' && renderForgotPasswordForm()}
 
             {mode === 'login' && (
@@ -342,29 +211,6 @@ const Login = () => {
                     Forgot Password?
                   </Button>
                 </div>
-                
-                <div className="text-center text-sm text-gray-600">
-                  <p>Need admin access?</p>
-                  <Button 
-                    variant="link" 
-                    className="text-school-orange"
-                    onClick={() => setMode('register')}
-                  >
-                    Request Admin Access
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {mode === 'register' && (
-              <div className="mt-6 text-center">
-                <Button 
-                  variant="link" 
-                  className="text-school-blue"
-                  onClick={() => setMode('login')}
-                >
-                  Back to Login
-                </Button>
               </div>
             )}
           </CardContent>

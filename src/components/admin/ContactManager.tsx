@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,16 +6,48 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
-import { Save } from 'lucide-react';
+import { Save, Plus, Trash2 } from 'lucide-react';
 
 const ContactManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
   const [contactData, setContactData] = useState(state.data.contactInfo);
+  const [newContact, setNewContact] = useState({ label: '', number: '' });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setContactData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleNewContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewContact(prev => ({ ...prev, [name]: value }));
+  };
+
+  const addContactNumber = () => {
+    if (newContact.label && newContact.number) {
+      const contactNumber = {
+        id: Date.now().toString(),
+        label: newContact.label,
+        number: newContact.number
+      };
+      
+      dispatch({ type: 'ADD_CONTACT_NUMBER', payload: contactNumber });
+      setNewContact({ label: '', number: '' });
+      
+      toast({
+        title: "Contact Added",
+        description: "New contact number has been added.",
+      });
+    }
+  };
+
+  const deleteContactNumber = (id: string) => {
+    dispatch({ type: 'DELETE_CONTACT_NUMBER', payload: id });
+    toast({
+      title: "Contact Deleted",
+      description: "Contact number has been removed.",
+    });
   };
 
   const handleSave = () => {
@@ -42,7 +73,7 @@ const ContactManager = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Contact Information</CardTitle>
+          <CardTitle>Basic Contact Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -66,7 +97,7 @@ const ContactManager = () => {
             />
           </div>
           <div>
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="phone">Primary Phone Number</Label>
             <Input
               id="phone"
               name="phone"
@@ -86,6 +117,52 @@ const ContactManager = () => {
               placeholder="Enter Google Maps embed URL"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Contact Numbers (Up to 5)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Existing Contact Numbers */}
+          <div className="space-y-2">
+            {state.data.contactInfo.contactNumbers.map((contact) => (
+              <div key={contact.id} className="flex items-center gap-2 p-2 border rounded">
+                <span className="font-medium">{contact.label}:</span>
+                <span>{contact.number}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => deleteContactNumber(contact.id)}
+                  className="ml-auto"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          {/* Add New Contact */}
+          {state.data.contactInfo.contactNumbers.length < 5 && (
+            <div className="flex gap-2">
+              <Input
+                name="label"
+                placeholder="Label (e.g., Principal Office)"
+                value={newContact.label}
+                onChange={handleNewContactChange}
+              />
+              <Input
+                name="number"
+                placeholder="Phone Number"
+                value={newContact.number}
+                onChange={handleNewContactChange}
+              />
+              <Button onClick={addContactNumber} className="bg-school-blue hover:bg-school-blue/90">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

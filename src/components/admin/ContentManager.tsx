@@ -20,9 +20,6 @@ const ContentManager = () => {
     welcomeMessage: state.data.welcomeMessage,
     welcomeImage: state.data.welcomeImage,
     schoolHistory: state.data.schoolHistory,
-    yearEstablished: state.data.yearEstablished,
-    educationalSociety: state.data.educationalSociety,
-    educationalSocietyContent: state.data.educationalSocietyContent,
     founderDetails: state.data.founderDetails
   });
 
@@ -60,19 +57,9 @@ const ContentManager = () => {
         {/* School Basic Info */}
         <Card>
           <CardHeader>
-            <CardTitle>School Information</CardTitle>
+            <CardTitle>School Branding</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="schoolName">School Name</Label>
-              <Input
-                id="schoolName"
-                name="schoolName"
-                value={formData.schoolName}
-                onChange={handleInputChange}
-              />
-            </div>
-            
             <ImageUpload
               label="School Logo"
               currentImage={formData.schoolLogo}
@@ -80,37 +67,18 @@ const ContentManager = () => {
             />
 
             <ImageUpload
-              label="School Name Image (replaces text)"
+              label="School Name Image (replaces text in header)"
               currentImage={formData.schoolNameImage}
               onImageUpload={(url) => handleImageUpload('schoolNameImage', url)}
             />
             
             <div>
-              <Label htmlFor="yearEstablished">Year Established</Label>
+              <Label htmlFor="schoolName">School Name (fallback text)</Label>
               <Input
-                id="yearEstablished"
-                name="yearEstablished"
-                value={formData.yearEstablished}
+                id="schoolName"
+                name="schoolName"
+                value={formData.schoolName}
                 onChange={handleInputChange}
-              />
-            </div>
-            <div>
-              <Label htmlFor="educationalSociety">Educational Society Name</Label>
-              <Input
-                id="educationalSociety"
-                name="educationalSociety"
-                value={formData.educationalSociety}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div>
-              <Label htmlFor="educationalSocietyContent">Educational Society Content</Label>
-              <Textarea
-                id="educationalSocietyContent"
-                name="educationalSocietyContent"
-                value={formData.educationalSocietyContent}
-                onChange={handleInputChange}
-                rows={4}
               />
             </div>
           </CardContent>
