@@ -19,13 +19,11 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Login form data
   const [loginData, setLoginData] = useState({
     email: '',
     password: ''
   });
 
-  // Forgot password data
   const [forgotPasswordData, setForgotPasswordData] = useState({
     email: ''
   });
@@ -45,12 +43,20 @@ const Login = () => {
     setLoading(true);
     
     try {
-      await signInWithEmailAndPassword(auth, loginData.email, loginData.password);
-      toast({
-        title: "Login Successful",
-        description: "Welcome to the admin panel!",
-      });
-      navigate('/admin');
+      // Hardcoded admin credentials
+      if (loginData.email === 'arunnanna3@gmail.com' && loginData.password === 'Arun@2004') {
+        toast({
+          title: "Login Successful",
+          description: "Welcome to the admin panel!",
+        });
+        navigate('/admin');
+      } else {
+        toast({
+          title: "Login Failed",
+          description: "Invalid email or password.",
+          variant: "destructive"
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Login Failed",
@@ -92,6 +98,7 @@ const Login = () => {
           type="email"
           value={loginData.email}
           onChange={handleLoginInputChange}
+          placeholder="Enter your email"
           required
         />
       </div>
@@ -105,6 +112,7 @@ const Login = () => {
             type={showPassword ? "text" : "password"}
             value={loginData.password}
             onChange={handleLoginInputChange}
+            placeholder="Enter your password"
             required
           />
           <Button
@@ -139,6 +147,7 @@ const Login = () => {
           type="email"
           value={forgotPasswordData.email}
           onChange={handleForgotPasswordInputChange}
+          placeholder="Enter your email"
           required
         />
       </div>

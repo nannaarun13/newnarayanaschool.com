@@ -2,60 +2,41 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
-import { Save, UserPlus } from 'lucide-react';
+import { UserPlus, Check, X, Eye } from 'lucide-react';
 
 const AdminRequestManager = () => {
-  const { state, dispatch } = useSchool();
+  const { state } = useSchool();
   const { toast } = useToast();
-  const [newRequest, setNewRequest] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: ''
-  });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    
-    if (name === 'firstName' || name === 'lastName') {
-      setNewRequest(prev => ({ ...prev, [name]: value.toUpperCase() }));
-    } else if (name === 'phone') {
-      const numericValue = value.replace(/[^0-9]/g, '');
-      if (numericValue.length <= 10) {
-        setNewRequest(prev => ({ ...prev, [name]: numericValue }));
-      }
-    } else {
-      setNewRequest(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const requestData = {
-      id: Date.now().toString(),
-      ...newRequest,
-      phone: `+91${newRequest.phone}`,
+  
+  // Mock admin requests - in real implementation, this would come from your database
+  const [adminRequests] = useState([
+    {
+      id: '1',
+      firstName: 'JOHN',
+      lastName: 'DOE',
+      email: 'john.doe@example.com',
+      phone: '+919876543210',
       requestedAt: new Date().toISOString(),
       status: 'pending'
-    };
+    }
+  ]);
 
-    // Add to admin requests (you would store this in context or database)
+  const handleApproval = (requestId: string, approved: boolean) => {
     toast({
-      title: "Admin Request Submitted",
-      description: `Request for ${newRequest.firstName} ${newRequest.lastName} has been submitted for approval.`,
+      title: approved ? "Request Approved" : "Request Rejected",
+      description: approved 
+        ? "Admin access has been granted. User can now login."
+        : "Admin access request has been rejected.",
+      variant: approved ? "default" : "destructive"
     });
+  };
 
-    // Reset form
-    setNewRequest({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: ''
+  const handleViewDetails = (request: any) => {
+    toast({
+      title: "Request Details",
+      description: `${request.firstName} ${request.lastName} - ${request.email}`,
     });
   };
 
@@ -65,76 +46,110 @@ const AdminRequestManager = () => {
         <h2 className="text-2xl font-bold text-gray-800">Admin Access Requests</h2>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-school-blue">{adminRequests.length}</p>
+              <p className="text-sm text-gray-600">Total Requests</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-yellow-600">
+                {adminRequests.filter(r => r.status === 'pending').length}
+              </p>
+              <p className="text-sm text-gray-600">Pending</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">
+                {adminRequests.filter(r => r.status === 'approved').length}
+              </p>
+              <p className="text-sm text-gray-600">Approved</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Requests List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            New Admin Request
+            Admin Access Requests
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="firstName">First Name *</Label>
-                <Input
-                  id="firstName"
-                  name="firstName"
-                  value={newRequest.firstName}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name *</Label>
-                <Input
-                  id="lastName"
-                  name="lastName"
-                  value={newRequest.lastName}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="email">Email Address *</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={newRequest.email}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="phone">Phone Number *</Label>
-              <div className="flex">
-                <div className="flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
-                  <span className="text-sm font-medium">+91</span>
+          <div className="space-y-4">
+            {adminRequests.map((request) => (
+              <div key={request.id} className="border rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center space-x-3">
+                      <h3 className="font-semibold text-lg">
+                        {request.firstName} {request.lastName}
+                      </h3>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {request.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p><strong>Email:</strong> {request.email}</p>
+                        <p><strong>Phone:</strong> {request.phone}</p>
+                      </div>
+                      <div>
+                        <p><strong>Requested:</strong> {new Date(request.requestedAt).toLocaleDateString()}</p>
+                        <p><strong>Time:</strong> {new Date(request.requestedAt).toLocaleTimeString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleViewDetails(request)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {request.status === 'pending' && (
+                      <>
+                        <Button 
+                          variant="default" 
+                          size="sm"
+                          onClick={() => handleApproval(request.id, true)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleApproval(request.id, false)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  value={newRequest.phone}
-                  onChange={handleInputChange}
-                  className="rounded-l-none"
-                  maxLength={10}
-                  required
-                />
               </div>
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full bg-school-blue hover:bg-school-blue/90"
-            >
-              Submit Request for Admin Approval
-            </Button>
-          </form>
+            ))}
+            {adminRequests.length === 0 && (
+              <p className="text-center text-gray-500 py-8">No admin access requests yet.</p>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

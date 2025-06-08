@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,6 @@ const ContactManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
   
-  // Ensure contactInfo has all required properties with defaults
   const safeContactInfo = {
     address: state.data.contactInfo?.address || '',
     email: state.data.contactInfo?.email || '',
@@ -22,47 +22,47 @@ const ContactManager = () => {
   };
   
   const [contactData, setContactData] = useState(safeContactInfo);
-  const [newContact, setNewContact] = useState({ label: '', number: '' });
+  const [newContactNumber, setNewContactNumber] = useState('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setContactData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleNewContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    if (name === 'number') {
-      // Ensure + symbol is added
-      const formattedValue = value.startsWith('+') ? value : `+${value}`;
-      setNewContact(prev => ({ ...prev, [name]: formattedValue }));
-    } else {
-      setNewContact(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
   const addContactNumber = () => {
-    if (newContact.label && newContact.number) {
+    if (newContactNumber.trim() && contactData.contactNumbers.length < 5) {
+      const formattedNumber = newContactNumber.startsWith('+') ? newContactNumber : `+${newContactNumber}`;
       const contactNumber = {
         id: Date.now().toString(),
-        label: newContact.label,
-        number: newContact.number
+        label: `Phone ${contactData.contactNumbers.length + 1}`,
+        number: formattedNumber
       };
       
-      dispatch({ type: 'ADD_CONTACT_NUMBER', payload: contactNumber });
-      setNewContact({ label: '', number: '+' });
+      const updatedContactData = {
+        ...contactData,
+        contactNumbers: [...contactData.contactNumbers, contactNumber]
+      };
+      
+      setContactData(updatedContactData);
+      setNewContactNumber('');
       
       toast({
-        title: "Contact Added",
-        description: "New contact number has been added.",
+        title: "Phone Number Added",
+        description: "New phone number has been added.",
       });
     }
   };
 
   const deleteContactNumber = (id: string) => {
-    dispatch({ type: 'DELETE_CONTACT_NUMBER', payload: id });
+    const updatedContactData = {
+      ...contactData,
+      contactNumbers: contactData.contactNumbers.filter(contact => contact.id !== id)
+    };
+    setContactData(updatedContactData);
+    
     toast({
-      title: "Contact Deleted",
-      description: "Contact number has been removed.",
+      title: "Phone Number Deleted",
+      description: "Phone number has been removed.",
     });
   };
 
@@ -76,9 +76,6 @@ const ContactManager = () => {
       description: "Contact details have been updated successfully.",
     });
   };
-
-  // Safe access to contact numbers with fallback
-  const contactNumbers = state.data.contactInfo?.contactNumbers || [];
 
   return (
     <div className="space-y-6">
@@ -116,16 +113,6 @@ const ContactManager = () => {
             />
           </div>
           <div>
-            <Label htmlFor="phone">Phone Number</Label>
-            <Input
-              id="phone"
-              name="phone"
-              type="tel"
-              value={contactData.phone}
-              onChange={handleInputChange}
-            />
-          </div>
-          <div>
             <Label htmlFor="mapEmbed">Map Embed URL</Label>
             <Textarea
               id="mapEmbed"
@@ -144,11 +131,9 @@ const ContactManager = () => {
           <CardTitle>Phone Numbers (Up to 5)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Existing Contact Numbers */}
           <div className="space-y-2">
-            {contactNumbers.map((contact) => (
+            {contactData.contactNumbers.map((contact) => (
               <div key={contact.id} className="flex items-center gap-2 p-2 border rounded">
-                <span className="font-medium">{contact.label}:</span>
                 <span>{contact.number}</span>
                 <Button
                   variant="outline"
@@ -162,20 +147,12 @@ const ContactManager = () => {
             ))}
           </div>
 
-          {/* Add New Contact */}
-          {contactNumbers.length < 5 && (
+          {contactData.contactNumbers.length < 5 && (
             <div className="flex gap-2">
               <Input
-                name="label"
-                placeholder="Label (e.g., Principal Office)"
-                value={newContact.label}
-                onChange={handleNewContactChange}
-              />
-              <Input
-                name="number"
                 placeholder="+91 Phone Number"
-                value={newContact.number}
-                onChange={handleNewContactChange}
+                value={newContactNumber}
+                onChange={(e) => setNewContactNumber(e.target.value)}
               />
               <Button onClick={addContactNumber} className="bg-school-blue hover:bg-school-blue/90">
                 <Plus className="h-4 w-4" />
