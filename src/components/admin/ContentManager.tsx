@@ -16,11 +16,13 @@ const ContentManager = () => {
   const [formData, setFormData] = useState({
     schoolName: state.data.schoolName,
     schoolLogo: state.data.schoolLogo,
+    schoolNameImage: state.data.schoolNameImage,
     welcomeMessage: state.data.welcomeMessage,
     welcomeImage: state.data.welcomeImage,
     schoolHistory: state.data.schoolHistory,
     yearEstablished: state.data.yearEstablished,
     educationalSociety: state.data.educationalSociety,
+    educationalSocietyContent: state.data.educationalSocietyContent,
     founderDetails: state.data.founderDetails
   });
 
@@ -76,6 +78,12 @@ const ContentManager = () => {
               currentImage={formData.schoolLogo}
               onImageUpload={(url) => handleImageUpload('schoolLogo', url)}
             />
+
+            <ImageUpload
+              label="School Name Image (replaces text)"
+              currentImage={formData.schoolNameImage}
+              onImageUpload={(url) => handleImageUpload('schoolNameImage', url)}
+            />
             
             <div>
               <Label htmlFor="yearEstablished">Year Established</Label>
@@ -87,12 +95,22 @@ const ContentManager = () => {
               />
             </div>
             <div>
-              <Label htmlFor="educationalSociety">Educational Society</Label>
+              <Label htmlFor="educationalSociety">Educational Society Name</Label>
               <Input
                 id="educationalSociety"
                 name="educationalSociety"
                 value={formData.educationalSociety}
                 onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="educationalSocietyContent">Educational Society Content</Label>
+              <Textarea
+                id="educationalSocietyContent"
+                name="educationalSocietyContent"
+                value={formData.educationalSocietyContent}
+                onChange={handleInputChange}
+                rows={4}
               />
             </div>
           </CardContent>

@@ -7,6 +7,7 @@ import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 const Contact = () => {
   const { state } = useSchool();
   const { contactInfo } = state.data;
+  const contactNumbers = contactInfo?.contactNumbers || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,7 +30,7 @@ const Contact = () => {
                 <MapPin className="h-12 w-12 text-school-blue mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-school-blue mb-2">Address</h3>
                 <p className="text-gray-600 whitespace-pre-line">
-                  {contactInfo.address}
+                  {contactInfo?.address || 'Address not available'}
                 </p>
               </CardContent>
             </Card>
@@ -38,9 +39,16 @@ const Contact = () => {
               <CardContent className="p-6">
                 <Phone className="h-12 w-12 text-school-blue mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-school-blue mb-2">Phone</h3>
-                <p className="text-gray-600">
-                  {contactInfo.phone}
-                </p>
+                <div className="space-y-1">
+                  {contactNumbers.map((contact) => (
+                    <div key={contact.id} className="text-sm text-gray-600">
+                      <span className="font-medium">{contact.label}:</span> {contact.number}
+                    </div>
+                  ))}
+                  {contactNumbers.length === 0 && contactInfo?.phone && (
+                    <p className="text-gray-600">{contactInfo.phone}</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -49,7 +57,7 @@ const Contact = () => {
                 <Mail className="h-12 w-12 text-school-blue mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-school-blue mb-2">Email</h3>
                 <p className="text-gray-600">
-                  {contactInfo.email}
+                  {contactInfo?.email || 'Email not available'}
                 </p>
               </CardContent>
             </Card>
@@ -57,122 +65,41 @@ const Contact = () => {
             <Card className="text-center hover:shadow-lg transition-shadow duration-300">
               <CardContent className="p-6">
                 <Clock className="h-12 w-12 text-school-blue mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-school-blue mb-2">Office Hours</h3>
+                <h3 className="text-lg font-semibold text-school-blue mb-2">School Times</h3>
                 <p className="text-gray-600">
-                  Mon - Fri: 8:00 AM - 4:00 PM<br />
-                  Sat: 8:00 AM - 12:00 PM
+                  Mon - Sat: 8:00 AM - 4:00 PM
                 </p>
               </CardContent>
             </Card>
           </div>
         </section>
 
-        {/* Map and Quick Contact */}
+        {/* Map */}
         <section className="animate-fade-in">
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Map */}
-            <Card className="hover:shadow-lg transition-shadow duration-300">
-              <CardHeader>
-                <CardTitle className="text-2xl text-school-blue">Find Us</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {contactInfo.mapEmbed ? (
-                  <div className="h-64 rounded-lg overflow-hidden">
-                    <iframe
-                      src={contactInfo.mapEmbed}
-                      className="w-full h-full border-0"
-                      allowFullScreen
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-64 bg-gray-200 rounded-lg flex items-center justify-center">
-                    <p className="text-gray-500 text-center">
-                      Map will be displayed here<br />
-                      (Admin can update location through admin panel)
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Quick Contact */}
-            <Card className="hover:shadow-lg transition-shadow duration-300">
-              <CardHeader>
-                <CardTitle className="text-2xl text-school-blue">Quick Contact</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-semibold text-school-blue mb-2">Admissions Enquiry</h4>
-                  <p className="text-gray-600 mb-2">
-                    For admission related queries and school visits
-                  </p>
-                  <Button className="w-full bg-school-blue hover:bg-school-blue/90">
-                    Contact Admissions Office
-                  </Button>
-                </div>
-                
-                <div>
-                  <h4 className="font-semibold text-school-blue mb-2">General Information</h4>
-                  <p className="text-gray-600 mb-2">
-                    For general queries about school facilities and programs
-                  </p>
-                  <Button variant="outline" className="w-full border-school-blue text-school-blue hover:bg-school-blue hover:text-white">
-                    Contact Main Office
-                  </Button>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-school-blue mb-2">Academic Support</h4>
-                  <p className="text-gray-600 mb-2">
-                    For academic queries and student support services
-                  </p>
-                  <Button variant="outline" className="w-full border-school-orange text-school-orange hover:bg-school-orange hover:text-white">
-                    Contact Academic Office
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-      </div>
-
-      {/* Directions with colored background */}
-      <section className="bg-gradient-to-r from-yellow-200 via-yellow-300 to-yellow-400 py-16 animate-fade-in">
-        <div className="container mx-auto px-4">
-          <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+          <Card className="hover:shadow-lg transition-shadow duration-300">
             <CardHeader>
-              <CardTitle className="text-3xl text-school-blue text-center">How to Reach Us</CardTitle>
+              <CardTitle className="text-2xl text-school-blue">Find Us</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-3 gap-6 text-center">
-                <div>
-                  <h4 className="font-semibold text-school-blue mb-2">By Car</h4>
-                  <p className="text-gray-700">
-                    Take the main highway exit at Education District. 
-                    Free parking available on campus.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-school-blue mb-2">By Public Transport</h4>
-                  <p className="text-gray-700">
-                    Bus routes 12, 15, and 23 stop directly at our school gate. 
-                    Metro station is 500m away.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-school-blue mb-2">School Bus</h4>
-                  <p className="text-gray-700">
-                    We provide school bus services covering major areas. 
-                    Contact us for route information.
-                  </p>
+              <div className="h-96 rounded-lg overflow-hidden">
+                <div className="embed-map-responsive">
+                  <div className="embed-map-container">
+                    <iframe 
+                      className="embed-map-frame" 
+                      frameBorder="0" 
+                      scrolling="no" 
+                      marginHeight={0} 
+                      marginWidth={0} 
+                      src="https://maps.google.com/maps?width=600&height=600&hl=en&q=17%C2%B018%2733.1%22N%2078%C2%B030%2733.9%22E&t=&z=14&ie=UTF8&iwloc=B&output=embed"
+                      title="School Location"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 };
