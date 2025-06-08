@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,17 @@ import { Save, Plus, Trash2 } from 'lucide-react';
 const ContactManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
-  const [contactData, setContactData] = useState(state.data.contactInfo);
+  
+  // Ensure contactInfo has all required properties with defaults
+  const safeContactInfo = {
+    address: state.data.contactInfo?.address || '',
+    email: state.data.contactInfo?.email || '',
+    phone: state.data.contactInfo?.phone || '',
+    contactNumbers: state.data.contactInfo?.contactNumbers || [],
+    mapEmbed: state.data.contactInfo?.mapEmbed || ''
+  };
+  
+  const [contactData, setContactData] = useState(safeContactInfo);
   const [newContact, setNewContact] = useState({ label: '', number: '' });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -60,6 +71,9 @@ const ContactManager = () => {
       description: "Contact details have been updated successfully.",
     });
   };
+
+  // Safe access to contact numbers with fallback
+  const contactNumbers = state.data.contactInfo?.contactNumbers || [];
 
   return (
     <div className="space-y-6">
@@ -127,7 +141,7 @@ const ContactManager = () => {
         <CardContent className="space-y-4">
           {/* Existing Contact Numbers */}
           <div className="space-y-2">
-            {state.data.contactInfo.contactNumbers.map((contact) => (
+            {contactNumbers.map((contact) => (
               <div key={contact.id} className="flex items-center gap-2 p-2 border rounded">
                 <span className="font-medium">{contact.label}:</span>
                 <span>{contact.number}</span>
@@ -144,7 +158,7 @@ const ContactManager = () => {
           </div>
 
           {/* Add New Contact */}
-          {state.data.contactInfo.contactNumbers.length < 5 && (
+          {contactNumbers.length < 5 && (
             <div className="flex gap-2">
               <Input
                 name="label"
