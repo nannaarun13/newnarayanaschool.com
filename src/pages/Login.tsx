@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,34 +19,16 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Auto-login credentials
-  const AUTO_LOGIN_EMAIL = 'arunnanna3@gmail.com';
-  const AUTO_LOGIN_PASSWORD = 'Arun@2004';
-  
   // Login form data
   const [loginData, setLoginData] = useState({
-    email: AUTO_LOGIN_EMAIL,
-    password: AUTO_LOGIN_PASSWORD
+    email: '',
+    password: ''
   });
 
   // Forgot password data
   const [forgotPasswordData, setForgotPasswordData] = useState({
     email: ''
   });
-
-  // Auto-login on component mount
-  useEffect(() => {
-    const autoLogin = async () => {
-      try {
-        await signInWithEmailAndPassword(auth, AUTO_LOGIN_EMAIL, AUTO_LOGIN_PASSWORD);
-        navigate('/admin');
-      } catch (error) {
-        console.log('Auto-login failed, showing login form');
-      }
-    };
-    
-    autoLogin();
-  }, [navigate]);
 
   const handleLoginInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -209,6 +191,15 @@ const Login = () => {
                     onClick={() => setMode('forgot-password')}
                   >
                     Forgot Password?
+                  </Button>
+                </div>
+                <div className="text-center">
+                  <Button 
+                    variant="link" 
+                    className="text-school-blue" 
+                    onClick={() => navigate('/admin-registration')}
+                  >
+                    Register for Admin Access
                   </Button>
                 </div>
               </div>

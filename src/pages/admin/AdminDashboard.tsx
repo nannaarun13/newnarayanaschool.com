@@ -76,10 +76,30 @@ const AdminDashboard = () => {
   }
 
   const dashboardStats = [
-    { title: "Total Inquiries", value: "45", icon: Users, color: "text-school-blue" },
-    { title: "Gallery Images", value: state.data.galleryImages.length.toString(), icon: Image, color: "text-school-orange" },
-    { title: "Active Notices", value: state.data.notices.length.toString(), icon: Bell, color: "text-green-600" },
-    { title: "Page Updates", value: "12", icon: FileText, color: "text-purple-600" }
+    { 
+      title: "Total Inquiries", 
+      value: (state.data.admissionInquiries?.length || 0).toString(), 
+      icon: Users, 
+      color: "text-school-blue" 
+    },
+    { 
+      title: "Gallery Images", 
+      value: state.data.galleryImages.length.toString(), 
+      icon: Image, 
+      color: "text-school-orange" 
+    },
+    { 
+      title: "Active Notices", 
+      value: state.data.notices.length.toString(), 
+      icon: Bell, 
+      color: "text-green-600" 
+    },
+    { 
+      title: "Page Views", 
+      value: "0", 
+      icon: FileText, 
+      color: "text-purple-600" 
+    }
   ];
 
   const handleActivityClick = (activity: string) => {
@@ -138,13 +158,14 @@ const AdminDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="gallery">Gallery</TabsTrigger>
             <TabsTrigger value="notices">Notices</TabsTrigger>
             <TabsTrigger value="admissions">Admissions</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
+            <TabsTrigger value="approvals">Approvals</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -176,7 +197,7 @@ const AdminDashboard = () => {
                   <div className="space-y-4">
                     <div 
                       className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
-                      onClick={() => handleActivityClick('admission')}
+                      onClick={() => setActiveTab('admissions')}
                     >
                       <Bell className="h-5 w-5 text-school-blue" />
                       <div>
@@ -186,7 +207,7 @@ const AdminDashboard = () => {
                     </div>
                     <div 
                       className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors"
-                      onClick={() => handleActivityClick('gallery')}
+                      onClick={() => setActiveTab('gallery')}
                     >
                       <Image className="h-5 w-5 text-school-orange" />
                       <div>
@@ -196,7 +217,7 @@ const AdminDashboard = () => {
                     </div>
                     <div 
                       className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg cursor-pointer hover:bg-green-100 transition-colors"
-                      onClick={() => handleActivityClick('notice')}
+                      onClick={() => setActiveTab('notices')}
                     >
                       <FileText className="h-5 w-5 text-green-600" />
                       <div>
@@ -228,6 +249,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="contact">
             <ContactManager />
+          </TabsContent>
+
+          <TabsContent value="approvals">
+            <AdminRequestManager />
           </TabsContent>
         </Tabs>
       </div>

@@ -9,6 +9,13 @@ const Gallery = () => {
   const { state } = useSchool();
   const { galleryImages } = state.data;
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  const categories = ['All', 'General', 'Event', 'Festivals', 'Activities'];
+
+  const filteredImages = selectedCategory === 'All' 
+    ? galleryImages 
+    : galleryImages.filter(image => image.category === selectedCategory);
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -22,10 +29,29 @@ const Gallery = () => {
         </p>
       </section>
 
+      {/* Category Filters */}
+      <section className="text-center">
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          {categories.map((category) => (
+            <Button
+              key={category}
+              variant={selectedCategory === category ? "default" : "outline"}
+              onClick={() => setSelectedCategory(category)}
+              className={selectedCategory === category 
+                ? "bg-school-blue hover:bg-school-blue/90 text-white" 
+                : "border-school-blue text-school-blue hover:bg-school-blue hover:text-white"
+              }
+            >
+              {category}
+            </Button>
+          ))}
+        </div>
+      </section>
+
       {/* Gallery Grid */}
       <section className="animate-fade-in">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {galleryImages.map((image) => (
+          {filteredImages.map((image) => (
             <Card 
               key={image.id} 
               className="overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
@@ -40,6 +66,11 @@ const Gallery = () => {
               </div>
               <CardContent className="p-4">
                 <p className="text-sm text-gray-600">{image.caption}</p>
+                {image.category && (
+                  <span className="inline-block mt-2 px-2 py-1 bg-school-blue text-white text-xs rounded">
+                    {image.category}
+                  </span>
+                )}
               </CardContent>
             </Card>
           ))}

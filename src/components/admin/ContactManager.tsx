@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,7 +31,13 @@ const ContactManager = () => {
 
   const handleNewContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewContact(prev => ({ ...prev, [name]: value }));
+    if (name === 'number') {
+      // Ensure + symbol is added
+      const formattedValue = value.startsWith('+') ? value : `+${value}`;
+      setNewContact(prev => ({ ...prev, [name]: formattedValue }));
+    } else {
+      setNewContact(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const addContactNumber = () => {
@@ -44,7 +49,7 @@ const ContactManager = () => {
       };
       
       dispatch({ type: 'ADD_CONTACT_NUMBER', payload: contactNumber });
-      setNewContact({ label: '', number: '' });
+      setNewContact({ label: '', number: '+' });
       
       toast({
         title: "Contact Added",
@@ -111,7 +116,7 @@ const ContactManager = () => {
             />
           </div>
           <div>
-            <Label htmlFor="phone">Primary Phone Number</Label>
+            <Label htmlFor="phone">Phone Number</Label>
             <Input
               id="phone"
               name="phone"
@@ -136,7 +141,7 @@ const ContactManager = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Contact Numbers (Up to 5)</CardTitle>
+          <CardTitle>Phone Numbers (Up to 5)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Existing Contact Numbers */}
@@ -168,7 +173,7 @@ const ContactManager = () => {
               />
               <Input
                 name="number"
-                placeholder="Phone Number"
+                placeholder="+91 Phone Number"
                 value={newContact.number}
                 onChange={handleNewContactChange}
               />

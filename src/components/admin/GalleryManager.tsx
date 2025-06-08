@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Plus } from 'lucide-react';
@@ -12,17 +13,19 @@ import ImageUpload from './ImageUpload';
 const GalleryManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
-  const [newImage, setNewImage] = useState({ url: '', caption: '' });
+  const [newImage, setNewImage] = useState({ url: '', caption: '', category: '' });
+
+  const categories = ['General', 'Event', 'Festivals', 'Activities'];
 
   const handleImageUpload = (imageUrl: string) => {
     setNewImage(prev => ({ ...prev, url: imageUrl }));
   };
 
   const handleAddImage = () => {
-    if (!newImage.url || !newImage.caption) {
+    if (!newImage.url || !newImage.caption || !newImage.category) {
       toast({
         title: "Missing Information",
-        description: "Please provide both image and caption.",
+        description: "Please provide image, caption, and category.",
         variant: "destructive"
       });
       return;
@@ -32,6 +35,7 @@ const GalleryManager = () => {
       id: Date.now().toString(),
       url: newImage.url,
       caption: newImage.caption,
+      category: newImage.category,
       date: new Date().toISOString().split('T')[0]
     };
 
@@ -40,7 +44,7 @@ const GalleryManager = () => {
       payload: imageData
     });
 
-    setNewImage({ url: '', caption: '' });
+    setNewImage({ url: '', caption: '', category: '' });
     toast({
       title: "Image Added",
       description: "New image has been added to the gallery.",
@@ -85,6 +89,23 @@ const GalleryManager = () => {
               placeholder="Enter image caption"
             />
           </div>
+
+          <div>
+            <Label htmlFor="imageCategory">Category *</Label>
+            <Select value={newImage.category} onValueChange={(value) => setNewImage(prev => ({ ...prev, category: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
           <Button onClick={handleAddImage} className="bg-school-blue hover:bg-school-blue/90">
             <Plus className="h-4 w-4 mr-2" />
             Add Image
@@ -108,7 +129,8 @@ const GalleryManager = () => {
                 />
                 <div className="p-4">
                   <p className="font-medium">{image.caption}</p>
-                  <p className="text-sm text-gray-600 mt-1">{image.date}</p>
+                  <p className="text-sm text-gray-600 mt-1">{image.category}</p>
+                  <p className="text-sm text-gray-600">{image.date}</p>
                   <Button
                     variant="destructive"
                     size="sm"
