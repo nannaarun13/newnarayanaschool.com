@@ -24,6 +24,7 @@ import GalleryManager from '@/components/admin/GalleryManager';
 import NoticeManager from '@/components/admin/NoticeManager';
 import AdmissionManager from '@/components/admin/AdmissionManager';
 import ContactManager from '@/components/admin/ContactManager';
+import AdminRequestManager from '@/components/admin/AdminRequestManager';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -78,7 +79,7 @@ const AdminDashboard = () => {
   const dashboardStats = [
     { 
       title: "Total Inquiries", 
-      value: (state.data.admissionInquiries?.length || 0).toString(), 
+      value: (state.admissionInquiries?.length || 0).toString(), 
       icon: Users, 
       color: "text-school-blue" 
     },
@@ -96,7 +97,7 @@ const AdminDashboard = () => {
     },
     { 
       title: "Page Views", 
-      value: "0", 
+      value: state.siteVisitors.toString(), 
       icon: FileText, 
       color: "text-purple-600" 
     }

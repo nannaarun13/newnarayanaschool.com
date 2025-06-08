@@ -11,8 +11,8 @@ const AdmissionManager = () => {
   const { state } = useSchool();
   const { toast } = useToast();
   
-  // Get admission inquiries from the state
-  const admissions = state.data.admissionInquiries || [];
+  // Get admission inquiries from the state root, not from state.data
+  const admissions = state.admissionInquiries || [];
 
   const handleExportToExcel = () => {
     try {
