@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Eye, Trash2 } from 'lucide-react';
@@ -60,19 +59,6 @@ const AdmissionManager = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'reviewed':
-        return 'bg-blue-100 text-blue-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -84,7 +70,7 @@ const AdmissionManager = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
@@ -96,20 +82,10 @@ const AdmissionManager = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-600">
-                {admissions.filter(a => a.status === 'pending').length}
+              <p className="text-2xl font-bold text-green-600">
+                {admissions.filter(a => new Date(a.submittedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}
               </p>
-              <p className="text-sm text-gray-600">Pending</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">
-                {admissions.filter(a => a.status === 'reviewed').length}
-              </p>
-              <p className="text-sm text-gray-600">Reviewed</p>
+              <p className="text-sm text-gray-600">This Week</p>
             </div>
           </CardContent>
         </Card>
@@ -128,9 +104,6 @@ const AdmissionManager = () => {
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center space-x-3">
                       <h3 className="font-semibold text-lg">{admission.studentName}</h3>
-                      <Badge className={getStatusColor(admission.status || 'pending')}>
-                        {admission.status || 'pending'}
-                      </Badge>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
