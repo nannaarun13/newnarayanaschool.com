@@ -1,27 +1,43 @@
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+interface Founder {
+  id: string;
+  name: string;
+  image: string;
+  details: string;
+}
+
+interface LatestUpdate {
+  id: string;
+  content: string;
+  date: string;
+}
+
+interface ContactNumber {
+  id: string;
+  label: string;
+  number: string;
+}
 
 interface SchoolData {
   schoolName: string;
   schoolLogo: string;
+  schoolNameImage: string;
   welcomeMessage: string;
   welcomeImage: string;
-  latestUpdates: string[];
   schoolHistory: string;
   yearEstablished: string;
   educationalSociety: string;
+  educationalSocietyContent: string;
   founderDetails: string;
+  founders: Founder[];
   founderImages: string[];
-  contactInfo: {
-    address: string;
-    email: string;
-    phone: string;
-    mapEmbed: string;
-  };
-  navigationItems: Array<{
-    name: string;
-    path: string;
-    visible: boolean;
+  galleryImages: Array<{
+    id: string;
+    url: string;
+    caption: string;
+    date: string;
+    category: 'general' | 'event' | 'festivals' | 'activities';
   }>;
   notices: Array<{
     id: string;
@@ -29,81 +45,108 @@ interface SchoolData {
     content: string;
     date: string;
   }>;
-  galleryImages: Array<{
-    id: string;
-    url: string;
-    caption: string;
-    date: string;
-  }>;
-  admissionInquiries: Array<{
-    id: string;
-    studentName: string;
-    classApplied: string;
-    fatherName: string;
-    motherName: string;
-    primaryContact: string;
-    submittedDate: string;
-    [key: string]: any;
-  }>;
+  latestUpdates: LatestUpdate[];
+  contactInfo: {
+    address: string;
+    email: string;
+    phone: string;
+    contactNumbers: ContactNumber[];
+    mapEmbed: string;
+  };
 }
 
 interface SchoolState {
   data: SchoolData;
-  isAdmin: boolean;
-  currentUser: any;
+  admissionInquiries: Array<{
+    id: string;
+    studentName: string;
+    classApplied: string;
+    presentClass: string;
+    previousClass: string;
+    previousSchool: string;
+    fatherName: string;
+    motherName: string;
+    primaryContact: string;
+    secondaryContact: string;
+    location: string;
+    additionalInfo: string;
+    submittedAt: string;
+  }>;
+  siteVisitors: number;
 }
 
 const initialState: SchoolState = {
   data: {
     schoolName: "New Narayana School",
-    schoolLogo: "/placeholder.svg",
-    welcomeMessage: "Welcome to New Narayana School - Nurturing Excellence in Education",
-    welcomeImage: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1",
-    latestUpdates: [
-      "Admission Open for Academic Year 2024-25",
-      "Annual Sports Day scheduled for December 15th",
-      "Parent-Teacher Meeting on November 30th"
-    ],
-    schoolHistory: "Established in 1995, New Narayana School has been a beacon of quality education, fostering academic excellence and character development for over 25 years.",
-    yearEstablished: "1995",
+    schoolLogo: "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=200&h=200&fit=crop&crop=center",
+    schoolNameImage: "",
+    welcomeMessage: "Welcome to Excellence in Education",
+    welcomeImage: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1200&h=600&fit=crop",
+    schoolHistory: "Established in 2023, our school has been committed to providing quality education and nurturing young minds. We believe in holistic development and creating future leaders.",
+    yearEstablished: "2023",
     educationalSociety: "Narayana Educational Society",
-    founderDetails: "Founded by Dr. P. Narayana with a vision to provide world-class education accessible to all.",
-    founderImages: ["https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d"],
-    contactInfo: {
-      address: "123 Education Street, Knowledge City, State - 123456",
-      email: "info@newnarayanaschool.edu",
-      phone: "+91 98765 43210",
-      mapEmbed: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.123456789!2d-74.123456789!3d40.123456789!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x123456789abcdef%3A0x123456789abcdef!2sSchool!5e0!3m2!1sen!2sus!4v1234567890123!5m2!1sen!2sus"
-    },
-    navigationItems: [
-      { name: "Home", path: "/", visible: true },
-      { name: "About Us", path: "/about", visible: true },
-      { name: "Admissions", path: "/admissions", visible: true },
-      { name: "Gallery", path: "/gallery", visible: true },
-      { name: "Notice Board", path: "/notice-board", visible: true },
-      { name: "Contact Us", path: "/contact", visible: true },
-      { name: "Login", path: "/login", visible: true }
-    ],
-    notices: [
+    educationalSocietyContent: "We are proudly affiliated with the Narayana Educational Society, which has been dedicated to promoting quality education and holistic development of students.",
+    founderDetails: "Our founder envisioned a school that would provide world-class education while maintaining traditional values.",
+    founders: [
       {
         id: "1",
-        title: "Admission Open",
-        content: "Admissions are now open for the academic year 2024-25. Please visit the admissions office for more details.",
-        date: "2024-01-15"
+        name: "Dr. John Smith",
+        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face",
+        details: "Dr. John Smith founded our institution with a vision to provide quality education accessible to all."
       }
+    ],
+    founderImages: [
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face"
     ],
     galleryImages: [
       {
         id: "1",
-        url: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1",
-        caption: "School Building",
-        date: "2024-01-01"
+        url: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&h=600&fit=crop",
+        caption: "Our beautiful campus",
+        date: "2024-01-15",
+        category: "general"
+      },
+      {
+        id: "2",
+        url: "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&h=600&fit=crop",
+        caption: "Students in classroom",
+        date: "2024-01-20",
+        category: "activities"
       }
     ],
-    admissionInquiries: []
+    notices: [
+      {
+        id: "1",
+        title: "School Reopening Notice",
+        content: "School will reopen on January 15th, 2024. All students are requested to report on time.",
+        date: "2024-01-10"
+      }
+    ],
+    latestUpdates: [
+      {
+        id: "1",
+        content: "New computer lab equipped with latest technology",
+        date: "2024-01-15"
+      },
+      {
+        id: "2",
+        content: "Annual sports day scheduled for February 20th",
+        date: "2024-01-10"
+      }
+    ],
+    contactInfo: {
+      address: "123 Education Street\nLearning City, State 12345\nIndia",
+      email: "info@newnarayanaschool.edu",
+      phone: "+91 98765 43210",
+      contactNumbers: [
+        { id: "1", label: "Principal Office", number: "+91 98765 43210" },
+        { id: "2", label: "Admissions Office", number: "+91 98765 43211" }
+      ],
+      mapEmbed: "https://maps.google.com/maps?width=600&height=600&hl=en&q=17%C2%B018%2733.1%22N%2078%C2%B030%2733.9%22E&t=&z=14&ie=UTF8&iwloc=B&output=embed"
+    }
   },
-  isAdmin: false,
-  currentUser: null
+  admissionInquiries: [],
+  siteVisitors: 1247
 };
 
 type SchoolAction = 
@@ -117,7 +160,16 @@ type SchoolAction =
   | { type: 'ADD_ADMISSION_INQUIRY'; payload: any }
   | { type: 'DELETE_ADMISSION_INQUIRY'; payload: string }
   | { type: 'LOAD_PERSISTED_DATA'; payload: SchoolData }
-  | { type: 'CLEANUP_OLD_INQUIRIES' };
+  | { type: 'CLEANUP_OLD_INQUIRIES' }
+  | { type: 'ADD_FOUNDER'; payload: Founder }
+  | { type: 'UPDATE_FOUNDER'; payload: Founder }
+  | { type: 'DELETE_FOUNDER'; payload: string }
+  | { type: 'ADD_LATEST_UPDATE'; payload: LatestUpdate }
+  | { type: 'UPDATE_LATEST_UPDATE'; payload: LatestUpdate }
+  | { type: 'DELETE_LATEST_UPDATE'; payload: string }
+  | { type: 'INCREMENT_VISITORS' }
+  | { type: 'ADD_CONTACT_NUMBER'; payload: ContactNumber }
+  | { type: 'DELETE_CONTACT_NUMBER'; payload: string };
 
 function schoolReducer(state: SchoolState, action: SchoolAction): SchoolState {
   let newState: SchoolState;
@@ -219,6 +271,94 @@ function schoolReducer(state: SchoolState, action: SchoolAction): SchoolState {
             const inquiryDate = new Date(inquiry.submittedDate);
             return inquiryDate > sixMonthsAgo;
           })
+        }
+      };
+      break;
+    case 'ADD_FOUNDER':
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          founders: [...state.data.founders, action.payload]
+        }
+      };
+      break;
+    case 'UPDATE_FOUNDER':
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          founders: state.data.founders.map(founder =>
+            founder.id === action.payload.id ? action.payload : founder
+          )
+        }
+      };
+      break;
+    case 'DELETE_FOUNDER':
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          founders: state.data.founders.filter(founder => founder.id !== action.payload)
+        }
+      };
+      break;
+    case 'ADD_LATEST_UPDATE':
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          latestUpdates: [...state.data.latestUpdates, action.payload]
+        }
+      };
+      break;
+    case 'UPDATE_LATEST_UPDATE':
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          latestUpdates: state.data.latestUpdates.map(update =>
+            update.id === action.payload.id ? action.payload : update
+          )
+        }
+      };
+      break;
+    case 'DELETE_LATEST_UPDATE':
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          latestUpdates: state.data.latestUpdates.filter(update => update.id !== action.payload)
+        }
+      };
+      break;
+    case 'INCREMENT_VISITORS':
+      newState = {
+        ...state,
+        siteVisitors: state.siteVisitors + 1
+      };
+      break;
+    case 'ADD_CONTACT_NUMBER':
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          contactInfo: {
+            ...state.data.contactInfo,
+            contactNumbers: [...state.data.contactInfo.contactNumbers, action.payload]
+          }
+        }
+      };
+      break;
+    case 'DELETE_CONTACT_NUMBER':
+      newState = {
+        ...state,
+        data: {
+          ...state.data,
+          contactInfo: {
+            ...state.data.contactInfo,
+            contactNumbers: state.data.contactInfo.contactNumbers.filter(contact => contact.id !== action.payload)
+          }
         }
       };
       break;

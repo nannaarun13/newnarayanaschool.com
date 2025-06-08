@@ -7,7 +7,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 98%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -42,28 +42,30 @@
     --school-white: 0 0% 100%;
     --school-blue-light: 220 91% 95%;
     --school-orange-light: 25 95% 95%;
+    --school-blue-dark: 220 91% 40%;
+    --school-orange-dark: 25 95% 45%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 220 15% 8%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 220 15% 10%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 220 15% 10%;
     --popover-foreground: 210 40% 98%;
-    --primary: 220 91% 50%;
+    --primary: 220 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 25 95% 53%;
+    --secondary: 25 95% 63%;
     --secondary-foreground: 0 0% 100%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 25 95% 53%;
+    --accent: 25 95% 63%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 220 91% 50%;
+    --ring: 220 91% 60%;
   }
 }
 
@@ -74,12 +76,23 @@
 
   body {
     @apply bg-background text-foreground;
+    background: linear-gradient(135deg, 
+      hsl(var(--school-white)) 0%, 
+      hsl(var(--school-blue-light)) 25%, 
+      hsl(var(--school-white)) 50%, 
+      hsl(var(--school-orange-light)) 75%, 
+      hsl(var(--school-white)) 100%);
+    min-height: 100vh;
   }
 }
 
 @layer utilities {
   .school-gradient {
     background: linear-gradient(135deg, hsl(var(--school-blue)) 0%, hsl(var(--school-orange)) 100%);
+  }
+  
+  .school-gradient-light {
+    background: linear-gradient(135deg, hsl(var(--school-blue-light)) 0%, hsl(var(--school-orange-light)) 100%);
   }
   
   .school-blue {
@@ -114,6 +127,14 @@
     background-color: hsl(var(--school-orange-light));
   }
   
+  .bg-school-blue-dark {
+    background-color: hsl(var(--school-blue-dark));
+  }
+  
+  .bg-school-orange-dark {
+    background-color: hsl(var(--school-orange-dark));
+  }
+  
   .animate-fade-in {
     animation: fadeIn 0.6s ease-in-out;
   }
@@ -127,6 +148,17 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  /* Page backgrounds with blue, orange, white theme */
+  .page-background {
+    background: linear-gradient(135deg, 
+      hsl(var(--school-white)) 0%, 
+      hsl(var(--school-blue-light)) 20%, 
+      hsl(var(--school-white)) 40%, 
+      hsl(var(--school-orange-light)) 60%, 
+      hsl(var(--school-white)) 80%, 
+      hsl(var(--school-blue-light)) 100%);
   }
 
   /* Responsive utilities */
