@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 
 interface Founder {
   id: string;
@@ -19,6 +20,12 @@ interface ContactNumber {
   number: string;
 }
 
+interface NavigationItem {
+  name: string;
+  path: string;
+  visible: boolean;
+}
+
 interface SchoolData {
   schoolName: string;
   schoolLogo: string;
@@ -32,6 +39,7 @@ interface SchoolData {
   founderDetails: string;
   founders: Founder[];
   founderImages: string[];
+  navigationItems: NavigationItem[];
   galleryImages: Array<{
     id: string;
     url: string;
@@ -73,6 +81,8 @@ interface SchoolState {
     submittedAt: string;
   }>;
   siteVisitors: number;
+  isAdmin?: boolean;
+  currentUser?: any;
 }
 
 const initialState: SchoolState = {
@@ -97,6 +107,14 @@ const initialState: SchoolState = {
     ],
     founderImages: [
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face"
+    ],
+    navigationItems: [
+      { name: "Home", path: "/", visible: true },
+      { name: "About", path: "/about", visible: true },
+      { name: "Admissions", path: "/admissions", visible: true },
+      { name: "Gallery", path: "/gallery", visible: true },
+      { name: "Notice Board", path: "/notice-board", visible: true },
+      { name: "Contact", path: "/contact", visible: true }
     ],
     galleryImages: [
       {
@@ -244,19 +262,13 @@ function schoolReducer(state: SchoolState, action: SchoolAction): SchoolState {
     case 'ADD_ADMISSION_INQUIRY':
       newState = {
         ...state,
-        data: {
-          ...state.data,
-          admissionInquiries: [action.payload, ...state.data.admissionInquiries]
-        }
+        admissionInquiries: [action.payload, ...state.admissionInquiries]
       };
       break;
     case 'DELETE_ADMISSION_INQUIRY':
       newState = {
         ...state,
-        data: {
-          ...state.data,
-          admissionInquiries: state.data.admissionInquiries.filter(inquiry => inquiry.id !== action.payload)
-        }
+        admissionInquiries: state.admissionInquiries.filter(inquiry => inquiry.id !== action.payload)
       };
       break;
     case 'CLEANUP_OLD_INQUIRIES':
@@ -265,13 +277,10 @@ function schoolReducer(state: SchoolState, action: SchoolAction): SchoolState {
       
       newState = {
         ...state,
-        data: {
-          ...state.data,
-          admissionInquiries: state.data.admissionInquiries.filter(inquiry => {
-            const inquiryDate = new Date(inquiry.submittedDate);
-            return inquiryDate > sixMonthsAgo;
-          })
-        }
+        admissionInquiries: state.admissionInquiries.filter(inquiry => {
+          const inquiryDate = new Date(inquiry.submittedAt);
+          return inquiryDate > sixMonthsAgo;
+        })
       };
       break;
     case 'ADD_FOUNDER':

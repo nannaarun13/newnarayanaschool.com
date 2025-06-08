@@ -16,7 +16,8 @@ const Navigation = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
-  const visibleItems = navigationItems.filter(item => item.visible);
+  // Add safety check for navigationItems
+  const visibleItems = navigationItems ? navigationItems.filter(item => item.visible) : [];
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
