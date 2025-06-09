@@ -40,7 +40,6 @@ const AdminDashboard = () => {
         setUser(currentUser);
         setLoading(false);
       } else {
-        // User is not authenticated, redirect to login
         navigate('/login');
       }
     });
@@ -96,28 +95,12 @@ const AdminDashboard = () => {
       color: "text-green-600" 
     },
     { 
-      title: "Page Views", 
+      title: "Page Visits", 
       value: state.siteVisitors.toString(), 
       icon: FileText, 
       color: "text-purple-600" 
     }
   ];
-
-  const handleActivityClick = (activity: string) => {
-    switch (activity) {
-      case 'admission':
-        setActiveTab('admissions');
-        break;
-      case 'gallery':
-        setActiveTab('gallery');
-        break;
-      case 'notice':
-        setActiveTab('notices');
-        break;
-      default:
-        break;
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -131,7 +114,7 @@ const AdminDashboard = () => {
                 <h1 className="text-2xl font-bold text-school-blue">Admin Dashboard</h1>
                 <p className="text-gray-600">New Narayana School Management</p>
                 {user && (
-                  <p className="text-sm text-gray-500">Welcome, {user.displayName || user.email}</p>
+                  <p className="text-sm text-gray-500">Welcome, Admin</p>
                 )}
               </div>
             </div>
@@ -166,7 +149,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="notices">Notices</TabsTrigger>
             <TabsTrigger value="admissions">Admissions</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
-            <TabsTrigger value="approvals">Approvals</TabsTrigger>
+            <TabsTrigger value="approvals">Admin Approval</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
