@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,25 +76,26 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Admin Header */}
+      {/* Admin Header - Mobile Responsive */}
       <div className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
             <div className="flex items-center space-x-3">
-              <Shield className="h-8 w-8 text-school-blue" />
+              <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-school-blue" />
               <div>
-                <h1 className="text-2xl font-bold text-school-blue">Admin Dashboard</h1>
-                <p className="text-gray-600">New Narayana School Management</p>
+                <h1 className="text-lg sm:text-2xl font-bold text-school-blue">Admin Dashboard</h1>
+                <p className="text-sm text-gray-600 hidden sm:block">New Narayana School Management</p>
                 {user && (
-                  <p className="text-sm text-gray-500">Welcome, {user.displayName || user.email}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Welcome, {user.displayName || user.email}</p>
                 )}
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
               <Button 
                 variant="outline" 
                 onClick={() => navigate('/')}
-                className="border-school-blue text-school-blue hover:bg-school-blue hover:text-white"
+                className="border-school-blue text-school-blue hover:bg-school-blue hover:text-white text-sm"
+                size="sm"
               >
                 <Home className="h-4 w-4 mr-2" />
                 View Site
@@ -101,7 +103,8 @@ const AdminDashboard = () => {
               <Button 
                 variant="outline" 
                 onClick={handleLogout}
-                className="border-red-500 text-red-500 hover:bg-red-50"
+                className="border-red-500 text-red-500 hover:bg-red-50 text-sm"
+                size="sm"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
@@ -111,32 +114,35 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="content">Content</TabsTrigger>
-            <TabsTrigger value="gallery">Gallery</TabsTrigger>
-            <TabsTrigger value="notices">Notices</TabsTrigger>
-            <TabsTrigger value="admissions">Admissions</TabsTrigger>
-            <TabsTrigger value="contact">Contact</TabsTrigger>
-            <TabsTrigger value="approvals">Admin Approval</TabsTrigger>
-          </TabsList>
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+          {/* Mobile-first responsive tabs */}
+          <div className="overflow-x-auto">
+            <TabsList className="grid grid-cols-7 min-w-max w-full">
+              <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-4">Overview</TabsTrigger>
+              <TabsTrigger value="content" className="text-xs sm:text-sm px-2 sm:px-4">Content</TabsTrigger>
+              <TabsTrigger value="gallery" className="text-xs sm:text-sm px-2 sm:px-4">Gallery</TabsTrigger>
+              <TabsTrigger value="notices" className="text-xs sm:text-sm px-2 sm:px-4">Notices</TabsTrigger>
+              <TabsTrigger value="admissions" className="text-xs sm:text-sm px-2 sm:px-4">Admissions</TabsTrigger>
+              <TabsTrigger value="contact" className="text-xs sm:text-sm px-2 sm:px-4">Contact</TabsTrigger>
+              <TabsTrigger value="approvals" className="text-xs sm:text-sm px-2 sm:px-4">Admin Approval</TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="overview" className="space-y-6">
-            {/* Dashboard Stats */}
+          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+            {/* Dashboard Stats - Mobile Responsive */}
             <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Dashboard Overview</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">Dashboard Overview</h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
                 {dashboardStats.map((stat, index) => (
                   <Card key={index} className="hover:shadow-lg transition-shadow duration-300">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-                          <p className="text-3xl font-bold text-gray-800">{stat.value}</p>
+                    <CardContent className="p-3 sm:p-6">
+                      <div className="flex flex-col sm:flex-row items-center sm:justify-between text-center sm:text-left">
+                        <div className="mb-2 sm:mb-0">
+                          <p className="text-xs sm:text-sm text-gray-600 mb-1">{stat.title}</p>
+                          <p className="text-xl sm:text-3xl font-bold text-gray-800">{stat.value}</p>
                         </div>
-                        <stat.icon className={`h-12 w-12 ${stat.color}`} />
+                        <stat.icon className={`h-8 w-8 sm:h-12 sm:w-12 ${stat.color}`} />
                       </div>
                     </CardContent>
                   </Card>
@@ -144,40 +150,40 @@ const AdminDashboard = () => {
               </div>
             </section>
 
-            {/* Recent Activity */}
+            {/* Recent Activity - Mobile Responsive */}
             <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Recent Activity</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">Recent Activity</h2>
               <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="space-y-3 sm:space-y-4">
                     <div 
                       className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
                       onClick={() => setActiveTab('admissions')}
                     >
-                      <Bell className="h-5 w-5 text-school-blue" />
-                      <div>
-                        <p className="font-medium">New admission inquiry received</p>
-                        <p className="text-sm text-gray-600">2 hours ago</p>
+                      <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-school-blue flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm sm:text-base truncate">New admission inquiry received</p>
+                        <p className="text-xs sm:text-sm text-gray-600">2 hours ago</p>
                       </div>
                     </div>
                     <div 
                       className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors"
                       onClick={() => setActiveTab('gallery')}
                     >
-                      <Image className="h-5 w-5 text-school-orange" />
-                      <div>
-                        <p className="font-medium">Gallery updated with new images</p>
-                        <p className="text-sm text-gray-600">5 hours ago</p>
+                      <Image className="h-4 w-4 sm:h-5 sm:w-5 text-school-orange flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm sm:text-base truncate">Gallery updated with new images</p>
+                        <p className="text-xs sm:text-sm text-gray-600">5 hours ago</p>
                       </div>
                     </div>
                     <div 
                       className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg cursor-pointer hover:bg-green-100 transition-colors"
                       onClick={() => setActiveTab('notices')}
                     >
-                      <FileText className="h-5 w-5 text-green-600" />
-                      <div>
-                        <p className="font-medium">Notice board updated</p>
-                        <p className="text-sm text-gray-600">1 day ago</p>
+                      <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm sm:text-base truncate">Notice board updated</p>
+                        <p className="text-xs sm:text-sm text-gray-600">1 day ago</p>
                       </div>
                     </div>
                   </div>

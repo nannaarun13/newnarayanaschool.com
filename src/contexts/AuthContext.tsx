@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { checkAdminStatus } from '@/utils/adminAccessManager';
 
 interface AuthContextType {
   user: User | null;
@@ -23,8 +24,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(firebaseUser);
       
       if (firebaseUser) {
-        // Check if user is admin
         try {
+          // Check if user is blocked from admin access
+          const hasAdminAccess = await checkAdminStatus(firebaseUser.email || '');
+          
+          if (!hasAdminAccess) {
+            setIsAdmin(false);
+            setLoading(false);
+            return;
+          }
+
+          // Check if user is admin in database
           const adminDoc = await getDoc(doc(db, 'admins', firebaseUser.uid));
           setIsAdmin(adminDoc.exists() && adminDoc.data()?.verified === true);
         } catch (error) {

@@ -8,7 +8,7 @@ const Index = () => {
   const { welcomeMessage, welcomeImage, latestUpdates, galleryImages } = state.data;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-school-blue via-purple-600 to-school-blue">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
       {/* Header with Logo and Navigation */}
       <div className="relative">
         {/* School Logo and Title Overlay */}
@@ -18,8 +18,7 @@ const Index = () => {
               <span className="text-white font-bold text-lg">N</span>
             </div>
           </div>
-          <h1 className="text-white text-2xl md:text-3xl font-bold">NEW NARAYANA SCHOOL</h1>
-          <p className="text-white/90 text-lg italic">School of Excellence...</p>
+          <h1 className="text-school-blue text-2xl md:text-3xl font-bold">NEW NARAYANA SCHOOL</h1>
         </div>
 
         {/* Main Hero Section */}
@@ -49,12 +48,12 @@ const Index = () => {
       <div className="container mx-auto px-4 py-16 space-y-16">
         {/* Latest Updates */}
         <section className="animate-fade-in">
-          <h3 className="text-4xl font-bold text-white mb-8 text-center">
+          <h3 className="text-4xl font-bold text-school-blue mb-8 text-center">
             Latest Updates
           </h3>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
             {latestUpdates.map((update) => (
-              <Card key={update.id} className="hover:shadow-lg transition-shadow duration-300 bg-white/95 backdrop-blur-sm border-0">
+              <Card key={update.id} className="hover:shadow-lg transition-shadow duration-300 bg-white border-0">
                 <CardContent className="p-6">
                   <div className="flex items-start space-x-3">
                     <Badge className="bg-school-orange text-white font-medium px-3 py-1">New</Badge>
@@ -71,12 +70,12 @@ const Index = () => {
 
         {/* Featured Gallery */}
         <section className="animate-fade-in">
-          <h3 className="text-4xl font-bold text-white mb-8 text-center">
+          <h3 className="text-4xl font-bold text-school-blue mb-8 text-center">
             Our Gallery
           </h3>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
             {galleryImages.slice(0, 6).map((image) => (
-              <Card key={image.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300 bg-white/95 backdrop-blur-sm border-0">
+              <Card key={image.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300 bg-white border-0">
                 <div className="h-48 overflow-hidden">
                   <img
                     src={image.url}
@@ -96,7 +95,7 @@ const Index = () => {
         </section>
 
         {/* Call to Action */}
-        <section className="text-center bg-white/10 backdrop-blur-sm text-white py-16 px-8 rounded-lg animate-fade-in shadow-lg border border-white/20">
+        <section className="text-center bg-white/80 backdrop-blur-sm text-school-blue py-16 px-8 rounded-lg animate-fade-in shadow-lg border border-blue-200">
           <h3 className="text-3xl font-bold mb-4">Join Our School Community</h3>
           <p className="text-xl mb-8 opacity-90">
             Discover excellence in education with our dedicated faculty and modern facilities
@@ -110,7 +109,7 @@ const Index = () => {
             </a>
             <a
               href="/about"
-              className="inline-block border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-school-blue transition-colors duration-200"
+              className="inline-block border-2 border-school-blue text-school-blue px-8 py-3 rounded-lg font-semibold hover:bg-school-blue hover:text-white transition-colors duration-200"
             >
               Learn More
             </a>
