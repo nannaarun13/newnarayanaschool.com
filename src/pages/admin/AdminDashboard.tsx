@@ -1,24 +1,20 @@
-
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Users, 
   Image, 
   Bell, 
-  Settings, 
   FileText, 
-  Phone,
   Shield,
   Home,
   LogOut
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useSchool } from '@/contexts/SchoolContext';
+import { useAuth } from '@/contexts/AuthContext';
 import ContentManager from '@/components/admin/ContentManager';
 import GalleryManager from '@/components/admin/GalleryManager';
 import NoticeManager from '@/components/admin/NoticeManager';
@@ -30,26 +26,12 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { state } = useSchool();
+  const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        setLoading(false);
-      } else {
-        navigate('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [navigate]);
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await signOut();
       toast({
         title: "Logged Out",
         description: "You have been successfully logged out.",
@@ -63,17 +45,6 @@ const AdminDashboard = () => {
       });
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Shield className="h-16 w-16 text-school-blue mx-auto mb-4 animate-pulse" />
-          <p className="text-gray-600">Loading admin dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   const dashboardStats = [
     { 
@@ -114,7 +85,7 @@ const AdminDashboard = () => {
                 <h1 className="text-2xl font-bold text-school-blue">Admin Dashboard</h1>
                 <p className="text-gray-600">New Narayana School Management</p>
                 {user && (
-                  <p className="text-sm text-gray-500">Welcome, Admin</p>
+                  <p className="text-sm text-gray-500">Welcome, {user.displayName || user.email}</p>
                 )}
               </div>
             </div>

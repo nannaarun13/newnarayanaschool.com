@@ -32,6 +32,9 @@ interface SchoolData {
   schoolNameImage: string;
   welcomeMessage: string;
   welcomeImage: string;
+  aboutContent: string;
+  missionStatement: string;
+  visionStatement: string;
   schoolHistory: string;
   yearEstablished: string;
   educationalSociety: string;
@@ -92,6 +95,9 @@ const initialState: SchoolState = {
     schoolNameImage: "",
     welcomeMessage: "Welcome to Excellence in Education",
     welcomeImage: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1200&h=600&fit=crop",
+    aboutContent: "New Narayana School is committed to providing quality education and nurturing young minds for a better tomorrow.",
+    missionStatement: "To provide quality education that empowers students to achieve their full potential and become responsible global citizens.",
+    visionStatement: "To be a leading educational institution that fosters innovation, creativity, and excellence in learning.",
     schoolHistory: "Established in 2023, our school has been committed to providing quality education and nurturing young minds. We believe in holistic development and creating future leaders.",
     yearEstablished: "2023",
     educationalSociety: "Narayana Educational Society",
