@@ -1,112 +1,44 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Check, X, Eye } from 'lucide-react';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
-interface AdminRequest {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  requestedAt: string;
-  status: 'pending' | 'approved' | 'rejected';
-}
 
 const AdminRequestManager = () => {
+  const { state } = useSchool();
   const { toast } = useToast();
-  const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchAdminRequests();
-  }, []);
-
-  const fetchAdminRequests = async () => {
-    try {
-      const requestsCollection = collection(db, 'adminRequests');
-      const requestsSnapshot = await getDocs(requestsCollection);
-      const requests = requestsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as AdminRequest[];
-      
-      setAdminRequests(requests);
-    } catch (error) {
-      console.error('Error fetching admin requests:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch admin requests.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+  
+  // Mock admin requests - in real implementation, this would come from your database
+  const [adminRequests] = useState([
+    {
+      id: '1',
+      firstName: 'JOHN',
+      lastName: 'DOE',
+      email: 'john.doe@example.com',
+      phone: '+919876543210',
+      requestedAt: new Date().toISOString(),
+      status: 'pending'
     }
+  ]);
+
+  const handleApproval = (requestId: string, approved: boolean) => {
+    toast({
+      title: approved ? "Request Approved" : "Request Rejected",
+      description: approved 
+        ? "Admin access has been granted. User can now login."
+        : "Admin access request has been rejected.",
+      variant: approved ? "default" : "destructive"
+    });
   };
 
-  const handleApproval = async (requestId: string, approved: boolean) => {
-    try {
-      const requestRef = doc(db, 'adminRequests', requestId);
-      
-      if (approved) {
-        await updateDoc(requestRef, {
-          status: 'approved',
-          approvedAt: new Date().toISOString()
-        });
-      } else {
-        await deleteDoc(requestRef);
-      }
-
-      // Update local state
-      if (approved) {
-        setAdminRequests(prev => 
-          prev.map(req => 
-            req.id === requestId 
-              ? { ...req, status: 'approved' as const }
-              : req
-          )
-        );
-      } else {
-        setAdminRequests(prev => 
-          prev.filter(req => req.id !== requestId)
-        );
-      }
-
-      toast({
-        title: approved ? "Request Approved" : "Request Rejected",
-        description: approved 
-          ? "Admin access has been granted. User can now login."
-          : "Admin access request has been rejected and removed.",
-        variant: approved ? "default" : "destructive"
-      });
-    } catch (error) {
-      console.error('Error updating request:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update request status.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleViewDetails = (request: AdminRequest) => {
+  const handleViewDetails = (request: any) => {
     toast({
       title: "Request Details",
       description: `${request.firstName} ${request.lastName} - ${request.email}`,
     });
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <p className="text-gray-600">Loading admin requests...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
