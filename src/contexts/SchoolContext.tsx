@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 
 interface Founder {
@@ -381,26 +380,8 @@ function schoolReducer(state: SchoolState, action: SchoolAction): SchoolState {
       return state;
   }
 
-  // Enhanced persistence - try multiple storage methods
-  try {
-    localStorage.setItem('schoolData', JSON.stringify(newState.data));
-    localStorage.setItem('admissionInquiries', JSON.stringify(newState.admissionInquiries));
-    localStorage.setItem('siteVisitors', newState.siteVisitors.toString());
-    
-    // Force immediate save
-    localStorage.setItem('lastUpdate', new Date().toISOString());
-    
-    // Trigger storage event for cross-tab sync
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'schoolData',
-      newValue: JSON.stringify(newState.data)
-    }));
-    
-    console.log('Data persisted successfully:', newState.data.schoolName);
-  } catch (error) {
-    console.error('Error persisting data:', error);
-  }
-  
+  // Persist to localStorage
+  localStorage.setItem('schoolData', JSON.stringify(newState.data));
   return newState;
 }
 
@@ -412,70 +393,27 @@ const SchoolContext = createContext<{
 export function SchoolContextProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(schoolReducer, initialState);
 
-  // Load persisted data on mount with enhanced error handling
+  // Load persisted data on mount
   useEffect(() => {
     try {
       const persistedData = localStorage.getItem('schoolData');
-      const persistedInquiries = localStorage.getItem('admissionInquiries');
-      const persistedVisitors = localStorage.getItem('siteVisitors');
-      
       if (persistedData) {
         const parsedData = JSON.parse(persistedData);
-        console.log('Loading persisted school data:', parsedData.schoolName);
         dispatch({ type: 'LOAD_PERSISTED_DATA', payload: parsedData });
-      }
-      
-      if (persistedInquiries) {
-        const parsedInquiries = JSON.parse(persistedInquiries);
-        parsedInquiries.forEach((inquiry: any) => {
-          dispatch({ type: 'ADD_ADMISSION_INQUIRY', payload: inquiry });
-        });
       }
     } catch (error) {
       console.error('Error loading persisted data:', error);
-      // Reset corrupted data
-      localStorage.removeItem('schoolData');
-      localStorage.removeItem('admissionInquiries');
     }
 
-    // Listen for storage changes (cross-tab sync)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'schoolData' && e.newValue) {
-        try {
-          const newData = JSON.parse(e.newValue);
-          dispatch({ type: 'LOAD_PERSISTED_DATA', payload: newData });
-        } catch (error) {
-          console.error('Error syncing storage change:', error);
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
     // Cleanup old inquiries on mount
     dispatch({ type: 'CLEANUP_OLD_INQUIRIES' });
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
   }, []);
 
-  // Auto-cleanup old inquiries daily with enhanced persistence
+  // Auto-cleanup old inquiries daily
   useEffect(() => {
     const interval = setInterval(() => {
       dispatch({ type: 'CLEANUP_OLD_INQUIRIES' });
-      
-      // Force data refresh every hour to ensure sync
-      try {
-        const persistedData = localStorage.getItem('schoolData');
-        if (persistedData) {
-          const parsedData = JSON.parse(persistedData);
-          dispatch({ type: 'LOAD_PERSISTED_DATA', payload: parsedData });
-        }
-      } catch (error) {
-        console.error('Error refreshing data:', error);
-      }
-    }, 60 * 60 * 1000); // Run every hour
+    }, 24 * 60 * 60 * 1000); // Run daily
 
     return () => clearInterval(interval);
   }, []);
