@@ -31,7 +31,15 @@ const ContactManager = () => {
 
   const addContactNumber = () => {
     if (newContactNumber.trim() && contactData.contactNumbers.length < 5) {
-      const formattedNumber = newContactNumber.startsWith('+') ? newContactNumber : `+${newContactNumber}`;
+      let formattedNumber = newContactNumber.trim();
+      
+      // Add +91 prefix if not present and it's a 10-digit number
+      if (!formattedNumber.startsWith('+') && formattedNumber.length === 10) {
+        formattedNumber = `+91 ${formattedNumber}`;
+      } else if (!formattedNumber.startsWith('+91') && formattedNumber.length === 10) {
+        formattedNumber = `+91 ${formattedNumber}`;
+      }
+      
       const contactNumber = {
         id: Date.now().toString(),
         label: `Phone ${contactData.contactNumbers.length + 1}`,
@@ -81,84 +89,95 @@ const ContactManager = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">Contact Management</h2>
-        <Button onClick={handleSave} className="bg-school-blue hover:bg-school-blue/90">
+        <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Save className="h-4 w-4 mr-2" />
           Save Changes
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Basic Contact Information</CardTitle>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-semibold">Contact Information</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div>
-            <Label htmlFor="address">School Address</Label>
+            <Label htmlFor="address" className="text-sm font-medium text-gray-700">School Address</Label>
             <Textarea
               id="address"
               name="address"
               value={contactData.address}
               onChange={handleInputChange}
               rows={3}
+              className="mt-1"
+              placeholder="Enter school address"
             />
           </div>
+          
           <div>
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email Address</Label>
             <Input
               id="email"
               name="email"
               type="email"
               value={contactData.email}
               onChange={handleInputChange}
+              className="mt-1"
+              placeholder="Enter email address"
             />
           </div>
+
           <div>
-            <Label htmlFor="mapEmbed">Map Embed URL</Label>
+            <Label className="text-sm font-medium text-gray-700">Phone Numbers</Label>
+            <div className="mt-2 space-y-3">
+              {contactData.contactNumbers.map((contact) => (
+                <div key={contact.id} className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
+                  <span className="flex-1 font-medium">{contact.number}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => deleteContactNumber(contact.id)}
+                    className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {contactData.contactNumbers.length < 5 && (
+              <div className="mt-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter phone number"
+                    value={newContactNumber}
+                    onChange={(e) => setNewContactNumber(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={addContactNumber} 
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Phone
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">You can add up to 5 phone numbers</p>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="mapEmbed" className="text-sm font-medium text-gray-700">Map Embed URL</Label>
             <Textarea
               id="mapEmbed"
               name="mapEmbed"
               value={contactData.mapEmbed}
               onChange={handleInputChange}
-              rows={3}
+              rows={4}
+              className="mt-1"
               placeholder="Enter Google Maps embed URL"
             />
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Phone Numbers (Up to 5)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            {contactData.contactNumbers.map((contact) => (
-              <div key={contact.id} className="flex items-center gap-2 p-2 border rounded">
-                <span>{contact.number}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => deleteContactNumber(contact.id)}
-                  className="ml-auto"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          {contactData.contactNumbers.length < 5 && (
-            <div className="flex gap-2">
-              <Input
-                placeholder="+91 Phone Number"
-                value={newContactNumber}
-                onChange={(e) => setNewContactNumber(e.target.value)}
-              />
-              <Button onClick={addContactNumber} className="bg-school-blue hover:bg-school-blue/90">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
