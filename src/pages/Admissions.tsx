@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,6 @@ const Admissions = () => {
   const [formData, setFormData] = useState({
     studentName: '',
     classApplied: '',
-    presentClass: '',
     previousClass: '',
     previousSchool: '',
     fatherName: '',
@@ -42,6 +40,7 @@ const Admissions = () => {
     const inquiryData = {
       id: Date.now().toString(),
       ...formData,
+      presentClass: formData.previousClass, // Map for backward compatibility
       submittedAt: new Date().toISOString()
     };
 
@@ -55,7 +54,6 @@ const Admissions = () => {
     setFormData({
       studentName: '',
       classApplied: '',
-      presentClass: '',
       previousClass: '',
       previousSchool: '',
       fatherName: '',
@@ -153,13 +151,13 @@ const Admissions = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="presentClass">Present Class *</Label>
+                    <Label htmlFor="previousClass">Previous Class *</Label>
                     <Input
-                      id="presentClass"
-                      name="presentClass"
-                      value={formData.presentClass}
+                      id="previousClass"
+                      name="previousClass"
+                      value={formData.previousClass}
                       onChange={handleInputChange}
-                      placeholder="Current class of the student"
+                      placeholder="Previous class of the student"
                       required
                     />
                   </div>
