@@ -39,13 +39,13 @@ const Contact = () => {
                 <Phone className="h-12 w-12 text-school-blue mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-school-blue mb-2">Phone</h3>
                 <div className="space-y-1">
-                  {contactNumbers.map((contact) => (
-                    <p key={contact.id} className="text-gray-600 text-sm">
-                      {contact.number}
-                    </p>
+                  {contactNumbers.slice(0, 5).map((contact) => (
+                    <div key={contact.id} className="text-sm text-gray-600">
+                      <span className="font-medium">{contact.label}:</span> {contact.number}
+                    </div>
                   ))}
-                  {contactNumbers.length === 0 && (
-                    <p className="text-gray-600">+91 98765 43210</p>
+                  {contactNumbers.length === 0 && contactInfo?.phone && (
+                    <p className="text-gray-600">{contactInfo.phone}</p>
                   )}
                 </div>
               </CardContent>

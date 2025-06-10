@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,11 +7,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Shield } from 'lucide-react';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
-import { loginSchema } from '@/lib/validation';
-import { z } from 'zod';
 
 type LoginMode = 'login' | 'forgot-password';
 
@@ -30,89 +28,39 @@ const Login = () => {
     email: ''
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
   const handleLoginInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLoginData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
   };
 
   const handleForgotPasswordInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForgotPasswordData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validateLogin = () => {
-    try {
-      loginSchema.parse(loginData);
-      setErrors({});
-      return true;
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const fieldErrors: Record<string, string> = {};
-        error.errors.forEach((err) => {
-          if (err.path[0]) {
-            fieldErrors[err.path[0] as string] = err.message;
-          }
-        });
-        setErrors(fieldErrors);
-      }
-      return false;
-    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateLogin()) {
-      return;
-    }
-
     setLoading(true);
     
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, loginData.email, loginData.password);
-      const user = userCredential.user;
-      
-      // Check if user is an admin
-      const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-      
-      if (adminDoc.exists() && adminDoc.data()?.verified === true) {
+      // Hardcoded admin credentials
+      if (loginData.email === 'arunnanna3@gmail.com' && loginData.password === 'Arun@2004') {
         toast({
           title: "Login Successful",
           description: "Welcome to the admin panel!",
         });
         navigate('/admin');
       } else {
-        // Sign out if not an admin
-        await auth.signOut();
         toast({
-          title: "Access Denied",
-          description: "You don't have admin privileges.",
+          title: "Login Failed",
+          description: "Invalid email or password.",
           variant: "destructive"
         });
       }
     } catch (error: any) {
-      let errorMessage = "Login failed. Please try again.";
-      
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        errorMessage = "Invalid email or password.";
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = "Too many failed attempts. Please try again later.";
-      } else if (error.code === 'auth/user-disabled') {
-        errorMessage = "This account has been disabled.";
-      }
-      
       toast({
         title: "Login Failed",
-        description: errorMessage,
+        description: "Invalid email or password.",
         variant: "destructive"
       });
     }
@@ -121,12 +69,6 @@ const Login = () => {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!forgotPasswordData.email) {
-      setErrors({ email: 'Email is required' });
-      return;
-    }
-
     setLoading(true);
     
     try {
@@ -137,17 +79,9 @@ const Login = () => {
       });
       setMode('login');
     } catch (error: any) {
-      let errorMessage = "Failed to send reset email.";
-      
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = "No account found with this email address.";
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = "Please enter a valid email address.";
-      }
-      
       toast({
         title: "Error",
-        description: errorMessage,
+        description: "Failed to send reset email.",
         variant: "destructive"
       });
     }
@@ -165,10 +99,8 @@ const Login = () => {
           value={loginData.email}
           onChange={handleLoginInputChange}
           placeholder="Enter your email"
-          className={errors.email ? 'border-red-500' : ''}
           required
         />
-        {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
       </div>
 
       <div className="space-y-2">
@@ -181,7 +113,6 @@ const Login = () => {
             value={loginData.password}
             onChange={handleLoginInputChange}
             placeholder="Enter your password"
-            className={errors.password ? 'border-red-500' : ''}
             required
           />
           <Button
@@ -194,7 +125,6 @@ const Login = () => {
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>
         </div>
-        {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
       </div>
 
       <Button 
@@ -218,10 +148,8 @@ const Login = () => {
           value={forgotPasswordData.email}
           onChange={handleForgotPasswordInputChange}
           placeholder="Enter your email"
-          className={errors.email ? 'border-red-500' : ''}
           required
         />
-        {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
       </div>
       
       <Button 
