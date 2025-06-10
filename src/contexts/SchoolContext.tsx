@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 
 interface Founder {
@@ -39,6 +38,9 @@ interface SchoolData {
   founderDetails: string;
   founders: Founder[];
   founderImages: string[];
+  aboutContent: string;
+  missionStatement: string;
+  visionStatement: string;
   navigationItems: NavigationItem[];
   galleryImages: Array<{
     id: string;
@@ -90,13 +92,16 @@ const initialState: SchoolState = {
     schoolName: "New Narayana School",
     schoolLogo: "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=200&h=200&fit=crop&crop=center",
     schoolNameImage: "",
-    welcomeMessage: "Welcome to Excellence in Education",
+    welcomeMessage: "Welcome to New Narayana School - Nurturing Excellence in Education",
     welcomeImage: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1200&h=600&fit=crop",
     schoolHistory: "Established in 2023, our school has been committed to providing quality education and nurturing young minds. We believe in holistic development and creating future leaders.",
     yearEstablished: "2023",
     educationalSociety: "Narayana Educational Society",
     educationalSocietyContent: "We are proudly affiliated with the Narayana Educational Society, which has been dedicated to promoting quality education and holistic development of students.",
     founderDetails: "Our founder envisioned a school that would provide world-class education while maintaining traditional values.",
+    aboutContent: "New Narayana School is dedicated to providing quality education and fostering the overall development of our students. We believe in creating an environment where every child can thrive and reach their full potential.",
+    missionStatement: "To provide quality education that develops critical thinking, creativity, and character in our students, preparing them to be responsible global citizens.",
+    visionStatement: "To be a leading educational institution that inspires excellence, innovation, and integrity in every student.",
     founders: [
       {
         id: "1",
@@ -110,11 +115,11 @@ const initialState: SchoolState = {
     ],
     navigationItems: [
       { name: "Home", path: "/", visible: true },
-      { name: "About", path: "/about", visible: true },
+      { name: "About Us", path: "/about", visible: true },
       { name: "Admissions", path: "/admissions", visible: true },
       { name: "Gallery", path: "/gallery", visible: true },
       { name: "Notice Board", path: "/notice-board", visible: true },
-      { name: "Contact", path: "/contact", visible: true }
+      { name: "Contact Us", path: "/contact", visible: true }
     ],
     galleryImages: [
       {

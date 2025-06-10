@@ -15,17 +15,10 @@ const Header = () => {
             className="h-16 w-16 object-contain bg-white rounded-full p-1"
           />
           <div className="text-center">
-            {schoolNameImage ? (
-              <img 
-                src={schoolNameImage} 
-                alt="School Name" 
-                className="h-12 max-w-md object-contain mx-auto"
-              />
-            ) : (
-              <h1 className="text-3xl md:text-4xl font-bold tracking-wide">
-                {schoolName || "New Narayana School"}
-              </h1>
-            )}
+            <h1 className="text-3xl md:text-4xl font-bold tracking-wide">
+              NEW NARAYANA SCHOOL
+            </h1>
+            <p className="text-white/90 text-lg italic">School of Excellence...</p>
           </div>
         </div>
       </div>

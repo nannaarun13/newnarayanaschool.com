@@ -8,43 +8,29 @@ const Index = () => {
   const { welcomeMessage, welcomeImage, latestUpdates, galleryImages } = state.data;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-school-blue via-purple-600 to-school-blue">
-      {/* Header with Logo and Navigation */}
-      <div className="relative">
-        {/* School Logo and Title Overlay */}
-        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-10 text-center">
-          <div className="bg-white rounded-full p-4 mb-4 mx-auto w-20 h-20 flex items-center justify-center shadow-lg">
-            <div className="w-12 h-12 bg-school-blue rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-lg">N</span>
-            </div>
-          </div>
-          <h1 className="text-white text-2xl md:text-3xl font-bold">NEW NARAYANA SCHOOL</h1>
-          <p className="text-white/90 text-lg italic">School of Excellence...</p>
+    <div className="min-h-screen bg-gradient-to-br from-school-blue via-school-blue to-school-blue">
+      {/* Main Hero Section */}
+      <section className="relative h-screen flex items-center justify-center">
+        <div className="absolute inset-0">
+          <img
+            src={welcomeImage}
+            alt="School Welcome"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         </div>
-
-        {/* Main Hero Section */}
-        <section className="relative h-screen flex items-center justify-center">
-          <div className="absolute inset-0">
-            <img
-              src={welcomeImage}
-              alt="School Welcome"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-          </div>
-          
-          <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto mt-32">
-            <div className="bg-white rounded-full p-6 mb-6 mx-auto w-32 h-32 flex items-center justify-center shadow-xl">
-              <div className="w-20 h-20 bg-school-blue rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-2xl">N</span>
-              </div>
+        
+        <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
+          <div className="bg-white rounded-full p-6 mb-6 mx-auto w-32 h-32 flex items-center justify-center shadow-xl">
+            <div className="w-20 h-20 bg-school-blue rounded-full flex items-center justify-center">
+              <span className="text-white font-bold text-2xl">N</span>
             </div>
-            <h2 className="text-4xl md:text-6xl font-bold mb-4">
-              {welcomeMessage}
-            </h2>
           </div>
-        </section>
-      </div>
+          <h2 className="text-4xl md:text-6xl font-bold mb-4">
+            {welcomeMessage}
+          </h2>
+        </div>
+      </section>
 
       <div className="container mx-auto px-4 py-16 space-y-16">
         {/* Latest Updates */}
