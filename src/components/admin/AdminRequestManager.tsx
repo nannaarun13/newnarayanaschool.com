@@ -3,63 +3,44 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus, Check, X, Eye, AlertCircle } from 'lucide-react';
-
-interface AdminRequest {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  requestedAt: string;
-  status: 'pending' | 'approved' | 'rejected';
-}
+import { UserPlus, Check, X, AlertCircle } from 'lucide-react';
+import { getAdminRequests, updateAdminRequestStatus, AdminUser, getAdminEmail } from '@/utils/authUtils';
 
 const AdminRequestManager = () => {
   const { toast } = useToast();
-  const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([]);
+  const [adminRequests, setAdminRequests] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Mock data for demonstration - replace with actual Firebase integration
   useEffect(() => {
-    const mockRequests: AdminRequest[] = [
-      {
-        id: '1',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        phone: '+91 98765 43210',
-        requestedAt: new Date().toISOString(),
-        status: 'pending'
-      }
-    ];
-    setAdminRequests(mockRequests);
+    loadRequests();
   }, []);
 
-  const handleApproval = async (requestId: string, approved: boolean) => {
+  const loadRequests = () => {
+    const requests = getAdminRequests();
+    setAdminRequests(requests);
+  };
+
+  const handleApproval = async (requestEmail: string, approved: boolean) => {
+    setLoading(true);
     try {
+      const currentAdminEmail = getAdminEmail();
+      
       if (approved) {
-        setAdminRequests(prev => 
-          prev.map(req => 
-            req.id === requestId 
-              ? { ...req, status: 'approved' as const }
-              : req
-          )
-        );
+        updateAdminRequestStatus(requestEmail, 'approved', currentAdminEmail || 'System');
         toast({
           title: "Request Approved",
-          description: "Admin access has been granted.",
+          description: "Admin access has been granted. The user can now login.",
         });
       } else {
-        setAdminRequests(prev => 
-          prev.filter(req => req.id !== requestId)
-        );
+        updateAdminRequestStatus(requestEmail, 'rejected', currentAdminEmail || 'System');
         toast({
           title: "Request Rejected",
           description: "Admin access request has been rejected.",
           variant: "destructive"
         });
       }
+      
+      loadRequests(); // Reload to show updated status
     } catch (error) {
       console.error('Error updating request:', error);
       toast({
@@ -68,7 +49,12 @@ const AdminRequestManager = () => {
         variant: "destructive"
       });
     }
+    setLoading(false);
   };
+
+  const pendingRequests = adminRequests.filter(r => r.status === 'pending');
+  const approvedRequests = adminRequests.filter(r => r.status === 'approved');
+  const rejectedRequests = adminRequests.filter(r => r.status === 'rejected');
 
   return (
     <div className="space-y-6">
@@ -76,21 +62,8 @@ const AdminRequestManager = () => {
         <h2 className="text-2xl font-bold text-gray-800">Admin Access Requests</h2>
       </div>
 
-      {/* Firebase Connection Alert */}
-      <Card className="border-yellow-200 bg-yellow-50">
-        <CardContent className="p-4">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
-            <p className="text-yellow-800">
-              <strong>Note:</strong> Admin request functionality requires Firebase configuration. 
-              Currently showing mock data for demonstration.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
@@ -102,9 +75,7 @@ const AdminRequestManager = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-600">
-                {adminRequests.filter(r => r.status === 'pending').length}
-              </p>
+              <p className="text-2xl font-bold text-yellow-600">{pendingRequests.length}</p>
               <p className="text-sm text-gray-600">Pending</p>
             </div>
           </CardContent>
@@ -112,10 +83,16 @@ const AdminRequestManager = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">
-                {adminRequests.filter(r => r.status === 'approved').length}
-              </p>
+              <p className="text-2xl font-bold text-green-600">{approvedRequests.length}</p>
               <p className="text-sm text-gray-600">Approved</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-red-600">{rejectedRequests.length}</p>
+              <p className="text-sm text-gray-600">Rejected</p>
             </div>
           </CardContent>
         </Card>
@@ -155,6 +132,12 @@ const AdminRequestManager = () => {
                       <div>
                         <p><strong>Requested:</strong> {new Date(request.requestedAt).toLocaleDateString()}</p>
                         <p><strong>Time:</strong> {new Date(request.requestedAt).toLocaleTimeString()}</p>
+                        {request.approvedAt && (
+                          <p><strong>Approved:</strong> {new Date(request.approvedAt).toLocaleDateString()}</p>
+                        )}
+                        {request.approvedBy && (
+                          <p><strong>Approved By:</strong> {request.approvedBy}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -164,7 +147,8 @@ const AdminRequestManager = () => {
                         <Button 
                           variant="default" 
                           size="sm"
-                          onClick={() => handleApproval(request.id, true)}
+                          disabled={loading}
+                          onClick={() => handleApproval(request.email, true)}
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <Check className="h-4 w-4" />
@@ -172,7 +156,8 @@ const AdminRequestManager = () => {
                         <Button 
                           variant="destructive" 
                           size="sm"
-                          onClick={() => handleApproval(request.id, false)}
+                          disabled={loading}
+                          onClick={() => handleApproval(request.email, false)}
                         >
                           <X className="h-4 w-4" />
                         </Button>

@@ -1,3 +1,4 @@
+
 import { useSchool } from '@/contexts/SchoolContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +8,7 @@ const Index = () => {
   const { welcomeMessage, welcomeImage, latestUpdates, galleryImages, schoolLogo } = state.data;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-school-blue via-school-blue to-school-blue">
+    <div className="min-h-screen bg-white">
       {/* Main Hero Section */}
       <section className="relative h-screen flex items-center justify-center">
         <div className="absolute inset-0">
@@ -36,12 +37,12 @@ const Index = () => {
       <div className="container mx-auto px-4 py-16 space-y-16">
         {/* Latest Updates */}
         <section className="animate-fade-in">
-          <h3 className="text-4xl font-bold text-white mb-8 text-center">
+          <h3 className="text-4xl font-bold text-gray-800 mb-8 text-center">
             Latest Updates
           </h3>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
             {latestUpdates.map((update) => (
-              <Card key={update.id} className="hover:shadow-lg transition-shadow duration-300 bg-white/95 backdrop-blur-sm border-0">
+              <Card key={update.id} className="hover:shadow-lg transition-shadow duration-300 bg-white border">
                 <CardContent className="p-6">
                   <div className="flex items-start space-x-3">
                     <Badge className="bg-school-orange text-white font-medium px-3 py-1">New</Badge>
@@ -58,12 +59,12 @@ const Index = () => {
 
         {/* Featured Gallery */}
         <section className="animate-fade-in">
-          <h3 className="text-4xl font-bold text-white mb-8 text-center">
+          <h3 className="text-4xl font-bold text-gray-800 mb-8 text-center">
             Our Gallery
           </h3>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
             {galleryImages.slice(0, 6).map((image) => (
-              <Card key={image.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300 bg-white/95 backdrop-blur-sm border-0">
+              <Card key={image.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300 bg-white border">
                 <div className="h-48 overflow-hidden">
                   <img
                     src={image.url}
@@ -83,7 +84,7 @@ const Index = () => {
         </section>
 
         {/* Call to Action */}
-        <section className="text-center bg-white/10 backdrop-blur-sm text-white py-16 px-8 rounded-lg animate-fade-in shadow-lg border border-white/20">
+        <section className="text-center bg-gradient-to-br from-school-blue to-school-blue-dark text-white py-16 px-8 rounded-lg animate-fade-in shadow-lg">
           <h3 className="text-3xl font-bold mb-4">Join Our School Community</h3>
           <p className="text-xl mb-8 opacity-90">
             Discover excellence in education with our dedicated faculty and modern facilities

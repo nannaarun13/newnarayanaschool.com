@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { isValidAdminCredentials, setAdminAuth, isEmailApproved } from '@/utils/authUtils';
 
 type LoginMode = 'login' | 'forgot-password';
 
@@ -40,19 +41,27 @@ const Login = () => {
     setLoading(true);
     
     try {
-      // Admin credentials check
-      if (loginData.email === 'admin@newnarayana.edu' && loginData.password === 'admin123') {
-        // Store authentication state
-        localStorage.setItem('isAdminAuthenticated', 'true');
-        localStorage.setItem('adminEmail', loginData.email);
+      // Check if email is approved for admin access
+      if (!isEmailApproved(loginData.email)) {
+        toast({
+          title: "Access Denied",
+          description: "Your admin access request is pending approval or you don't have access to the admin panel.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Validate credentials
+      if (isValidAdminCredentials(loginData.email, loginData.password)) {
+        setAdminAuth(loginData.email);
         
         toast({
           title: "Login Successful",
           description: "Welcome to the admin panel!",
         });
         
-        // Redirect to admin panel
-        window.location.href = '/admin';
+        navigate('/admin');
       } else {
         toast({
           title: "Login Failed",
@@ -206,9 +215,13 @@ const Login = () => {
                   </Button>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">
-                    Demo credentials: admin@newnarayana.edu / admin123
-                  </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/admin/register')}
+                    className="w-full border-school-blue text-school-blue hover:bg-school-blue hover:text-white"
+                  >
+                    Request Admin Access
+                  </Button>
                 </div>
               </div>
             )}

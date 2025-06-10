@@ -22,7 +22,9 @@ const ContentManager = () => {
     welcomeImage: state.data.welcomeImage,
     aboutContent: state.data.aboutContent,
     missionStatement: state.data.missionStatement,
-    visionStatement: state.data.visionStatement
+    visionStatement: state.data.visionStatement,
+    schoolLogo: state.data.schoolLogo,
+    schoolName: state.data.schoolName || 'New Narayana School'
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -66,6 +68,25 @@ const ContentManager = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* School Logo Upload */}
+              <ImageUpload
+                label="School Logo"
+                currentImage={generalContent.schoolLogo}
+                onImageUpload={(url) => setGeneralContent(prev => ({ ...prev, schoolLogo: url }))}
+              />
+
+              {/* School Name */}
+              <div>
+                <Label htmlFor="schoolName">School Name</Label>
+                <Input
+                  id="schoolName"
+                  name="schoolName"
+                  value={generalContent.schoolName}
+                  onChange={handleInputChange}
+                  placeholder="Enter school name"
+                />
+              </div>
+
               <div>
                 <Label htmlFor="welcomeMessage">Welcome Message</Label>
                 <Input
