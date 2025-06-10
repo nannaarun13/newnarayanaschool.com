@@ -83,25 +83,19 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Call to Action */}
-        <section className="text-center bg-gradient-to-br from-school-blue to-school-blue-dark text-white py-16 px-8 rounded-lg animate-fade-in shadow-lg">
+        {/* Call to Action - Updated to match attachment */}
+        <section className="text-center bg-gradient-to-r from-blue-500 to-orange-500 text-white py-16 px-8 rounded-lg animate-fade-in shadow-lg">
           <h3 className="text-3xl font-bold mb-4">Join Our School Community</h3>
           <p className="text-xl mb-8 opacity-90">
             Discover excellence in education with our dedicated faculty and modern facilities
           </p>
           <div className="space-x-4">
-            <a
-              href="/admissions"
-              className="inline-block bg-school-orange text-white px-8 py-3 rounded-lg font-semibold hover:bg-school-orange-dark transition-colors duration-200 shadow-lg"
-            >
+            <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200 shadow-lg">
               Apply Now
-            </a>
-            <a
-              href="/about"
-              className="inline-block border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-school-blue transition-colors duration-200"
-            >
+            </button>
+            <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors duration-200">
               Learn More
-            </a>
+            </button>
           </div>
         </section>
       </div>

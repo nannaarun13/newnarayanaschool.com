@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { isValidAdminCredentials, setAdminAuth, isEmailApproved } from '@/utils/authUtils';
+import { auth } from '@/lib/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 type LoginMode = 'login' | 'forgot-password';
 
@@ -85,15 +88,17 @@ const Login = () => {
     setLoading(true);
     
     try {
+      await sendPasswordResetEmail(auth, forgotPasswordData.email);
       toast({
         title: "Reset Email Sent",
         description: "Check your email for password reset instructions.",
       });
       setMode('login');
     } catch (error: any) {
+      console.error('Password reset error:', error);
       toast({
         title: "Error",
-        description: "Failed to send reset email.",
+        description: "Failed to send reset email. Please check the email address.",
         variant: "destructive"
       });
     }

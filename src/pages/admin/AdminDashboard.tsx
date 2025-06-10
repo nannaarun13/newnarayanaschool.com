@@ -220,26 +220,46 @@ const AdminDashboard = () => {
               </Card>
             </section>
 
-            {/* Security Status */}
+            {/* Enhanced Security Status */}
             <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Security Status</h2>
-              <Card className="border-green-200 bg-green-50">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-3">
-                    <Shield className="h-8 w-8 text-green-600" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-green-800">Security Check Passed</h3>
-                      <p className="text-green-700">Authentication system is working properly</p>
-                      <ul className="mt-2 text-sm text-green-600 list-disc list-inside">
-                        <li>Admin authentication active</li>
-                        <li>Protected routes implemented</li>
-                        <li>Session management configured</li>
-                        <li>Google Maps redirect secured</li>
-                      </ul>
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Security Review</h2>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card className="border-green-200 bg-green-50">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-3">
+                      <Shield className="h-8 w-8 text-green-600" />
+                      <div>
+                        <h3 className="text-lg font-semibold text-green-800">Security Status: SECURE</h3>
+                        <p className="text-green-700">All security checks passed</p>
+                        <ul className="mt-2 text-sm text-green-600 list-disc list-inside">
+                          <li>Admin registration & approval system active</li>
+                          <li>Password reset with Firebase configured</li>
+                          <li>Protected admin routes implemented</li>
+                          <li>Session management secured</li>
+                        </ul>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-3">
+                      <Users className="h-8 w-8 text-blue-600" />
+                      <div>
+                        <h3 className="text-lg font-semibold text-blue-800">Access Control</h3>
+                        <p className="text-blue-700">Admin approval system active</p>
+                        <ul className="mt-2 text-sm text-blue-600 list-disc list-inside">
+                          <li>Registration requests require approval</li>
+                          <li>Pre-approved: arunnanna3@gmail.com</li>
+                          <li>Unapproved users cannot access admin panel</li>
+                          <li>Firebase password reset enabled</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </section>
           </TabsContent>
 

@@ -75,7 +75,7 @@ const ContentManager = () => {
                 onImageUpload={(url) => setGeneralContent(prev => ({ ...prev, schoolLogo: url }))}
               />
 
-              {/* School Name */}
+              {/* School Name Text Field */}
               <div>
                 <Label htmlFor="schoolName">School Name</Label>
                 <Input
@@ -86,6 +86,13 @@ const ContentManager = () => {
                   placeholder="Enter school name"
                 />
               </div>
+
+              {/* School Name Image Upload */}
+              <ImageUpload
+                label="School Name Image (Optional)"
+                currentImage={generalContent.schoolNameImage || ''}
+                onImageUpload={(url) => setGeneralContent(prev => ({ ...prev, schoolNameImage: url }))}
+              />
 
               <div>
                 <Label htmlFor="welcomeMessage">Welcome Message</Label>
