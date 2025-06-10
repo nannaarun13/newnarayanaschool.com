@@ -7,9 +7,9 @@ const Footer = () => {
   const { contactInfo } = state.data;
 
   const handleMapClick = () => {
-    if (contactInfo.mapEmbed) {
-      window.open('https://maps.google.com', '_blank');
-    }
+    // Redirect to the specific school location on Google Maps
+    const mapUrl = 'https://www.google.com/maps/place/17%C2%B018\'33.1%22N+78%C2%B030\'33.9%22E/@17.3091944,78.5069444,17z/data=!3m1!4b1!4m4!3m3!8m2!3d17.3091944!4d78.5094722';
+    window.open(mapUrl, '_blank');
   };
 
   const contactNumbers = contactInfo?.contactNumbers || [];

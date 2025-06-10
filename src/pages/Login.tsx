@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,8 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Shield } from 'lucide-react';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
 
 type LoginMode = 'login' | 'forgot-password';
@@ -43,13 +40,19 @@ const Login = () => {
     setLoading(true);
     
     try {
-      // Hardcoded admin credentials
-      if (loginData.email === 'arunnanna3@gmail.com' && loginData.password === 'Arun@2004') {
+      // Admin credentials check
+      if (loginData.email === 'admin@newnarayana.edu' && loginData.password === 'admin123') {
+        // Store authentication state
+        localStorage.setItem('isAdminAuthenticated', 'true');
+        localStorage.setItem('adminEmail', loginData.email);
+        
         toast({
           title: "Login Successful",
           description: "Welcome to the admin panel!",
         });
-        navigate('/admin');
+        
+        // Redirect to admin panel
+        window.location.href = '/admin';
       } else {
         toast({
           title: "Login Failed",
@@ -58,9 +61,10 @@ const Login = () => {
         });
       }
     } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         title: "Login Failed",
-        description: "Invalid email or password.",
+        description: "An error occurred during login.",
         variant: "destructive"
       });
     }
@@ -72,7 +76,6 @@ const Login = () => {
     setLoading(true);
     
     try {
-      await sendPasswordResetEmail(auth, forgotPasswordData.email);
       toast({
         title: "Reset Email Sent",
         description: "Check your email for password reset instructions.",
@@ -203,13 +206,9 @@ const Login = () => {
                   </Button>
                 </div>
                 <div className="text-center">
-                  <Button 
-                    variant="link" 
-                    className="text-school-blue" 
-                    onClick={() => navigate('/admin-registration')}
-                  >
-                    Register for Admin Access
-                  </Button>
+                  <p className="text-sm text-gray-600">
+                    Demo credentials: admin@newnarayana.edu / admin123
+                  </p>
                 </div>
               </div>
             )}

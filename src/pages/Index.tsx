@@ -1,11 +1,10 @@
-
 import { useSchool } from '@/contexts/SchoolContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 const Index = () => {
   const { state } = useSchool();
-  const { welcomeMessage, welcomeImage, latestUpdates, galleryImages } = state.data;
+  const { welcomeMessage, welcomeImage, latestUpdates, galleryImages, schoolLogo } = state.data;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-school-blue via-school-blue to-school-blue">
@@ -21,10 +20,12 @@ const Index = () => {
         </div>
         
         <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
-          <div className="bg-white rounded-full p-6 mb-6 mx-auto w-32 h-32 flex items-center justify-center shadow-xl">
-            <div className="w-20 h-20 bg-school-blue rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-2xl">N</span>
-            </div>
+          <div className="bg-white rounded-full p-4 mb-6 mx-auto w-32 h-32 flex items-center justify-center shadow-xl">
+            <img 
+              src={schoolLogo} 
+              alt="School Logo" 
+              className="w-20 h-20 object-contain"
+            />
           </div>
           <h2 className="text-4xl md:text-6xl font-bold mb-4">
             {welcomeMessage}
