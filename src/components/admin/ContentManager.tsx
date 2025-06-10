@@ -24,7 +24,8 @@ const ContentManager = () => {
     missionStatement: state.data.missionStatement,
     visionStatement: state.data.visionStatement,
     schoolLogo: state.data.schoolLogo,
-    schoolName: state.data.schoolName || 'New Narayana School'
+    schoolName: state.data.schoolName || 'New Narayana School',
+    schoolNameImage: state.data.schoolNameImage || ''
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -90,7 +91,7 @@ const ContentManager = () => {
               {/* School Name Image Upload */}
               <ImageUpload
                 label="School Name Image (Optional)"
-                currentImage={generalContent.schoolNameImage || ''}
+                currentImage={generalContent.schoolNameImage}
                 onImageUpload={(url) => setGeneralContent(prev => ({ ...prev, schoolNameImage: url }))}
               />
 

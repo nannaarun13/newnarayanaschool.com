@@ -38,9 +38,9 @@ const AdmissionManager = () => {
       headers.join(','),
       ...(state.admissionInquiries || []).map(inquiry => [
         `"${inquiry.studentName}"`,
-        `"${inquiry.parentEmail}"`,
-        `"${inquiry.parentPhone}"`,
-        `"${inquiry.gradeApplying}"`,
+        `"${inquiry.primaryContact}"`,
+        `"${inquiry.secondaryContact}"`,
+        `"${inquiry.classApplied}"`,
         `"${new Date(inquiry.submittedAt || '').toLocaleDateString()}"`
       ].join(','))
     ].join('\n');
@@ -157,17 +157,17 @@ const AdmissionManager = () => {
                     <h3 className="font-semibold text-lg">{inquiry.studentName}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p><strong>Parent Email:</strong> {inquiry.parentEmail}</p>
-                        <p><strong>Phone:</strong> {inquiry.parentPhone}</p>
+                        <p><strong>Primary Contact:</strong> {inquiry.primaryContact}</p>
+                        <p><strong>Secondary Contact:</strong> {inquiry.secondaryContact}</p>
                       </div>
                       <div>
-                        <p><strong>Grade:</strong> {inquiry.gradeApplying}</p>
+                        <p><strong>Class Applied:</strong> {inquiry.classApplied}</p>
                         <p><strong>Submitted:</strong> {new Date(inquiry.submittedAt || '').toLocaleDateString()}</p>
                       </div>
                     </div>
-                    {inquiry.message && (
+                    {inquiry.additionalInfo && (
                       <div className="mt-2">
-                        <p className="text-sm text-gray-600"><strong>Message:</strong> {inquiry.message}</p>
+                        <p className="text-sm text-gray-600"><strong>Additional Info:</strong> {inquiry.additionalInfo}</p>
                       </div>
                     )}
                   </div>
