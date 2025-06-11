@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,8 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { isValidAdminCredentials, setAdminAuth, isEmailApproved } from '@/utils/authUtils';
-import { auth } from '@/lib/firebase';
+import { auth, signInAdmin, isApprovedAdmin } from '@/lib/firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
 
 type LoginMode = 'login' | 'forgot-password';
@@ -29,6 +27,21 @@ const Login = () => {
     email: ''
   });
 
+  useEffect(() => {
+    // Check if already logged in
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        // Check if user is an approved admin
+        const approved = await isApprovedAdmin(user.email || '');
+        if (approved) {
+          navigate('/admin');
+        }
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [navigate]);
+
   const handleLoginInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLoginData(prev => ({ ...prev, [name]: value }));
@@ -45,7 +58,9 @@ const Login = () => {
     
     try {
       // Check if email is approved for admin access
-      if (!isEmailApproved(loginData.email)) {
+      const isApproved = await isApprovedAdmin(loginData.email);
+      
+      if (!isApproved) {
         toast({
           title: "Access Denied",
           description: "Your admin access request is pending approval or you don't have access to the admin panel.",
@@ -55,28 +70,20 @@ const Login = () => {
         return;
       }
 
-      // Validate credentials
-      if (isValidAdminCredentials(loginData.email, loginData.password)) {
-        setAdminAuth(loginData.email);
-        
-        toast({
-          title: "Login Successful",
-          description: "Welcome to the admin panel!",
-        });
-        
-        navigate('/admin');
-      } else {
-        toast({
-          title: "Login Failed",
-          description: "Invalid email or password.",
-          variant: "destructive"
-        });
-      }
+      // Sign in with Firebase Auth
+      await signInAdmin(loginData.email, loginData.password);
+      
+      toast({
+        title: "Login Successful",
+        description: "Welcome to the admin panel!",
+      });
+      
+      navigate('/admin');
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
         title: "Login Failed",
-        description: "An error occurred during login.",
+        description: error.message || "Invalid email or password.",
         variant: "destructive"
       });
     }
@@ -98,7 +105,7 @@ const Login = () => {
       console.error('Password reset error:', error);
       toast({
         title: "Error",
-        description: "Failed to send reset email. Please check the email address.",
+        description: error.message || "Failed to send reset email. Please check the email address.",
         variant: "destructive"
       });
     }
@@ -205,8 +212,88 @@ const Login = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {mode === 'login' && renderLoginForm()}
-            {mode === 'forgot-password' && renderForgotPasswordForm()}
+            {mode === 'login' && (
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={loginData.email}
+                    onChange={handleLoginInputChange}
+                    placeholder="Enter your email"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password *</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      value={loginData.password}
+                      onChange={handleLoginInputChange}
+                      placeholder="Enter your password"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full bg-school-blue hover:bg-school-blue/90"
+                >
+                  {loading ? 'Signing In...' : 'Sign In'}
+                </Button>
+              </form>
+            )}
+            
+            {mode === 'forgot-password' && (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div>
+                  <Label htmlFor="forgotEmail">Email Address *</Label>
+                  <Input
+                    id="forgotEmail"
+                    name="email"
+                    type="email"
+                    value={forgotPasswordData.email}
+                    onChange={handleForgotPasswordInputChange}
+                    placeholder="Enter your email"
+                    required
+                  />
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full bg-school-blue hover:bg-school-blue/90"
+                >
+                  {loading ? 'Sending...' : 'Send Reset Email'}
+                </Button>
+                
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={() => setMode('login')} 
+                  className="w-full"
+                >
+                  Back to Login
+                </Button>
+              </form>
+            )}
 
             {mode === 'login' && (
               <div className="mt-6 space-y-4">

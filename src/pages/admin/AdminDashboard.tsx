@@ -16,6 +16,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useSchool } from '@/contexts/SchoolContext';
+import { auth, getAdminData } from '@/lib/firebase';
+import { clearAdminAuth } from '@/utils/authUtils';
 import ContentManager from '@/components/admin/ContentManager';
 import GalleryManager from '@/components/admin/GalleryManager';
 import NoticeManager from '@/components/admin/NoticeManager';
@@ -29,30 +31,42 @@ const AdminDashboard = () => {
   const { state } = useSchool();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminData, setAdminData] = useState<any>(null);
 
   useEffect(() => {
-    // Check authentication
-    const authStatus = localStorage.getItem('isAdminAuthenticated');
-    const adminEmail = localStorage.getItem('adminEmail');
+    // Check authentication with Firebase
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        try {
+          // Get admin data from Firestore
+          const userData = await getAdminData(user.uid);
+          setAdminData(userData);
+          setLoading(false);
+        } catch (error) {
+          console.error('Error fetching admin data:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load admin data.",
+            variant: "destructive"
+          });
+          navigate('/login');
+        }
+      } else {
+        toast({
+          title: "Access Denied",
+          description: "Please login to access the admin panel.",
+          variant: "destructive"
+        });
+        navigate('/login');
+      }
+    });
     
-    if (authStatus === 'true' && adminEmail) {
-      setIsAuthenticated(true);
-      setLoading(false);
-    } else {
-      toast({
-        title: "Access Denied",
-        description: "Please login to access the admin panel.",
-        variant: "destructive"
-      });
-      navigate('/login');
-    }
+    return () => unsubscribe();
   }, [navigate, toast]);
 
   const handleLogout = async () => {
     try {
-      localStorage.removeItem('isAdminAuthenticated');
-      localStorage.removeItem('adminEmail');
+      await clearAdminAuth();
       
       toast({
         title: "Logged Out",
@@ -77,10 +91,6 @@ const AdminDashboard = () => {
         </div>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null;
   }
 
   const dashboardStats = [
@@ -121,7 +131,9 @@ const AdminDashboard = () => {
               <div>
                 <h1 className="text-2xl font-bold text-school-blue">Admin Dashboard</h1>
                 <p className="text-gray-600">New Narayana School Management</p>
-                <p className="text-sm text-gray-500">Welcome, Admin</p>
+                <p className="text-sm text-gray-500">
+                  Welcome, {adminData?.firstName || auth.currentUser?.email?.split('@')[0] || 'Admin'}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -163,7 +175,7 @@ const AdminDashboard = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Dashboard Overview</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {dashboardStats.map((stat, index) => (
+                {state.dashboardStats && state.dashboardStats.map((stat, index) => (
                   <Card key={index} className="hover:shadow-lg transition-shadow duration-300">
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
@@ -220,7 +232,7 @@ const AdminDashboard = () => {
               </Card>
             </section>
 
-            {/* Enhanced Security Status */}
+            {/* Security Status */}
             <section>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Security Review</h2>
               <div className="grid gap-4 md:grid-cols-2">
@@ -232,10 +244,10 @@ const AdminDashboard = () => {
                         <h3 className="text-lg font-semibold text-green-800">Security Status: SECURE</h3>
                         <p className="text-green-700">All security checks passed</p>
                         <ul className="mt-2 text-sm text-green-600 list-disc list-inside">
-                          <li>Admin registration & approval system active</li>
-                          <li>Password reset with Firebase configured</li>
+                          <li>Firebase Authentication active</li>
+                          <li>Password reset functionality secured</li>
                           <li>Protected admin routes implemented</li>
-                          <li>Session management secured</li>
+                          <li>Firestore security rules enforced</li>
                         </ul>
                       </div>
                     </div>
@@ -251,9 +263,9 @@ const AdminDashboard = () => {
                         <p className="text-blue-700">Admin approval system active</p>
                         <ul className="mt-2 text-sm text-blue-600 list-disc list-inside">
                           <li>Registration requests require approval</li>
-                          <li>Pre-approved: arunnanna3@gmail.com</li>
-                          <li>Unapproved users cannot access admin panel</li>
-                          <li>Firebase password reset enabled</li>
+                          <li>Password strength enforcement</li>
+                          <li>Firestore rules control data access</li>
+                          <li>Session management secured</li>
                         </ul>
                       </div>
                     </div>

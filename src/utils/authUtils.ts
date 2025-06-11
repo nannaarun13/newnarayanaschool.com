@@ -1,4 +1,7 @@
 
+import { auth, db, getAdminData, isApprovedAdmin } from '@/lib/firebase';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+
 export interface AdminUser {
   id: string;
   firstName: string;
@@ -11,47 +14,58 @@ export interface AdminUser {
   approvedBy?: string;
 }
 
-export const checkAdminAuth = (): boolean => {
-  try {
-    const isAuthenticated = localStorage.getItem('isAdminAuthenticated');
-    const adminEmail = localStorage.getItem('adminEmail');
-    console.log('Auth check - isAuthenticated:', isAuthenticated, 'adminEmail:', adminEmail);
-    return isAuthenticated === 'true' && !!adminEmail;
-  } catch (error) {
-    console.error('Error checking admin auth:', error);
-    return false;
-  }
+// Check if a user is authenticated as an admin
+export const checkAdminAuth = async (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          // Get admin document from Firestore
+          const adminData = await getAdminData(user.uid);
+          
+          // Check if user has admin status approved
+          if (adminData && adminData.status === 'approved') {
+            resolve(true);
+            return;
+          }
+          
+          // Check if user's email is approved
+          const isApproved = await isApprovedAdmin(user.email || '');
+          resolve(isApproved);
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+          resolve(false);
+        }
+      } else {
+        resolve(false);
+      }
+    });
+  });
 };
 
-export const setAdminAuth = (email: string): void => {
-  try {
-    localStorage.setItem('isAdminAuthenticated', 'true');
-    localStorage.setItem('adminEmail', email);
-    console.log('Admin auth set for:', email);
-  } catch (error) {
-    console.error('Error setting admin auth:', error);
-  }
+// Get current authenticated user
+export const getCurrentUser = (): User | null => {
+  return auth.currentUser;
 };
 
-export const clearAdminAuth = (): void => {
+// Get current admin email
+export const getAdminEmail = (): string | null => {
+  return auth.currentUser?.email;
+};
+
+// Log out the current user
+export const clearAdminAuth = async (): Promise<void> => {
   try {
-    localStorage.removeItem('isAdminAuthenticated');
-    localStorage.removeItem('adminEmail');
+    await signOut(auth);
     console.log('Admin auth cleared');
   } catch (error) {
-    console.error('Error clearing admin auth:', error);
+    console.error('Error signing out:', error);
+    throw error;
   }
 };
 
-export const getAdminEmail = (): string | null => {
-  try {
-    return localStorage.getItem('adminEmail');
-  } catch (error) {
-    console.error('Error getting admin email:', error);
-    return null;
-  }
-};
-
+// Local storage functions for admin requests
+// These will eventually be migrated to Firestore
 export const getAdminRequests = (): AdminUser[] => {
   try {
     const requests = localStorage.getItem('adminRequests');
@@ -90,46 +104,5 @@ export const updateAdminRequestStatus = (email: string, status: 'approved' | 're
     console.log('Admin request status updated for:', email, 'to:', status);
   } catch (error) {
     console.error('Error updating admin request status:', error);
-  }
-};
-
-export const isEmailApproved = (email: string): boolean => {
-  try {
-    // Grant access to specific email
-    if (email === 'arunnanna3@gmail.com') {
-      console.log('Pre-approved email detected:', email);
-      return true;
-    }
-    
-    const requests = getAdminRequests();
-    const request = requests.find(req => req.email === email);
-    const isApproved = request?.status === 'approved';
-    console.log('Email approval check for:', email, 'result:', isApproved);
-    return isApproved;
-  } catch (error) {
-    console.error('Error checking email approval:', error);
-    return false;
-  }
-};
-
-export const isValidAdminCredentials = (email: string, password: string): boolean => {
-  try {
-    // Check if email is approved
-    if (!isEmailApproved(email)) {
-      console.log('Email not approved:', email);
-      return false;
-    }
-    
-    // Specific credentials for approved email
-    if (email === 'arunnanna3@gmail.com' && password === 'Arun@2004') {
-      console.log('Valid credentials for pre-approved email');
-      return true;
-    }
-    
-    console.log('Invalid credentials for:', email);
-    return false;
-  } catch (error) {
-    console.error('Error validating admin credentials:', error);
-    return false;
   }
 };
