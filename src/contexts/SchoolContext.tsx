@@ -380,22 +380,12 @@ function schoolReducer(state: SchoolState, action: SchoolAction): SchoolState {
       return state;
   }
 
-  // Enhanced persistence - try multiple storage methods
+  // Simplified persistence - only save to localStorage without triggering events
   try {
     localStorage.setItem('schoolData', JSON.stringify(newState.data));
     localStorage.setItem('admissionInquiries', JSON.stringify(newState.admissionInquiries));
     localStorage.setItem('siteVisitors', newState.siteVisitors.toString());
-    
-    // Force immediate save
     localStorage.setItem('lastUpdate', new Date().toISOString());
-    
-    // Trigger storage event for cross-tab sync
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'schoolData',
-      newValue: JSON.stringify(newState.data)
-    }));
-    
-    console.log('Data persisted successfully:', newState.data.schoolName);
   } catch (error) {
     console.error('Error persisting data:', error);
   }
@@ -433,44 +423,22 @@ export function SchoolContextProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error loading persisted data:', error);
-      // Reset corrupted data
       localStorage.removeItem('schoolData');
       localStorage.removeItem('admissionInquiries');
     }
 
-    // Cleanup old inquiries on mount only
     dispatch({ type: 'CLEANUP_OLD_INQUIRIES' });
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
-  // Listen for storage changes (cross-tab sync) - only run once
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'schoolData' && e.newValue) {
-        try {
-          const newData = JSON.parse(e.newValue);
-          dispatch({ type: 'LOAD_PERSISTED_DATA', payload: newData });
-        } catch (error) {
-          console.error('Error syncing storage change:', error);
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []); // Empty dependency array - only run once on mount
-
-  // Cleanup old inquiries periodically - but safely
+  // Cleanup old inquiries periodically
   useEffect(() => {
     const interval = setInterval(() => {
       console.log('Running periodic cleanup');
       dispatch({ type: 'CLEANUP_OLD_INQUIRIES' });
-    }, 24 * 60 * 60 * 1000); // Run every 24 hours instead of every hour
+    }, 24 * 60 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
   return (
     <SchoolContext.Provider value={{ state, dispatch }}>
@@ -488,3 +456,5 @@ export function useSchool() {
 }
 
 export default SchoolContextProvider;
+
+}
