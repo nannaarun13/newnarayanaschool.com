@@ -8,9 +8,13 @@ const RouteProtection = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
   useEffect(() => {
+    console.log('Current route:', location.pathname);
+    
     // Check if current route requires admin auth
     if (location.pathname.startsWith('/admin') && !location.pathname.includes('/register')) {
       const isAuthenticated = checkAdminAuth();
+      
+      console.log('Admin auth check:', isAuthenticated);
       
       if (!isAuthenticated) {
         console.log('Admin auth required, redirecting to login');
