@@ -10,8 +10,14 @@ const RouteProtection = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     console.log('Current route:', location.pathname);
     
-    // Check if current route requires admin auth
-    if (location.pathname.startsWith('/admin') && !location.pathname.includes('/register')) {
+    // Always allow access to login and register routes
+    if (location.pathname === '/login' || location.pathname === '/admin/register') {
+      console.log('Auth route accessible:', location.pathname);
+      return;
+    }
+    
+    // Check if current route requires admin auth (but exclude register route)
+    if (location.pathname.startsWith('/admin')) {
       const isAuthenticated = checkAdminAuth();
       
       console.log('Admin auth check:', isAuthenticated);
@@ -21,11 +27,6 @@ const RouteProtection = ({ children }: { children: React.ReactNode }) => {
         navigate('/login', { replace: true });
         return;
       }
-    }
-
-    // Ensure login and register routes are accessible
-    if (location.pathname === '/login' || location.pathname === '/admin/register') {
-      console.log('Auth route accessible:', location.pathname);
     }
   }, [location.pathname, navigate]);
 

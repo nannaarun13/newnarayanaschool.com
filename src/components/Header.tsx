@@ -26,7 +26,6 @@ const Header = () => {
                 {schoolName || "NEW NARAYANA SCHOOL"}
               </h1>
             )}
-            <p className="text-white/90 text-lg italic">School of Excellence...</p>
           </div>
         </div>
       </div>

@@ -15,14 +15,19 @@ const Layout = () => {
   const isLoginPage = location.pathname === '/login';
   
   useEffect(() => {
-    // Increment visitor count on page visits (except admin pages)
+    // Increment visitor count on page visits (except admin pages and login)
     if (!isAdminPage && !isLoginPage) {
       dispatch({ type: 'INCREMENT_VISITORS' });
     }
   }, [location.pathname, dispatch, isAdminPage, isLoginPage]);
 
+  // For login and admin pages, render without layout
   if (isAdminPage || isLoginPage) {
-    return <Outlet />;
+    return (
+      <div className="min-h-screen">
+        <Outlet />
+      </div>
+    );
   }
 
   return (
