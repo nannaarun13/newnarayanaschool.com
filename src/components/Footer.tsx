@@ -12,7 +12,10 @@ const Footer = () => {
     window.open(mapUrl, '_blank');
   };
 
+  // Use contactInfo safely with fallbacks
   const contactNumbers = contactInfo?.contactNumbers || [];
+  const address = contactInfo?.address || '8G49+HFJ, Sri Laxmi Nagar Colony, Badangpet, Hyderabad, Telangana 500058';
+  const email = contactInfo?.email || 'info@newnarayanaschool.edu';
 
   return (
     <footer className="bg-school-blue text-white py-12">
@@ -25,7 +28,7 @@ const Footer = () => {
               <div>
                 <h4 className="font-semibold text-lg mb-2">Address</h4>
                 <p className="text-sm opacity-90 whitespace-pre-line leading-relaxed">
-                  {contactInfo?.address || '8G49+HFJ, Sri Laxmi Nagar Colony,\nBadangpet, Hyderabad, Telangana 500058'}
+                  {address}
                 </p>
               </div>
             </div>
@@ -59,7 +62,7 @@ const Footer = () => {
               <div>
                 <h4 className="font-semibold text-lg mb-2">Email</h4>
                 <p className="text-sm opacity-90">
-                  {contactInfo?.email || 'info@newnarayanaschool.edu'}
+                  {email}
                 </p>
               </div>
             </div>

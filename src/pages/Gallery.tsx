@@ -11,7 +11,14 @@ const Gallery = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const categories = ['All', 'General', 'Event', 'Festivals', 'Activities'];
+  const categories = ['All', 'General', 'Event', 'Festivals', 'Activities', 'Facilities'];
+
+  // Get unique categories from the images
+  const uniqueCategories = ['All', ...new Set(galleryImages
+    .filter(image => image.category)
+    .map(image => image.category))];
+
+  const categoriesToShow = uniqueCategories.length > 1 ? uniqueCategories : categories;
 
   const filteredImages = selectedCategory === 'All' 
     ? galleryImages 
@@ -32,7 +39,7 @@ const Gallery = () => {
       {/* Category Filters */}
       <section className="text-center">
         <div className="flex flex-wrap justify-center gap-2 mb-8">
-          {categories.map((category) => (
+          {categoriesToShow.map((category) => (
             <Button
               key={category}
               variant={selectedCategory === category ? "default" : "outline"}
@@ -60,12 +67,12 @@ const Gallery = () => {
               <div className="h-48 overflow-hidden">
                 <img
                   src={image.url}
-                  alt={image.caption}
+                  alt={image.caption || image.altText}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                 />
               </div>
               <CardContent className="p-4">
-                <p className="text-sm text-gray-600">{image.caption}</p>
+                <p className="text-sm text-gray-600">{image.caption || image.altText}</p>
                 {image.category && (
                   <span className="inline-block mt-2 px-2 py-1 bg-school-blue text-white text-xs rounded">
                     {image.category}

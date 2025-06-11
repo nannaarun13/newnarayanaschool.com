@@ -5,7 +5,10 @@ import { Badge } from '@/components/ui/badge';
 
 const Index = () => {
   const { state } = useSchool();
-  const { welcomeMessage, welcomeImage, latestUpdates, galleryImages, schoolLogo } = state.data;
+  const { welcomeMessage, schoolLogo, galleryImages } = state.data;
+  // Safely access properties that might be undefined with defaults
+  const welcomeImage = state.data.welcomeImage || "https://via.placeholder.com/1200x600";
+  const latestUpdates = state.data.latestUpdates || [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -68,15 +71,17 @@ const Index = () => {
                 <div className="h-48 overflow-hidden">
                   <img
                     src={image.url}
-                    alt={image.caption}
+                    alt={image.caption || image.altText}
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                   />
                 </div>
                 <CardContent className="p-4">
-                  <p className="text-sm text-gray-600 font-medium">{image.caption}</p>
-                  <Badge variant="outline" className="mt-2 text-xs border-school-blue text-school-blue">
-                    {image.category}
-                  </Badge>
+                  <p className="text-sm text-gray-600 font-medium">{image.caption || image.altText}</p>
+                  {image.category && (
+                    <Badge variant="outline" className="mt-2 text-xs border-school-blue text-school-blue">
+                      {image.category}
+                    </Badge>
+                  )}
                 </CardContent>
               </Card>
             ))}

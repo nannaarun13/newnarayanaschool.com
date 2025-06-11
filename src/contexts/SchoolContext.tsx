@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer } from 'react';
 
 // Define the data structure for a navigation item
@@ -12,6 +13,9 @@ export interface GalleryImage {
   id: string;
   url: string;
   altText: string;
+  caption: string;
+  category: string;
+  date: string;
 }
 
 // Define the structure for a notice
@@ -28,6 +32,7 @@ export interface AdmissionInquiry {
   studentName: string;
   classApplied: string;
   previousClass: string;
+  presentClass: string;
   previousSchool: string;
   fatherName: string;
   motherName: string;
@@ -48,11 +53,38 @@ export interface ContactMessage {
   sentAt: string;
 }
 
+// Define the structure for latest updates
+export interface LatestUpdate {
+  id: string;
+  content: string;
+  date: string;
+}
+
+// Define the structure for a founder
+export interface Founder {
+  id: string;
+  name: string;
+  details: string;
+  image: string;
+}
+
+// Define the structure for contact information
+export interface ContactInfo {
+  address: string;
+  phone: string;
+  email: string;
+  contactNumbers: Array<{id: string, number: string}>;
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+}
+
 // Define the structure for the school data
 export interface SchoolData {
   schoolName: string;
   schoolLogo: string;
-	schoolNameImage: string;
+  schoolNameImage: string;
   email: string;
   phone: string;
   address: string;
@@ -60,12 +92,21 @@ export interface SchoolData {
   galleryImages: GalleryImage[];
   notices: Notice[];
   welcomeMessage: string;
+  welcomeImage: string;
   aboutUsText: string;
+  aboutContent: string;
+  missionStatement: string;
+  visionStatement: string;
   contactDetails: {
     address: string;
     phone: string;
     email: string;
   };
+  contactInfo: ContactInfo;
+  latestUpdates: LatestUpdate[];
+  founders: Founder[];
+  schoolHistory: string;
+  founderDetails: string;
 }
 
 // Define the state structure for the school context
@@ -87,12 +128,30 @@ export type SchoolAction =
   | { type: 'DELETE_NOTICE'; payload: string }
   | { type: 'ADD_ADMISSION_INQUIRY'; payload: AdmissionInquiry }
   | { type: 'ADD_CONTACT_MESSAGE'; payload: ContactMessage }
-  | { type: 'INCREMENT_VISITORS' };
+  | { type: 'INCREMENT_VISITORS' }
+  | { type: 'ADD_LATEST_UPDATE'; payload: LatestUpdate }
+  | { type: 'DELETE_LATEST_UPDATE'; payload: string }
+  | { type: 'ADD_FOUNDER'; payload: Founder }
+  | { type: 'DELETE_FOUNDER'; payload: string };
 
 // Helper function to initialize gallery images with default data
 const initializeGalleryImages = (): GalleryImage[] => [
-  { id: '1', url: 'https://via.placeholder.com/300', altText: 'School Building' },
-  { id: '2', url: 'https://via.placeholder.com/300', altText: 'Classroom' },
+  { 
+    id: '1', 
+    url: 'https://via.placeholder.com/300', 
+    altText: 'School Building', 
+    caption: 'School Building',
+    category: 'General',
+    date: new Date().toLocaleDateString() 
+  },
+  { 
+    id: '2', 
+    url: 'https://via.placeholder.com/300', 
+    altText: 'Classroom', 
+    caption: 'Modern Classroom',
+    category: 'Facilities',
+    date: new Date().toLocaleDateString()
+  },
 ];
 
 // Helper function to initialize notices with default data
@@ -111,11 +170,50 @@ const initializeNotices = (): Notice[] => [
   },
 ];
 
+// Helper function to initialize latest updates
+const initializeLatestUpdates = (): LatestUpdate[] => [
+  {
+    id: '1',
+    content: 'School reopens after summer vacation on June 15, 2024',
+    date: new Date().toLocaleDateString(),
+  },
+  {
+    id: '2',
+    content: 'Annual Sports Day scheduled for August 10, 2024',
+    date: new Date().toLocaleDateString(),
+  },
+];
+
+// Helper function to initialize founders
+const initializeFounders = (): Founder[] => [
+  {
+    id: '1',
+    name: 'Dr. Rajesh Kumar',
+    details: 'Founder and Chairman with over 30 years of experience in education',
+    image: 'https://via.placeholder.com/150',
+  },
+];
+
+// Default contact info
+const defaultContactInfo: ContactInfo = {
+  address: '123 Education Street, Hyderabad, Telangana',
+  phone: '+91 9999999999',
+  email: 'info@newnarayanaschool.edu',
+  contactNumbers: [
+    { id: '1', number: '+91 9999999999' },
+    { id: '2', number: '+91 8888888888' }
+  ],
+  location: {
+    latitude: 17.3092,
+    longitude: 78.5095
+  }
+};
+
 // Default data for the school
 export const defaultSchoolData: SchoolData = {
   schoolName: "NEW NARAYANA SCHOOL",
   schoolLogo: "https://via.placeholder.com/150",
-	schoolNameImage: "",
+  schoolNameImage: "",
   email: "info@newnarayanaschool.edu",
   phone: "+91 9999999999",
   address: "123 Education Street, Hyderabad, Telangana",
@@ -126,17 +224,26 @@ export const defaultSchoolData: SchoolData = {
     { name: "Gallery", path: "/gallery", visible: true },
     { name: "Notice Board", path: "/notice-board", visible: true },
     { name: "Contact", path: "/contact", visible: true },
-		{ name: "Login", path: "/login", visible: true },
+    { name: "Login", path: "/login", visible: true },
   ],
   galleryImages: initializeGalleryImages(),
   notices: initializeNotices(),
   welcomeMessage: "Welcome to New Narayana School!",
+  welcomeImage: "https://via.placeholder.com/1200x600",
   aboutUsText: "New Narayana School is committed to providing quality education and fostering holistic development in students.",
+  aboutContent: "Our school offers a comprehensive education focusing on academic excellence and character development.",
+  missionStatement: "To provide quality education that develops each student's potential to thrive as a global citizen.",
+  visionStatement: "To be a leading educational institution that empowers students to excel academically and contribute positively to society.",
   contactDetails: {
     address: "123 Education Street, Hyderabad, Telangana",
     phone: "+91 9999999999",
     email: "info@newnarayanaschool.edu",
   },
+  contactInfo: defaultContactInfo,
+  latestUpdates: initializeLatestUpdates(),
+  founders: initializeFounders(),
+  schoolHistory: "Founded in 1995, New Narayana School has been a pioneer in education for over two decades.",
+  founderDetails: "Our founder envisioned an educational institution that would transform young minds into future leaders.",
 };
 
 // Initial state for the school context
@@ -198,6 +305,38 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
       return { ...state, contactMessages: [...state.contactMessages, action.payload] };
     case 'INCREMENT_VISITORS':
       return { ...state, siteVisitors: state.siteVisitors + 1 };
+    case 'ADD_LATEST_UPDATE':
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          latestUpdates: [...state.data.latestUpdates, action.payload] 
+        } 
+      };
+    case 'DELETE_LATEST_UPDATE':
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          latestUpdates: state.data.latestUpdates.filter(update => update.id !== action.payload),
+        },
+      };
+    case 'ADD_FOUNDER':
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          founders: [...state.data.founders, action.payload] 
+        } 
+      };
+    case 'DELETE_FOUNDER':
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          founders: state.data.founders.filter(founder => founder.id !== action.payload),
+        },
+      };
     default:
       return state;
   }
@@ -213,7 +352,15 @@ const SchoolContext = createContext<{
 });
 
 // Create a custom hook to use the school context
-export const useSchool = () => useContext(SchoolContext);
+export const useSchool = () => {
+  const context = useContext(SchoolContext);
+  
+  if (!context) {
+    throw new Error('useSchool must be used within a SchoolContextProvider');
+  }
+  
+  return context;
+};
 
 // Create a provider component to wrap the app and provide the school context
 export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
