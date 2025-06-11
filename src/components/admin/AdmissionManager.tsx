@@ -5,11 +5,20 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Calendar, TrendingUp, Download } from 'lucide-react';
 import { useSchool } from '@/contexts/SchoolContext';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
 
 const AdmissionManager = () => {
   const { state } = useSchool();
   const { toast } = useToast();
   const [monthlyData, setMonthlyData] = useState<{[key: string]: number}>({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Calculate monthly inquiry counts
@@ -25,6 +34,7 @@ const AdmissionManager = () => {
     });
     
     setMonthlyData(monthly);
+    console.log("Admission inquiries loaded:", inquiries.length);
   }, [state.admissionInquiries]);
 
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -32,32 +42,53 @@ const AdmissionManager = () => {
   const totalInquiries = state.admissionInquiries?.length || 0;
 
   const handleExport = () => {
-    // Create CSV content
-    const headers = ['Name', 'Email', 'Phone', 'Grade', 'Submitted Date'];
-    const csvContent = [
-      headers.join(','),
-      ...(state.admissionInquiries || []).map(inquiry => [
-        `"${inquiry.studentName}"`,
-        `"${inquiry.primaryContact}"`,
-        `"${inquiry.secondaryContact}"`,
-        `"${inquiry.classApplied}"`,
-        `"${new Date(inquiry.submittedAt || '').toLocaleDateString()}"`
-      ].join(','))
-    ].join('\n');
+    setLoading(true);
+    try {
+      // Create CSV content
+      const headers = ['Student Name', 'Class Applied', 'Previous Class', 'Previous School', 
+                      'Father Name', 'Mother Name', 'Primary Contact', 'Secondary Contact', 
+                      'Location', 'Additional Info', 'Submitted Date'];
+      
+      const csvContent = [
+        headers.join(','),
+        ...(state.admissionInquiries || []).map(inquiry => [
+          `"${inquiry.studentName || ''}"`,
+          `"${inquiry.classApplied || ''}"`,
+          `"${inquiry.previousClass || inquiry.presentClass || ''}"`,
+          `"${inquiry.previousSchool || ''}"`,
+          `"${inquiry.fatherName || ''}"`,
+          `"${inquiry.motherName || ''}"`,
+          `"${inquiry.primaryContact || ''}"`,
+          `"${inquiry.secondaryContact || ''}"`,
+          `"${inquiry.location || ''}"`,
+          `"${inquiry.additionalInfo || ''}"`,
+          `"${new Date(inquiry.submittedAt || '').toLocaleDateString()}"`
+        ].join(','))
+      ].join('\n');
 
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `admission-inquiries-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      // Download CSV
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `admission-inquiries-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
 
-    toast({
-      title: "Export Complete",
-      description: "Admission inquiries exported successfully.",
-    });
+      toast({
+        title: "Export Complete",
+        description: "Admission inquiries exported successfully.",
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export Failed",
+        description: "There was an error exporting the data.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getMonthlyStats = () => {
@@ -72,9 +103,9 @@ const AdmissionManager = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">Admission Management</h2>
-        <Button onClick={handleExport} variant="outline" className="border-school-blue text-school-blue">
+        <Button onClick={handleExport} variant="outline" className="border-school-blue text-school-blue" disabled={loading}>
           <Download className="h-4 w-4 mr-2" />
-          Export Data
+          {loading ? 'Exporting...' : 'Export Data'}
         </Button>
       </div>
 
@@ -143,33 +174,76 @@ const AdmissionManager = () => {
         </CardContent>
       </Card>
 
-      {/* Recent Inquiries */}
+      {/* Inquiry Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Admission Inquiries</CardTitle>
+          <CardTitle>All Admission Inquiries</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(state.admissionInquiries?.length || 0) > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student Name</TableHead>
+                  <TableHead>Class Applied</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Parents</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Submitted</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(state.admissionInquiries || []).map((inquiry, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{inquiry.studentName}</TableCell>
+                    <TableCell>{inquiry.classApplied}</TableCell>
+                    <TableCell>{inquiry.primaryContact}</TableCell>
+                    <TableCell>
+                      {inquiry.fatherName && <div>F: {inquiry.fatherName}</div>}
+                      {inquiry.motherName && <div>M: {inquiry.motherName}</div>}
+                    </TableCell>
+                    <TableCell>{inquiry.location}</TableCell>
+                    <TableCell>{new Date(inquiry.submittedAt || '').toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-center text-gray-500 py-8">No admission inquiries yet.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Detailed Inquiries */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Inquiry Details</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {(state.admissionInquiries || []).slice(0, 10).map((inquiry, index) => (
-              <div key={index} className="border rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 space-y-2">
+            {(state.admissionInquiries || []).map((inquiry, index) => (
+              <div key={index} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
                     <h3 className="font-semibold text-lg">{inquiry.studentName}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p><strong>Primary Contact:</strong> {inquiry.primaryContact}</p>
-                        <p><strong>Secondary Contact:</strong> {inquiry.secondaryContact}</p>
-                      </div>
-                      <div>
-                        <p><strong>Class Applied:</strong> {inquiry.classApplied}</p>
-                        <p><strong>Submitted:</strong> {new Date(inquiry.submittedAt || '').toLocaleDateString()}</p>
-                      </div>
-                    </div>
+                    <p><strong>Class Applied:</strong> {inquiry.classApplied}</p>
+                    <p><strong>Previous Class:</strong> {inquiry.previousClass || inquiry.presentClass}</p>
+                    <p><strong>Previous School:</strong> {inquiry.previousSchool || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p><strong>Father's Name:</strong> {inquiry.fatherName}</p>
+                    <p><strong>Mother's Name:</strong> {inquiry.motherName}</p>
+                    <p><strong>Primary Contact:</strong> {inquiry.primaryContact}</p>
+                    <p><strong>Secondary Contact:</strong> {inquiry.secondaryContact || "N/A"}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p><strong>Location:</strong> {inquiry.location}</p>
                     {inquiry.additionalInfo && (
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-600"><strong>Additional Info:</strong> {inquiry.additionalInfo}</p>
-                      </div>
+                      <p className="mt-2"><strong>Additional Info:</strong> {inquiry.additionalInfo}</p>
                     )}
+                    <p className="text-sm text-gray-500 mt-2">
+                      Submitted on: {new Date(inquiry.submittedAt || '').toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
