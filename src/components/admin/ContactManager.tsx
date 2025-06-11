@@ -18,7 +18,8 @@ const ContactManager = () => {
     email: state.data.contactInfo?.email || '',
     phone: state.data.contactInfo?.phone || '',
     contactNumbers: state.data.contactInfo?.contactNumbers || [],
-    mapEmbed: state.data.contactInfo?.mapEmbed || ''
+    mapEmbed: state.data.contactInfo?.mapEmbed || '',
+    location: state.data.contactInfo?.location || { latitude: 17.3092, longitude: 78.5095 }
   };
   
   const [contactData, setContactData] = useState(safeContactInfo);
