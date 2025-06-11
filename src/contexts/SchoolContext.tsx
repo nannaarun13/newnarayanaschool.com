@@ -456,5 +456,3 @@ export function useSchool() {
 }
 
 export default SchoolContextProvider;
-
-}
