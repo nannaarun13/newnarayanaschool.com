@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 
 interface Founder {
@@ -412,12 +411,13 @@ const SchoolContext = createContext<{
 export function SchoolContextProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(schoolReducer, initialState);
 
-  // Load persisted data on mount with enhanced error handling
+  // Load persisted data on mount - only run once
   useEffect(() => {
+    console.log('Loading persisted data on mount');
+    
     try {
       const persistedData = localStorage.getItem('schoolData');
       const persistedInquiries = localStorage.getItem('admissionInquiries');
-      const persistedVisitors = localStorage.getItem('siteVisitors');
       
       if (persistedData) {
         const parsedData = JSON.parse(persistedData);
@@ -438,7 +438,12 @@ export function SchoolContextProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('admissionInquiries');
     }
 
-    // Listen for storage changes (cross-tab sync)
+    // Cleanup old inquiries on mount only
+    dispatch({ type: 'CLEANUP_OLD_INQUIRIES' });
+  }, []); // Empty dependency array - only run once on mount
+
+  // Listen for storage changes (cross-tab sync) - only run once
+  useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'schoolData' && e.newValue) {
         try {
@@ -452,33 +457,20 @@ export function SchoolContextProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener('storage', handleStorageChange);
     
-    // Cleanup old inquiries on mount
-    dispatch({ type: 'CLEANUP_OLD_INQUIRIES' });
-    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
-  // Auto-cleanup old inquiries daily with enhanced persistence
+  // Cleanup old inquiries periodically - but safely
   useEffect(() => {
     const interval = setInterval(() => {
+      console.log('Running periodic cleanup');
       dispatch({ type: 'CLEANUP_OLD_INQUIRIES' });
-      
-      // Force data refresh every hour to ensure sync
-      try {
-        const persistedData = localStorage.getItem('schoolData');
-        if (persistedData) {
-          const parsedData = JSON.parse(persistedData);
-          dispatch({ type: 'LOAD_PERSISTED_DATA', payload: parsedData });
-        }
-      } catch (error) {
-        console.error('Error refreshing data:', error);
-      }
-    }, 60 * 60 * 1000); // Run every hour
+    }, 24 * 60 * 60 * 1000); // Run every 24 hours instead of every hour
 
     return () => clearInterval(interval);
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   return (
     <SchoolContext.Provider value={{ state, dispatch }}>
@@ -494,3 +486,5 @@ export function useSchool() {
   }
   return context;
 }
+
+export default SchoolContextProvider;
