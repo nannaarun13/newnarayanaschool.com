@@ -74,6 +74,7 @@ export interface ContactInfo {
   phone: string;
   email: string;
   contactNumbers: Array<{id: string, number: string}>;
+  mapEmbed?: string;
   location: {
     latitude: number;
     longitude: number;
@@ -120,11 +121,12 @@ export interface SchoolState {
 // Define the actions that can be dispatched to update the state
 export type SchoolAction =
   | { type: 'SET_SCHOOL_DATA'; payload: SchoolData }
+  | { type: 'UPDATE_SCHOOL_DATA'; payload: Partial<SchoolData> }
   | { type: 'ADD_GALLERY_IMAGE'; payload: GalleryImage }
   | { type: 'UPDATE_GALLERY_IMAGE'; payload: GalleryImage }
   | { type: 'DELETE_GALLERY_IMAGE'; payload: string }
   | { type: 'ADD_NOTICE'; payload: Notice }
-  | { type: 'UPDATE_NOTICE'; payload: Notice }
+  | { type: 'UPDATE_NOTICE'; payload: { id: string; title: string; content: string } }
   | { type: 'DELETE_NOTICE'; payload: string }
   | { type: 'ADD_ADMISSION_INQUIRY'; payload: AdmissionInquiry }
   | { type: 'ADD_CONTACT_MESSAGE'; payload: ContactMessage }
@@ -203,6 +205,7 @@ const defaultContactInfo: ContactInfo = {
     { id: '1', number: '+91 9999999999' },
     { id: '2', number: '+91 8888888888' }
   ],
+  mapEmbed: '',
   location: {
     latitude: 17.3092,
     longitude: 78.5095
@@ -246,7 +249,6 @@ export const defaultSchoolData: SchoolData = {
   founderDetails: "Our founder envisioned an educational institution that would transform young minds into future leaders.",
 };
 
-// Initial state for the school context
 const initialState: SchoolState = {
   data: defaultSchoolData,
   admissionInquiries: [],
@@ -259,6 +261,8 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
       return { ...state, data: action.payload };
+    case 'UPDATE_SCHOOL_DATA':
+      return { ...state, data: { ...state.data, ...action.payload } };
     case 'ADD_GALLERY_IMAGE':
       return { ...state, data: { ...state.data, galleryImages: [...state.data.galleryImages, action.payload] } };
     case 'UPDATE_GALLERY_IMAGE':
@@ -287,7 +291,7 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
         data: {
           ...state.data,
           notices: state.data.notices.map(notice =>
-            notice.id === action.payload.id ? action.payload : notice
+            notice.id === action.payload.id ? { ...notice, title: action.payload.title, content: action.payload.content } : notice
           ),
         },
       };
@@ -351,7 +355,6 @@ const SchoolContext = createContext<{
   dispatch: () => null,
 });
 
-// Create a custom hook to use the school context
 export const useSchool = () => {
   const context = useContext(SchoolContext);
   
@@ -362,7 +365,6 @@ export const useSchool = () => {
   return context;
 };
 
-// Create a provider component to wrap the app and provide the school context
 export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(schoolReducer, initialState);
 

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +33,7 @@ const GalleryManager = () => {
     const imageData = {
       id: Date.now().toString(),
       url: newImage.url,
+      altText: newImage.caption,
       caption: newImage.caption,
       category: newImage.category,
       date: new Date().toISOString().split('T')[0]

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,7 +61,7 @@ const NoticeManager = () => {
 
     dispatch({
       type: 'UPDATE_NOTICE',
-      payload: { id: editingNotice, notice: editData }
+      payload: { id: editingNotice!, title: editData.title, content: editData.content }
     });
 
     setEditingNotice(null);
@@ -95,7 +94,6 @@ const NoticeManager = () => {
         <h2 className="text-2xl font-bold text-gray-800">Notice Management</h2>
       </div>
 
-      {/* Add New Notice */}
       <Card>
         <CardHeader>
           <CardTitle>Add New Notice</CardTitle>
@@ -127,7 +125,6 @@ const NoticeManager = () => {
         </CardContent>
       </Card>
 
-      {/* Current Notices */}
       <Card>
         <CardHeader>
           <CardTitle>Current Notices</CardTitle>
