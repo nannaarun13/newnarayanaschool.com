@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, X, AlertTriangle } from 'lucide-react';
-import { validateImageFile, createSecureImageUrl } from '@/utils/fileSecurityUtils';
+import { Upload, X } from 'lucide-react';
 
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void;
@@ -19,45 +18,26 @@ const ImageUpload = ({ onImageUpload, currentImage, label, accept = "image/*" }:
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [preview, setPreview] = useState<string>(currentImage || '');
-  const [isValidating, setIsValidating] = useState(false);
 
-  const handleFile = async (file: File) => {
-    setIsValidating(true);
-    
-    try {
-      const validation = await validateImageFile(file);
-      
-      if (!validation.isValid) {
+  const handleFile = (file: File) => {
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setPreview(result);
+        onImageUpload(result);
         toast({
-          title: "Invalid File",
-          description: validation.error,
-          variant: "destructive"
+          title: "Image Uploaded",
+          description: "Image has been uploaded successfully.",
         });
-        setIsValidating(false);
-        return;
-      }
-
-      if (validation.sanitizedFile) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          setPreview(result);
-          onImageUpload(result);
-          toast({
-            title: "Image Uploaded",
-            description: "Image has been securely uploaded and validated.",
-          });
-        };
-        reader.readAsDataURL(validation.sanitizedFile);
-      }
-    } catch (error) {
+      };
+      reader.readAsDataURL(file);
+    } else {
       toast({
-        title: "Upload Error",
-        description: "Failed to process the image. Please try again.",
+        title: "Invalid File",
+        description: "Please upload a valid image file.",
         variant: "destructive"
       });
-    } finally {
-      setIsValidating(false);
     }
   };
 
@@ -131,26 +111,13 @@ const ImageUpload = ({ onImageUpload, currentImage, label, accept = "image/*" }:
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
         >
-          {isValidating ? (
-            <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-school-blue mb-4"></div>
-              <p className="text-gray-600">Validating file security...</p>
-            </div>
-          ) : (
-            <>
-              <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">
-                Drag and drop an image here, or click to select
-              </p>
-              <div className="flex items-center justify-center mt-2 text-sm text-gray-500">
-                <AlertTriangle className="h-4 w-4 mr-1" />
-                Max 5MB • JPEG, PNG, GIF, WebP only
-              </div>
-              <Button type="button" variant="outline" className="mt-2">
-                Choose File
-              </Button>
-            </>
-          )}
+          <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">
+            Drag and drop an image here, or click to select
+          </p>
+          <Button type="button" variant="outline" className="mt-2">
+            Choose File
+          </Button>
         </div>
       )}
       
