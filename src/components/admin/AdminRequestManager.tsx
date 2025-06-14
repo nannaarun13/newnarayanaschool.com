@@ -169,16 +169,20 @@ const AdminRequestManager = () => {
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center space-x-3">
                         <h3 className="font-semibold text-lg">
-                          {typeof request.firstName === "string" ? request.firstName.toUpperCase() : ""}
+                          {request && typeof request.firstName === "string" && request.firstName
+                            ? request.firstName.toUpperCase()
+                            : ""}
                           {" "}
-                          {typeof request.lastName === "string" ? request.lastName.toUpperCase() : ""}
+                          {request && typeof request.lastName === "string" && request.lastName
+                            ? request.lastName.toUpperCase()
+                            : ""}
                         </h3>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
                           request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                           request.status === 'approved' ? 'bg-green-100 text-green-800' :
                           'bg-red-100 text-red-800'
                         }`}>
-                          {request.status.toUpperCase()}
+                          {request.status?.toUpperCase()}
                         </span>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
