@@ -1,10 +1,10 @@
+
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { logAdminLogin, logFailedAdminLogin } from './loginActivityUtils';
 import { ensureDefaultAdmin, DEFAULT_ADMIN } from './adminUtils';
 import { persistentRateLimiter } from './persistentRateLimiter';
-import { advancedSecurityMonitor } from './advancedSecurityMonitor';
 import * as z from "zod";
 
 // Enhanced validation schemas with stronger security
@@ -102,7 +102,7 @@ const validatePassword = (password: string): void => {
   }
 };
 
-// Enhanced login handler with advanced security monitoring
+// Enhanced login handler with persistent rate limiting
 export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
   console.log('Login attempt for:', values.email);
   
@@ -156,9 +156,6 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
         default:
           await logFailedAdminLogin(sanitizedEmail, `Firebase error: ${errorCode}`);
       }
-      
-      // Advanced security analysis for failed login
-      await advancedSecurityMonitor.analyzeLoginAttempt(sanitizedEmail, false);
       
       throw new Error(errorMessage);
     }
@@ -240,9 +237,6 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     
     // Success - clear any failed attempts
     await persistentRateLimiter.clearAttempts(`email:${sanitizedEmail}`);
-    
-    // Advanced security analysis for successful login
-    await advancedSecurityMonitor.analyzeLoginAttempt(sanitizedEmail, true);
     
     // Log successful login with enhanced security details
     await logAdminLogin(user.uid, sanitizedEmail);
