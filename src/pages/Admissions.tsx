@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,7 +51,8 @@ const Admissions = () => {
     const previousIndex = getClassIndex(formData.previousClass);
     if (previousIndex === -1) return classOptions;
     
-    return classOptions.slice(previousIndex + 1);
+    // Return classes from NURSERY to the selected previous class (inclusive)
+    return classOptions.slice(0, previousIndex + 1);
   };
 
   const formatPhoneNumber = (value: string) => {
@@ -94,7 +94,7 @@ const Admissions = () => {
       if (name === 'previousClass' && prev.classApplied) {
         const previousIndex = getClassIndex(value);
         const appliedIndex = getClassIndex(prev.classApplied);
-        if (appliedIndex <= previousIndex) {
+        if (appliedIndex > previousIndex) {
           newData.classApplied = '';
         }
       }
@@ -116,10 +116,10 @@ const Admissions = () => {
     const previousIndex = getClassIndex(formData.previousClass);
     const appliedIndex = getClassIndex(formData.classApplied);
     
-    if (appliedIndex <= previousIndex) {
+    if (appliedIndex > previousIndex) {
       toast({
         title: "Validation Error",
-        description: "Class applied for must be higher than previous class.",
+        description: "Class applied for cannot be higher than previous class.",
         variant: "destructive"
       });
       return false;
@@ -271,7 +271,7 @@ const Admissions = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-gray-500 mt-1">Must be higher than previous class</p>
+                    <p className="text-xs text-gray-500 mt-1">Must be equal to or lower than previous class</p>
                   </div>
                   
                   <div>
