@@ -34,11 +34,10 @@ export const sanitizeInput = (
     .replace(/on\w+\s*=/gi, ''); // Remove event handlers
 
   if (allowHTML) {
-    // Use DOMPurify for HTML content
+    // Use DOMPurify for HTML content with correct configuration
     sanitized = DOMPurify.sanitize(sanitized, {
       ALLOWED_TAGS: allowedTags.length > 0 ? allowedTags : ['b', 'i', 'em', 'strong', 'p', 'br'],
       ALLOWED_ATTR: ['class', 'id'],
-      FORBID_SCRIPT: true,
       FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input'],
       STRIP_COMMENTS: true
     });

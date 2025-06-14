@@ -2,6 +2,13 @@
 import { useEffect } from 'react';
 import { SECURITY_CONFIG } from '@/utils/securityConfig';
 
+// Extend the Window interface to include our custom property
+declare global {
+  interface Window {
+    __SECURITY_NONCE__?: string;
+  }
+}
+
 const SecurityHeadersEnhanced = () => {
   useEffect(() => {
     const addMetaTag = (name: string, content: string) => {
