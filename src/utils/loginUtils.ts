@@ -4,110 +4,59 @@ import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { logAdminLogin, logFailedAdminLogin } from './loginActivityUtils';
 import { ensureDefaultAdmin, DEFAULT_ADMIN } from './adminUtils';
+import { persistentRateLimiter } from './persistentRateLimiter';
 import * as z from "zod";
 
-// Enhanced validation schemas
+// Enhanced validation schemas with stronger security
 export const loginSchema = z.object({
   email: z.string()
     .email({ message: "Invalid email address." })
     .max(100, { message: "Email too long." })
+    .refine(
+      email => {
+        // Enhanced email validation
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        const hasConsecutiveDots = /\.\./.test(email);
+        const startsWithDot = email.startsWith('.');
+        const endsWithDot = email.endsWith('.');
+        
+        return emailRegex.test(email) && !hasConsecutiveDots && !startsWithDot && !endsWithDot;
+      },
+      { message: "Invalid email format." }
+    )
     .transform(email => email.toLowerCase().trim()),
   password: z.string()
     .min(8, { message: "Password must be at least 8 characters." })
-    .max(100, { message: "Password too long." }),
+    .max(100, { message: "Password too long." })
+    .refine(
+      password => {
+        // Check for common weak patterns
+        const hasUpper = /[A-Z]/.test(password);
+        const hasLower = /[a-z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+        
+        return hasUpper && hasLower && hasNumber && hasSpecial;
+      },
+      { message: "Password must contain uppercase, lowercase, number, and special character." }
+    ),
 });
 
 export const forgotPasswordSchema = z.object({
   email: z.string()
     .email({ message: "Invalid email address." })
     .max(100, { message: "Email too long." })
+    .refine(
+      email => {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        return emailRegex.test(email) && email.length >= 5;
+      },
+      { message: "Invalid email format." }
+    )
     .transform(email => email.toLowerCase().trim()),
 });
 
-// Enhanced rate limiting with persistent storage
-class RateLimiter {
-  private attempts = new Map<string, { count: number; firstAttempt: number; lastAttempt: number }>();
-  private readonly MAX_ATTEMPTS = 5;
-  private readonly WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-  private readonly ESCALATION_ATTEMPTS = 10;
-  private readonly ESCALATION_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-
-  isRateLimited(identifier: string): { isLimited: boolean; timeRemaining?: number; reason?: string } {
-    const now = Date.now();
-    const attempts = this.attempts.get(identifier);
-    
-    if (!attempts) {
-      return { isLimited: false };
-    }
-
-    // Check if window has expired
-    if (now - attempts.firstAttempt > this.WINDOW_MS) {
-      this.attempts.delete(identifier);
-      return { isLimited: false };
-    }
-
-    // Check for escalated blocking (too many attempts in longer window)
-    if (attempts.count >= this.ESCALATION_ATTEMPTS && 
-        now - attempts.firstAttempt < this.ESCALATION_WINDOW_MS) {
-      const timeRemaining = this.ESCALATION_WINDOW_MS - (now - attempts.firstAttempt);
-      return { 
-        isLimited: true, 
-        timeRemaining,
-        reason: 'Extended lockout due to excessive attempts' 
-      };
-    }
-
-    // Check for regular rate limiting
-    if (attempts.count >= this.MAX_ATTEMPTS) {
-      const timeRemaining = this.WINDOW_MS - (now - attempts.lastAttempt);
-      return { 
-        isLimited: true, 
-        timeRemaining,
-        reason: 'Too many failed attempts' 
-      };
-    }
-
-    return { isLimited: false };
-  }
-
-  recordFailedAttempt(identifier: string): void {
-    const now = Date.now();
-    const attempts = this.attempts.get(identifier);
-    
-    if (!attempts || now - attempts.firstAttempt > this.WINDOW_MS) {
-      this.attempts.set(identifier, {
-        count: 1,
-        firstAttempt: now,
-        lastAttempt: now
-      });
-    } else {
-      attempts.count += 1;
-      attempts.lastAttempt = now;
-      this.attempts.set(identifier, attempts);
-    }
-  }
-
-  clearAttempts(identifier: string): void {
-    this.attempts.delete(identifier);
-  }
-
-  getAttemptInfo(identifier: string): { count: number; timeUntilReset?: number } {
-    const attempts = this.attempts.get(identifier);
-    if (!attempts) {
-      return { count: 0 };
-    }
-    
-    const timeUntilReset = this.WINDOW_MS - (Date.now() - attempts.firstAttempt);
-    return { 
-      count: attempts.count, 
-      timeUntilReset: timeUntilReset > 0 ? timeUntilReset : 0 
-    };
-  }
-}
-
-const rateLimiter = new RateLimiter();
-
-// Enhanced input validation
+// Enhanced input validation with stricter security
 const validateAndSanitizeEmail = (email: string): string => {
   if (!email || typeof email !== 'string') {
     throw new Error('Invalid email format');
@@ -115,13 +64,19 @@ const validateAndSanitizeEmail = (email: string): string => {
   
   const sanitized = email.toLowerCase().trim();
   
-  // Enhanced email validation
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitized)) {
+  // Enhanced email validation with security checks
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(sanitized)) {
     throw new Error('Invalid email format');
   }
   
-  if (sanitized.length > 100) {
-    throw new Error('Email too long');
+  // Check for suspicious patterns
+  if (sanitized.includes('..') || sanitized.startsWith('.') || sanitized.endsWith('.')) {
+    throw new Error('Invalid email format');
+  }
+  
+  if (sanitized.length < 5 || sanitized.length > 100) {
+    throw new Error('Email length must be between 5 and 100 characters');
   }
   
   return sanitized;
@@ -135,9 +90,19 @@ const validatePassword = (password: string): void => {
   if (password.length < 8 || password.length > 100) {
     throw new Error('Password must be between 8 and 100 characters');
   }
+  
+  // Enhanced password strength validation
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumber = /\d/.test(password);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+  
+  if (!(hasUpper && hasLower && hasNumber && hasSpecial)) {
+    throw new Error('Password must contain uppercase, lowercase, number, and special character');
+  }
 };
 
-// Enhanced login handler with comprehensive security
+// Enhanced login handler with persistent rate limiting
 export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
   console.log('Login attempt for:', values.email);
   
@@ -146,8 +111,8 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     const sanitizedEmail = validateAndSanitizeEmail(values.email);
     validatePassword(values.password);
     
-    // Multi-factor rate limiting (by email and IP if available)
-    const emailLimitCheck = rateLimiter.isRateLimited(`email:${sanitizedEmail}`);
+    // Enhanced rate limiting with persistent storage
+    const emailLimitCheck = await persistentRateLimiter.isRateLimited(`email:${sanitizedEmail}`);
     
     if (emailLimitCheck.isLimited) {
       const minutes = Math.ceil((emailLimitCheck.timeRemaining || 0) / 60000);
@@ -163,9 +128,9 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
       userCredential = await signInWithEmailAndPassword(auth, sanitizedEmail, values.password);
     } catch (authError: any) {
       // Record failed attempt before throwing
-      rateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
       
-      // Enhanced error handling
+      // Enhanced error handling with security logging
       const errorCode = authError.code;
       let errorMessage = 'Authentication failed';
       
@@ -200,7 +165,7 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     // Verify email is verified for additional security
     if (!user.emailVerified && sanitizedEmail !== DEFAULT_ADMIN.email.toLowerCase()) {
       await auth.signOut();
-      rateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
       await logFailedAdminLogin(sanitizedEmail, 'Email not verified');
       throw new Error('Please verify your email address before logging in.');
     }
@@ -210,7 +175,7 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
       await ensureDefaultAdmin(user.uid);
     }
     
-    // Enhanced admin status verification
+    // Enhanced admin status verification with security checks
     console.log('Checking admin status for user:', user.uid);
     
     let adminDoc = await getDoc(doc(db, 'admins', user.uid));
@@ -227,7 +192,7 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
       if (querySnapshot.empty) {
         console.log('No approved admin record found');
         await auth.signOut();
-        rateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+        await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
         await logFailedAdminLogin(sanitizedEmail, 'Email not registered as admin or access pending approval');
         throw new Error('This email is not registered as an admin or your access is pending approval.');
       }
@@ -237,19 +202,28 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     
     const adminData = adminDoc.data();
     
-    // Enhanced admin data validation
-    if (!adminData || !adminData.status) {
+    // Enhanced admin data validation with security checks
+    if (!adminData || !adminData.status || !adminData.email) {
       console.log('Invalid admin data');
       await auth.signOut();
-      rateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
       await logFailedAdminLogin(sanitizedEmail, 'Invalid admin data');
       throw new Error('Invalid admin record. Please contact support.');
+    }
+    
+    // Verify email matches (prevent account takeover)
+    if (adminData.email.toLowerCase() !== sanitizedEmail) {
+      console.log('Email mismatch in admin record');
+      await auth.signOut();
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await logFailedAdminLogin(sanitizedEmail, 'Email mismatch');
+      throw new Error('Security error. Please contact support.');
     }
     
     if (adminData.status !== 'approved') {
       console.log('Admin not approved, status:', adminData.status);
       await auth.signOut();
-      rateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
       await logFailedAdminLogin(sanitizedEmail, `Admin access ${adminData.status}`);
       
       const statusMessage = {
@@ -262,33 +236,33 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     }
     
     // Success - clear any failed attempts
-    rateLimiter.clearAttempts(`email:${sanitizedEmail}`);
+    await persistentRateLimiter.clearAttempts(`email:${sanitizedEmail}`);
     
-    // Log successful login with enhanced details
+    // Log successful login with enhanced security details
     await logAdminLogin(user.uid, sanitizedEmail);
     console.log('Admin login successful');
     
   } catch (error: any) {
     console.error('Login error details:', error);
     
-    // If it's not already handled, record as failed attempt
+    // Enhanced error tracking for security monitoring
     if (!error.message.includes('Rate limited') && 
         !error.message.includes('Invalid email') && 
         !error.message.includes('pending approval')) {
-      rateLimiter.recordFailedAttempt(`email:${values.email}`);
+      await persistentRateLimiter.recordFailedAttempt(`email:${values.email}`);
     }
     
     throw error;
   }
 };
 
-// Enhanced password reset with additional validation
+// Enhanced password reset with additional security
 export const handleForgotPassword = async (values: z.infer<typeof forgotPasswordSchema>) => {
   try {
     const sanitizedEmail = validateAndSanitizeEmail(values.email);
     
     // Check rate limiting for password reset requests
-    const resetLimitCheck = rateLimiter.isRateLimited(`reset:${sanitizedEmail}`);
+    const resetLimitCheck = await persistentRateLimiter.isRateLimited(`reset:${sanitizedEmail}`);
     if (resetLimitCheck.isLimited) {
       // Don't reveal rate limiting for password reset to prevent enumeration
       console.log('Password reset rate limited for:', sanitizedEmail);
@@ -297,7 +271,7 @@ export const handleForgotPassword = async (values: z.infer<typeof forgotPassword
     
     await sendPasswordResetEmail(auth, sanitizedEmail);
     
-    // Record password reset attempt (but don't increment failure counter)
+    // Record password reset attempt for monitoring
     console.log('Password reset email sent to:', sanitizedEmail);
     
   } catch (error: any) {
@@ -306,11 +280,11 @@ export const handleForgotPassword = async (values: z.infer<typeof forgotPassword
   }
 };
 
-// Export rate limiter info for monitoring
-export const getRateLimitInfo = (email: string) => {
+// Export rate limiter info for monitoring (now async)
+export const getRateLimitInfo = async (email: string) => {
   try {
     const sanitizedEmail = validateAndSanitizeEmail(email);
-    return rateLimiter.getAttemptInfo(`email:${sanitizedEmail}`);
+    return await persistentRateLimiter.getAttemptInfo(`email:${sanitizedEmail}`);
   } catch {
     return { count: 0 };
   }

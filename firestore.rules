@@ -15,7 +15,7 @@ service cloud.firestore {
     
     // Enhanced admin collection rules with proper validation
     match /admins/{adminId} {
-      // Allow creation only with proper validation
+      // Allow creation only with proper validation and authenticated users
       allow create: if isValidAdminData(request.resource.data) &&
                        request.auth != null &&
                        request.auth.token.email_verified == true;
@@ -32,10 +32,12 @@ service cloud.firestore {
       allow delete: if request.auth != null && isApprovedAdmin();
     }
     
-    // Admin login activities collection with enhanced security
+    // FIXED: Admin login activities collection with enhanced security
     match /admin_login_activities/{activityId} {
-      // Allow creation only with proper validation
-      allow create: if isValidLoginActivity(request.resource.data);
+      // SECURITY FIX: Require authentication for creating login activities
+      allow create: if request.auth != null &&
+                       isValidLoginActivity(request.resource.data) &&
+                       request.resource.data.email == request.auth.token.email;
       
       // Allow reading only for approved admins
       allow read: if request.auth != null && isApprovedAdmin();
@@ -44,15 +46,21 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     
+    // NEW: Rate limiting collection for persistent rate limiting
+    match /rate_limits/{identifier} {
+      // Only allow system to write rate limit data
+      allow read, write: if request.auth != null && isApprovedAdmin();
+    }
+    
     // Helper functions for validation
     function isValidAdminData(data) {
       return data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt']) &&
              data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 50 &&
              data.lastName is string && data.lastName.size() > 0 && data.lastName.size() <= 50 &&
-             data.email is string && data.email.matches('.*@.*\\..*') && data.email.size() <= 100 &&
-             data.phone is string && data.phone.matches('\\+91[0-9]{10}') &&
+             data.email is string && isValidEmail(data.email) && data.email.size() <= 100 &&
+             data.phone is string && isValidPhone(data.phone) &&
              data.status in ['pending', 'approved', 'rejected', 'revoked'] &&
-             data.requestedAt is string;
+             data.requestedAt is string && isValidISODate(data.requestedAt);
     }
     
     function isValidAdminUpdate(newData, oldData) {
@@ -63,9 +71,32 @@ service cloud.firestore {
     
     function isValidLoginActivity(data) {
       return data.keys().hasAll(['email', 'loginTime', 'status']) &&
-             data.email is string && data.email.matches('.*@.*\\..*') &&
-             data.loginTime is string &&
-             data.status in ['success', 'failed'];
+             data.email is string && isValidEmail(data.email) &&
+             data.loginTime is string && isValidISODate(data.loginTime) &&
+             data.status in ['success', 'failed'] &&
+             // Additional security: limit data size
+             data.keys().size() <= 10;
+    }
+    
+    // ENHANCED: More robust email validation
+    function isValidEmail(email) {
+      return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$') &&
+             email.size() >= 5 &&
+             email.size() <= 100 &&
+             !email.matches('.*\\.\\..*') && // No consecutive dots
+             !email.matches('^[.].*') && // No leading dot
+             !email.matches('.*[.]$'); // No trailing dot
+    }
+    
+    // ENHANCED: More robust phone validation
+    function isValidPhone(phone) {
+      return phone.matches('^\\+91[6-9][0-9]{9}$') ||
+             phone.matches('^[6-9][0-9]{9}$'); // Support both formats
+    }
+    
+    // NEW: ISO date validation
+    function isValidISODate(dateString) {
+      return dateString.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.*Z$');
     }
     
     function isApprovedAdmin() {
