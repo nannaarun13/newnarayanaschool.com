@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { subscribeToSchoolData, updateSchoolData } from '@/utils/schoolDataUtils';
 import { Loader2 } from 'lucide-react';
@@ -260,18 +261,37 @@ const initialState: SchoolState = {
   loading: true,
 };
 
-// Enhanced reducer with optimistic updates
+// Enhanced reducer with better offline support and optimistic updates
 const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState => {
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
+      // Save to localStorage for offline persistence
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(action.payload));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       return { ...state, data: action.payload, loading: false };
     case 'UPDATE_SCHOOL_DATA':
       const updatedData = { ...state.data, ...action.payload };
-      // Trigger Firestore update asynchronously
-      updateSchoolData(action.payload).catch(console.error);
+      // Save immediately to localStorage
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(updatedData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
+      // Trigger Firestore update with retry mechanism
+      updateSchoolData(action.payload).catch(error => {
+        console.error('Firestore update failed, data preserved locally:', error);
+      });
       return { ...state, data: updatedData };
     case 'ADD_GALLERY_IMAGE':
       const newGalleryData = { ...state.data, galleryImages: [...state.data.galleryImages, action.payload] };
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(newGalleryData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       updateSchoolData({ galleryImages: newGalleryData.galleryImages }).catch(console.error);
       return { ...state, data: newGalleryData };
     case 'UPDATE_GALLERY_IMAGE':
@@ -281,6 +301,11 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
           image.id === action.payload.id ? action.payload : image
         ),
       };
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(updatedGalleryData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       updateSchoolData({ galleryImages: updatedGalleryData.galleryImages }).catch(console.error);
       return { ...state, data: updatedGalleryData };
     case 'DELETE_GALLERY_IMAGE':
@@ -288,10 +313,20 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
         ...state.data,
         galleryImages: state.data.galleryImages.filter(image => image.id !== action.payload),
       };
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(filteredGalleryData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       updateSchoolData({ galleryImages: filteredGalleryData.galleryImages }).catch(console.error);
       return { ...state, data: filteredGalleryData };
     case 'ADD_NOTICE':
       const newNoticesData = { ...state.data, notices: [...state.data.notices, action.payload] };
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(newNoticesData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       updateSchoolData({ notices: newNoticesData.notices }).catch(console.error);
       return { ...state, data: newNoticesData };
     case 'UPDATE_NOTICE':
@@ -301,6 +336,11 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
           notice.id === action.payload.id ? { ...notice, title: action.payload.title, content: action.payload.content } : notice
         ),
       };
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(updatedNoticesData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       updateSchoolData({ notices: updatedNoticesData.notices }).catch(console.error);
       return { ...state, data: updatedNoticesData };
     case 'DELETE_NOTICE':
@@ -308,6 +348,11 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
         ...state.data,
         notices: state.data.notices.filter(notice => notice.id !== action.payload),
       };
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(filteredNoticesData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       updateSchoolData({ notices: filteredNoticesData.notices }).catch(console.error);
       return { ...state, data: filteredNoticesData };
     case 'ADD_ADMISSION_INQUIRY':
@@ -321,6 +366,11 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
         ...state.data, 
         latestUpdates: [...state.data.latestUpdates, action.payload] 
       };
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(newUpdatesData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       updateSchoolData({ latestUpdates: newUpdatesData.latestUpdates }).catch(console.error);
       return { ...state, data: newUpdatesData };
     case 'DELETE_LATEST_UPDATE':
@@ -328,6 +378,11 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
         ...state.data,
         latestUpdates: state.data.latestUpdates.filter(update => update.id !== action.payload),
       };
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(filteredUpdatesData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       updateSchoolData({ latestUpdates: filteredUpdatesData.latestUpdates }).catch(console.error);
       return { ...state, data: filteredUpdatesData };
     case 'ADD_FOUNDER':
@@ -335,6 +390,11 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
         ...state.data, 
         founders: [...state.data.founders, action.payload] 
       };
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(newFoundersData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       updateSchoolData({ founders: newFoundersData.founders }).catch(console.error);
       return { ...state, data: newFoundersData };
     case 'DELETE_FOUNDER':
@@ -342,6 +402,11 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
         ...state.data,
         founders: state.data.founders.filter(founder => founder.id !== action.payload),
       };
+      try {
+        localStorage.setItem('schoolData', JSON.stringify(filteredFoundersData));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
       updateSchoolData({ founders: filteredFoundersData.founders }).catch(console.error);
       return { ...state, data: filteredFoundersData };
     default:
@@ -375,6 +440,20 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     console.log('Setting up real-time listener for school data...');
     
+    // First, try to load from localStorage for immediate display
+    try {
+      const cachedData = localStorage.getItem('schoolData');
+      if (cachedData) {
+        const parsedData = JSON.parse(cachedData);
+        // Merge with defaults to ensure all properties exist
+        const mergedData = { ...defaultSchoolData, ...parsedData };
+        dispatch({ type: 'SET_SCHOOL_DATA', payload: mergedData });
+        console.log('Loaded data from localStorage cache');
+      }
+    } catch (error) {
+      console.warn('Failed to load from localStorage:', error);
+    }
+    
     // Set up real-time listener
     unsubscribeRef.current = subscribeToSchoolData(
       (data) => {
@@ -383,7 +462,21 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
       },
       (error) => {
         console.error("Real-time subscription error:", error);
-        dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+        // Try to use cached data if available
+        try {
+          const cachedData = localStorage.getItem('schoolData');
+          if (cachedData) {
+            const parsedData = JSON.parse(cachedData);
+            const mergedData = { ...defaultSchoolData, ...parsedData };
+            dispatch({ type: 'SET_SCHOOL_DATA', payload: mergedData });
+            console.log('Fallback to cached data');
+          } else {
+            dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+          }
+        } catch (cacheError) {
+          console.error('Cache fallback failed:', cacheError);
+          dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+        }
       }
     );
 

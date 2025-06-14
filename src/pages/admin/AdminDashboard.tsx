@@ -14,6 +14,7 @@ import AdminRequestManager from '@/components/admin/AdminRequestManager';
 import SecurityHeadersEnhanced from '@/components/security/SecurityHeadersEnhanced';
 import SecurityMetricsDashboard from '@/components/security/SecurityMetricsDashboard';
 import SecurityMonitorEnhanced from '@/components/security/SecurityMonitorEnhanced';
+import SyncStatusIndicator from '@/components/SyncStatusIndicator';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("content");
@@ -53,7 +54,10 @@ const AdminDashboard = () => {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-school-blue mb-2">Admin Dashboard</h1>
-            <p className="text-gray-600">Manage your school's content and settings</p>
+            <div className="flex items-center gap-4">
+              <p className="text-gray-600">Manage your school's content and settings</p>
+              <SyncStatusIndicator />
+            </div>
           </div>
           <div className="flex space-x-2">
             <Button 
