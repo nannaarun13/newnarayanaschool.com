@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Shield, Eye, EyeOff, CheckCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,6 +40,7 @@ const AdminRegistration = () => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState('');
   
   const form = useForm<z.infer<typeof registrationSchema>>({
     resolver: zodResolver(registrationSchema),
@@ -50,10 +51,15 @@ const AdminRegistration = () => {
 
   const handleSubmit = async (values: z.infer<typeof registrationSchema>) => {
     setLoading(true);
+    setSubmitProgress('Creating account...');
+    
     try {
+      // Create user account
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
+      setSubmitProgress('Saving registration details...');
 
+      // Prepare admin request data
       const adminRequest = {
         firstName: values.firstName.toUpperCase(),
         lastName: values.lastName.toUpperCase(),
@@ -63,15 +69,17 @@ const AdminRegistration = () => {
         requestedAt: new Date().toISOString(),
       };
 
+      // Save to Firestore
       await setDoc(doc(db, "admins", user.uid), adminRequest);
+      setSubmitProgress('Finalizing...');
 
       // Sign out the user after registration since they need approval
       await auth.signOut();
 
       setSubmitted(true);
       toast({
-        title: "Registration Submitted",
-        description: "Your admin access request has been submitted for approval.",
+        title: "Registration Submitted Successfully",
+        description: "Your admin access request has been submitted and is pending approval.",
       });
 
     } catch (error: any) {
@@ -79,10 +87,20 @@ const AdminRegistration = () => {
       let description = "Failed to submit registration. Please try again.";
       if (error.code === 'auth/email-already-in-use') {
         description = "This email address is already registered.";
+      } else if (error.code === 'auth/weak-password') {
+        description = "Password is too weak. Please choose a stronger password.";
+      } else if (error.code === 'auth/network-request-failed') {
+        description = "Network error. Please check your connection and try again.";
       }
-      toast({ title: "Registration Failed", description, variant: "destructive" });
+      toast({ 
+        title: "Registration Failed", 
+        description, 
+        variant: "destructive" 
+      });
+    } finally {
+      setLoading(false);
+      setSubmitProgress('');
     }
-    setLoading(false);
   };
   
   if (submitted) {
@@ -125,14 +143,14 @@ const AdminRegistration = () => {
                    <FormField control={form.control} name="firstName" render={({ field }) => (
                       <FormItem>
                         <FormLabel>First Name *</FormLabel>
-                        <FormControl><Input placeholder="First name" {...field} /></FormControl>
+                        <FormControl><Input placeholder="First name" {...field} disabled={loading} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                    <FormField control={form.control} name="lastName" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Last Name *</FormLabel>
-                        <FormControl><Input placeholder="Last name" {...field} /></FormControl>
+                        <FormControl><Input placeholder="Last name" {...field} disabled={loading} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -140,7 +158,7 @@ const AdminRegistration = () => {
                 <FormField control={form.control} name="email" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email Address *</FormLabel>
-                    <FormControl><Input type="email" placeholder="your.email@domain.com" {...field} /></FormControl>
+                    <FormControl><Input type="email" placeholder="your.email@domain.com" {...field} disabled={loading} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -158,6 +176,7 @@ const AdminRegistration = () => {
                           maxLength={10}
                           className="rounded-l-none"
                           {...field} 
+                          disabled={loading}
                         />
                       </div>
                     </FormControl>
@@ -169,8 +188,20 @@ const AdminRegistration = () => {
                     <FormLabel>Password *</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Input type={showPassword ? "text" : "password"} placeholder="Enter password" {...field} />
-                        <Button type="button" variant="ghost" size="icon" className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8" onClick={() => setShowPassword(!showPassword)}>
+                        <Input 
+                          type={showPassword ? "text" : "password"} 
+                          placeholder="Enter password" 
+                          {...field} 
+                          disabled={loading}
+                        />
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8" 
+                          onClick={() => setShowPassword(!showPassword)}
+                          disabled={loading}
+                        >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
@@ -181,19 +212,39 @@ const AdminRegistration = () => {
                 <FormField control={form.control} name="confirmPassword" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Confirm Password *</FormLabel>
-                    <FormControl><Input type="password" placeholder="Confirm password" {...field} /></FormControl>
+                    <FormControl><Input type="password" placeholder="Confirm password" {...field} disabled={loading} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
+                
+                {loading && submitProgress && (
+                  <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>{submitProgress}</span>
+                  </div>
+                )}
+                
                 <Button type="submit" disabled={loading} className="w-full bg-school-blue hover:bg-school-blue/90">
-                  {loading ? 'Submitting...' : 'Submit Registration'}
+                  {loading ? (
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Submitting...</span>
+                    </div>
+                  ) : (
+                    'Submit Registration'
+                  )}
                 </Button>
               </form>
             </Form>
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Already have access?{' '}
-                <Button variant="link" className="text-school-blue p-0" onClick={() => navigate('/login')}>
+                <Button 
+                  variant="link" 
+                  className="text-school-blue p-0" 
+                  onClick={() => navigate('/login')}
+                  disabled={loading}
+                >
                   Sign In
                 </Button>
               </p>
