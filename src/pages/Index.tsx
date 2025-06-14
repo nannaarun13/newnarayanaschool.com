@@ -2,9 +2,11 @@
 import { useSchool } from '@/contexts/SchoolContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
   const { state } = useSchool();
+  const navigate = useNavigate();
   const { welcomeMessage, schoolLogo, galleryImages } = state.data;
   // Safely access properties that might be undefined with defaults
   const welcomeImage = state.data.welcomeImage || "https://via.placeholder.com/1200x600";
@@ -95,10 +97,14 @@ const Index = () => {
             Discover excellence in education with our dedicated faculty and modern facilities
           </p>
           <div className="space-x-4">
-            <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200 shadow-lg">
+            <button 
+              onClick={() => navigate('/admissions')}
+              className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200 shadow-lg">
               Apply Now
             </button>
-            <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors duration-200">
+            <button 
+              onClick={() => navigate('/about')}
+              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors duration-200">
               Learn More
             </button>
           </div>
