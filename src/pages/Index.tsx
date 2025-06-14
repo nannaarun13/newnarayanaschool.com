@@ -1,3 +1,4 @@
+
 import { useSchool } from '@/contexts/SchoolContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,14 +26,14 @@ const Index = () => {
         </div>
         
         <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
-          <div className="bg-white rounded-full p-4 mb-6 mx-auto w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 flex items-center justify-center shadow-xl">
+          <div className="bg-white rounded-full p-4 mb-6 mx-auto w-32 h-32 flex items-center justify-center shadow-xl">
             <img 
               src={schoolLogo} 
               alt="School Logo" 
-              className="w-full h-full object-contain p-1"
+              className="w-20 h-20 object-contain"
             />
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 px-4">
+          <h2 className="text-4xl md:text-6xl font-bold mb-4">
             {welcomeMessage}
           </h2>
         </div>
