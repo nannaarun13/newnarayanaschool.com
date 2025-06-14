@@ -1,12 +1,13 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus, Check, X, Loader2, UserX, UserCheck } from 'lucide-react';
+import { UserPlus, Check, X, Loader2, UserX, UserCheck, Trash2 } from 'lucide-react';
 import { getAdminRequests, AdminUser } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { 
   Table,
   TableBody,
@@ -42,6 +43,29 @@ const AdminRequestManager = () => {
   useEffect(() => {
     loadRequests();
   }, []);
+
+  const handleDeleteRequest = async (request: AdminUser) => {
+    setActionLoading(true);
+    try {
+      // Delete the admin record from Firestore
+      await deleteDoc(doc(db, 'admins', request.id));
+
+      toast({
+        title: "Request Deleted",
+        description: `Admin request for ${request.email} has been permanently deleted.`,
+      });
+      
+      await loadRequests(); // Reload to show updated list
+    } catch (error) {
+      console.error('Error deleting request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete admin request.",
+        variant: "destructive"
+      });
+    }
+    setActionLoading(false);
+  };
 
   const handleApproval = async (request: AdminUser, approved: boolean) => {
     setActionLoading(true);
@@ -313,6 +337,16 @@ const AdminRequestManager = () => {
                                 Re-approve
                               </Button>
                             )}
+                            {/* Delete button for all requests */}
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              disabled={actionLoading}
+                              onClick={() => handleDeleteRequest(request)}
+                              className="border-red-600 text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
