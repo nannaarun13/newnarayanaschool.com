@@ -117,35 +117,35 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     
     try {
       userCredential = await signInWithEmailAndPassword(auth, sanitizedEmail, password);
-    } catch (firebaseAuthError: any) {
+    } catch (authError: any) {
       // Record failed attempt before handling error
       await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
       
       // Enhanced error handling with security logging
-      const errorCode = firebaseAuthError.code;
+      const errorCode = authError.code;
       
       switch (errorCode) {
         case 'auth/invalid-credential':
         case 'auth/user-not-found':
         case 'auth/wrong-password':
           await logFailedAdminLogin(sanitizedEmail, 'Invalid credentials');
-          const credentialError = SecureErrorHandler.handleAuthenticationError(firebaseAuthError);
-          throw new Error(credentialError.userMessage);
+          const authError = SecureErrorHandler.handleAuthenticationError(authError);
+          throw new Error(authError.userMessage);
         case 'auth/too-many-requests':
           await logFailedAdminLogin(sanitizedEmail, 'Firebase rate limited');
-          const rateError = SecureErrorHandler.handleRateLimitError(firebaseAuthError);
+          const rateError = SecureErrorHandler.handleRateLimitError(authError);
           throw new Error(rateError.userMessage);
         case 'auth/user-disabled':
           await logFailedAdminLogin(sanitizedEmail, 'Account disabled');
-          const suspiciousError = SecureErrorHandler.handleSuspiciousActivity(firebaseAuthError, 'Disabled account access attempt');
+          const suspiciousError = SecureErrorHandler.handleSuspiciousActivity(authError, 'Disabled account access attempt');
           throw new Error(suspiciousError.userMessage);
         case 'auth/network-request-failed':
           await logFailedAdminLogin(sanitizedEmail, 'Network error');
-          const networkError = SecureErrorHandler.handleNetworkError(firebaseAuthError);
+          const networkError = SecureErrorHandler.handleNetworkError(authError);
           throw new Error(networkError.userMessage);
         default:
           await logFailedAdminLogin(sanitizedEmail, `Firebase error: ${errorCode}`);
-          const unknownError = SecureErrorHandler.handleUnknownError(firebaseAuthError);
+          const unknownError = SecureErrorHandler.handleUnknownError(authError);
           throw new Error(unknownError.userMessage);
       }
     }
