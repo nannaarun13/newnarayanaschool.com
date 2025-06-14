@@ -28,6 +28,9 @@ const SecurityHeadersEnhanced = () => {
       }
     };
 
+    // Generate nonce for inline scripts
+    const nonce = btoa(Math.random().toString()).substring(0, 16);
+    
     // Enhanced security headers
     if (SECURITY_CONFIG.headers.enableHSTS) {
       addHttpEquivTag('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
@@ -41,16 +44,16 @@ const SecurityHeadersEnhanced = () => {
       addHttpEquivTag('Referrer-Policy', 'strict-origin-when-cross-origin');
     }
 
-    // Enhanced Content Security Policy
+    // Enhanced Content Security Policy with stricter rules
     if (SECURITY_CONFIG.headers.enableCSP) {
       const csp = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://*.firebaseapp.com https://www.gstatic.com",
+        `script-src 'self' 'nonce-${nonce}' https://apis.google.com https://*.firebaseapp.com https://www.gstatic.com`,
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: https: blob:",
         "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com",
-        "frame-src 'self' https://*.firebaseapp.com https://www.google.com",
+        "frame-src 'self' https://*.firebaseapp.com",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
@@ -62,33 +65,47 @@ const SecurityHeadersEnhanced = () => {
       addHttpEquivTag('Content-Security-Policy', csp);
     }
 
-    // Additional security meta tags
-    addMetaTag('robots', 'noindex, nofollow, noarchive, nosnippet');
-    addMetaTag('format-detection', 'telephone=no');
-    addMetaTag('theme-color', '#1e40af'); // School blue for security consistency
-    
-    // Permissions Policy (formerly Feature Policy)
+    // Enhanced Permissions Policy
     addHttpEquivTag('Permissions-Policy', 
-      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=()'
+      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(self), autoplay=()'
     );
 
-    // Cross-Origin policies
+    // Cross-Origin policies for better isolation
     addHttpEquivTag('Cross-Origin-Embedder-Policy', 'require-corp');
     addHttpEquivTag('Cross-Origin-Opener-Policy', 'same-origin');
     addHttpEquivTag('Cross-Origin-Resource-Policy', 'same-origin');
 
+    // Additional security meta tags
+    addMetaTag('robots', 'noindex, nofollow, noarchive, nosnippet, noimageindex');
+    addMetaTag('format-detection', 'telephone=no, email=no, address=no');
+    addMetaTag('theme-color', '#1e40af');
+    
+    // Prevent browser from storing sensitive data
+    addHttpEquivTag('Cache-Control', 'no-cache, no-store, must-revalidate, private');
+    addHttpEquivTag('Pragma', 'no-cache');
+    addHttpEquivTag('Expires', '0');
+
     // Add integrity to external resources
-    const addIntegrityToExternalScripts = () => {
+    const addIntegrityToExternalResources = () => {
       const scripts = document.querySelectorAll('script[src^="https://"]');
       scripts.forEach(script => {
         if (!script.hasAttribute('integrity')) {
-          // In production, you should add actual integrity hashes
           script.setAttribute('crossorigin', 'anonymous');
+        }
+      });
+      
+      const links = document.querySelectorAll('link[href^="https://"]');
+      links.forEach(link => {
+        if (!link.hasAttribute('integrity')) {
+          link.setAttribute('crossorigin', 'anonymous');
         }
       });
     };
 
-    addIntegrityToExternalScripts();
+    addIntegrityToExternalResources();
+
+    // Store nonce for potential use by other components
+    window.__SECURITY_NONCE__ = nonce;
 
   }, []);
 
