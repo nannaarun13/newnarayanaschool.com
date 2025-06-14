@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { SECURITY_CONFIG } from '@/utils/securityConfig';
 
-const SecurityHeadersEnhanced = () => {
+const SecurityHeadersV2 = () => {
   useEffect(() => {
     const addMetaTag = (name: string, content: string) => {
       const existing = document.querySelector(`meta[name="${name}"]`);
@@ -41,16 +41,16 @@ const SecurityHeadersEnhanced = () => {
       addHttpEquivTag('Referrer-Policy', 'strict-origin-when-cross-origin');
     }
 
-    // Enhanced Content Security Policy
+    // Stricter Content Security Policy (removed unsafe-eval)
     if (SECURITY_CONFIG.headers.enableCSP) {
       const csp = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://*.firebaseapp.com https://www.gstatic.com",
+        "script-src 'self' 'unsafe-inline' https://apis.google.com https://*.firebaseapp.com https://www.gstatic.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: https: blob:",
         "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com",
-        "frame-src 'self' https://*.firebaseapp.com https://www.google.com",
+        "frame-src 'none'",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
@@ -62,37 +62,27 @@ const SecurityHeadersEnhanced = () => {
       addHttpEquivTag('Content-Security-Policy', csp);
     }
 
-    // Additional security meta tags
-    addMetaTag('robots', 'noindex, nofollow, noarchive, nosnippet');
-    addMetaTag('format-detection', 'telephone=no');
-    addMetaTag('theme-color', '#1e40af'); // School blue for security consistency
-    
-    // Permissions Policy (formerly Feature Policy)
+    // Enhanced Permissions Policy (more restrictive)
     addHttpEquivTag('Permissions-Policy', 
-      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=()'
+      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), autoplay=()'
     );
 
-    // Cross-Origin policies
+    // Cross-Origin policies for enhanced security
     addHttpEquivTag('Cross-Origin-Embedder-Policy', 'require-corp');
     addHttpEquivTag('Cross-Origin-Opener-Policy', 'same-origin');
     addHttpEquivTag('Cross-Origin-Resource-Policy', 'same-origin');
 
-    // Add integrity to external resources
-    const addIntegrityToExternalScripts = () => {
-      const scripts = document.querySelectorAll('script[src^="https://"]');
-      scripts.forEach(script => {
-        if (!script.hasAttribute('integrity')) {
-          // In production, you should add actual integrity hashes
-          script.setAttribute('crossorigin', 'anonymous');
-        }
-      });
-    };
-
-    addIntegrityToExternalScripts();
+    // Additional security meta tags
+    addMetaTag('robots', 'noindex, nofollow, noarchive, nosnippet, noimageindex');
+    addMetaTag('format-detection', 'telephone=no, date=no, email=no, address=no');
+    addMetaTag('theme-color', '#1e40af');
+    
+    // Prevent DNS prefetching for privacy
+    addHttpEquivTag('x-dns-prefetch-control', 'off');
 
   }, []);
 
   return null;
 };
 
-export default SecurityHeadersEnhanced;
+export default SecurityHeadersV2;

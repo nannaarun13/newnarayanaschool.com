@@ -1,49 +1,23 @@
 
-import { Outlet, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Navigation from './Navigation';
 import Footer from './Footer';
-import { useSchool } from '@/contexts/SchoolContext';
-import SecurityHeadersEnhanced from './security/SecurityHeadersEnhanced';
+import SyncStatusIndicator from './SyncStatusIndicator';
+import SecurityHeadersV2 from './security/SecurityHeadersV2';
 
 const Layout = () => {
-  const location = useLocation();
-  const { dispatch } = useSchool();
-  
-  // Don't show header, navigation, and footer on admin pages and login
-  const isAdminPage = location.pathname.startsWith('/admin');
-  const isLoginPage = location.pathname === '/login';
-  
-  useEffect(() => {
-    // Increment visitor count on page visits (except admin pages and login)
-    if (!isAdminPage && !isLoginPage) {
-      dispatch({ type: 'INCREMENT_VISITORS' });
-    }
-  }, [location.pathname, dispatch, isAdminPage, isLoginPage]);
-
-  // For login and admin pages, render without layout
-  if (isAdminPage || isLoginPage) {
-    return (
-      <>
-        <SecurityHeadersEnhanced />
-        <div className="min-h-screen">
-          <Outlet />
-        </div>
-      </>
-    );
-  }
-
   return (
     <>
-      <SecurityHeadersEnhanced />
-      <div className="min-h-screen bg-white flex flex-col">
+      <SecurityHeadersV2 />
+      <div className="min-h-screen flex flex-col">
         <Header />
         <Navigation />
         <main className="flex-1">
           <Outlet />
         </main>
         <Footer />
+        <SyncStatusIndicator />
       </div>
     </>
   );
