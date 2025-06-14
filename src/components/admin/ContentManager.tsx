@@ -3,183 +3,221 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Loader2 } from 'lucide-react';
+import { Save, Shield } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 import LatestUpdatesManager from './LatestUpdatesManager';
 import FoundersManager from './FoundersManager';
+import { sanitizeHTML, sanitizeText, validateContentLength } from '@/utils/sanitizationUtils';
 
 const ContentManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
-  
-  const [generalContent, setGeneralContent] = useState({
+  const [formData, setFormData] = useState({
+    welcomeTitle: state.data.welcomeTitle,
     welcomeMessage: state.data.welcomeMessage,
-    welcomeImage: state.data.welcomeImage,
     aboutContent: state.data.aboutContent,
-    missionStatement: state.data.missionStatement,
-    visionStatement: state.data.visionStatement,
-    schoolLogo: state.data.schoolLogo,
-    schoolName: state.data.schoolName || 'New Narayana School',
-    schoolNameImage: state.data.schoolNameImage || ''
+    mission: state.data.mission,
+    vision: state.data.vision,
+    heroImage: state.data.heroImage,
+    principalMessage: state.data.principalMessage,
+    principalImage: state.data.principalImage
   });
-  const [isSaving, setIsSaving] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setGeneralContent(prev => ({ ...prev, [name]: value }));
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    console.log('Saving content changes...');
-    
-    try {
-      // Dispatch update - context now handles Firestore sync automatically
-      dispatch({
-        type: 'UPDATE_SCHOOL_DATA',
-        payload: generalContent
-      });
-      console.log('Content updated successfully');
-
+  const handleSave = () => {
+    // Validate content lengths
+    if (!validateContentLength(formData.welcomeMessage, 2000)) {
       toast({
-        title: "Content Updated",
-        description: "School content has been saved and synchronized across all devices.",
+        title: "Content Too Long",
+        description: "Welcome message must be under 2000 characters.",
+        variant: "destructive"
       });
-    } catch (error) {
-      console.error("Failed to save content:", error);
-      toast({
-        title: "Save Failed",
-        description: "Could not save your changes. Please try again.",
-        variant: "destructive",
-      });
+      return;
     }
-    setIsSaving(false);
+
+    if (!validateContentLength(formData.aboutContent, 5000)) {
+      toast({
+        title: "Content Too Long", 
+        description: "About content must be under 5000 characters.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Sanitize all inputs before saving
+    const sanitizedData = {
+      welcomeTitle: sanitizeText(formData.welcomeTitle),
+      welcomeMessage: sanitizeHTML(formData.welcomeMessage),
+      aboutContent: sanitizeHTML(formData.aboutContent),
+      mission: sanitizeHTML(formData.mission),
+      vision: sanitizeHTML(formData.vision),
+      heroImage: formData.heroImage, // Already validated by ImageUpload
+      principalMessage: sanitizeHTML(formData.principalMessage),
+      principalImage: formData.principalImage // Already validated by ImageUpload
+    };
+
+    dispatch({
+      type: 'UPDATE_SCHOOL_DATA',
+      payload: sanitizedData
+    });
+
+    toast({
+      title: "Content Updated",
+      description: "All content has been securely saved with XSS protection.",
+    });
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">Content Management</h2>
+        <div className="flex items-center text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
+          <Shield className="h-4 w-4 mr-1" />
+          XSS Protection Active
+        </div>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="general">General Content</TabsTrigger>
-          <TabsTrigger value="updates">Latest Updates</TabsTrigger>
-          <TabsTrigger value="founders">Founders</TabsTrigger>
-        </TabsList>
+      {/* Hero Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Hero Section</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="welcomeTitle">Welcome Title *</Label>
+            <Input
+              id="welcomeTitle"
+              value={formData.welcomeTitle}
+              onChange={(e) => handleInputChange('welcomeTitle', e.target.value)}
+              placeholder="Enter welcome title"
+              maxLength={100}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="welcomeMessage">Welcome Message *</Label>
+            <Textarea
+              id="welcomeMessage"
+              value={formData.welcomeMessage}
+              onChange={(e) => handleInputChange('welcomeMessage', e.target.value)}
+              placeholder="Enter welcome message (supports basic HTML: b, i, em, strong, u, br, p)"
+              rows={4}
+              maxLength={2000}
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              {formData.welcomeMessage.length}/2000 characters
+            </p>
+          </div>
 
-        <TabsContent value="general">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>General School Content</CardTitle>
-                <Button onClick={handleSave} disabled={isSaving} className="bg-school-blue hover:bg-school-blue/90">
-                  {isSaving ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* School Logo Upload */}
-              <ImageUpload
-                label="School Logo"
-                currentImage={generalContent.schoolLogo}
-                onImageUpload={(url) => setGeneralContent(prev => ({ ...prev, schoolLogo: url }))}
-              />
+          <ImageUpload
+            label="Hero Image"
+            currentImage={formData.heroImage}
+            onImageUpload={(url) => handleInputChange('heroImage', url)}
+          />
+        </CardContent>
+      </Card>
 
-              {/* School Name Text Field */}
-              <div>
-                <Label htmlFor="schoolName">School Name</Label>
-                <Input
-                  id="schoolName"
-                  name="schoolName"
-                  value={generalContent.schoolName}
-                  onChange={handleInputChange}
-                  placeholder="Enter school name"
-                />
-              </div>
+      {/* About Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>About Section</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="aboutContent">About Content *</Label>
+            <Textarea
+              id="aboutContent"
+              value={formData.aboutContent}
+              onChange={(e) => handleInputChange('aboutContent', e.target.value)}
+              placeholder="Enter about content (supports basic HTML)"
+              rows={6}
+              maxLength={5000}
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              {formData.aboutContent.length}/5000 characters
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-              {/* School Name Image Upload */}
-              <ImageUpload
-                label="School Name Image (Optional)"
-                currentImage={generalContent.schoolNameImage}
-                onImageUpload={(url) => setGeneralContent(prev => ({ ...prev, schoolNameImage: url }))}
-              />
+      {/* Mission & Vision */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Mission & Vision</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="mission">Mission Statement *</Label>
+            <Textarea
+              id="mission"
+              value={formData.mission}
+              onChange={(e) => handleInputChange('mission', e.target.value)}
+              placeholder="Enter mission statement"
+              rows={3}
+              maxLength={1000}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="vision">Vision Statement *</Label>
+            <Textarea
+              id="vision"
+              value={formData.vision}
+              onChange={(e) => handleInputChange('vision', e.target.value)}
+              placeholder="Enter vision statement"
+              rows={3}
+              maxLength={1000}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-              <div>
-                <Label htmlFor="welcomeMessage">Welcome Message</Label>
-                <Input
-                  id="welcomeMessage"
-                  name="welcomeMessage"
-                  value={generalContent.welcomeMessage}
-                  onChange={handleInputChange}
-                  placeholder="Enter welcome message"
-                />
-              </div>
+      {/* Principal Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Principal Section</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="principalMessage">Principal Message</Label>
+            <Textarea
+              id="principalMessage"
+              value={formData.principalMessage}
+              onChange={(e) => handleInputChange('principalMessage', e.target.value)}
+              placeholder="Enter principal's message"
+              rows={4}
+              maxLength={2000}
+            />
+          </div>
 
-              <ImageUpload
-                label="Welcome Image"
-                currentImage={generalContent.welcomeImage}
-                onImageUpload={(url) => setGeneralContent(prev => ({ ...prev, welcomeImage: url }))}
-              />
+          <ImageUpload
+            label="Principal Image"
+            currentImage={formData.principalImage}
+            onImageUpload={(url) => handleInputChange('principalImage', url)}
+          />
+        </CardContent>
+      </Card>
 
-              <div>
-                <Label htmlFor="aboutContent">About Content</Label>
-                <Textarea
-                  id="aboutContent"
-                  name="aboutContent"
-                  value={generalContent.aboutContent}
-                  onChange={handleInputChange}
-                  rows={4}
-                  placeholder="Enter about content"
-                />
-              </div>
+      <div className="flex justify-end">
+        <Button onClick={handleSave} className="bg-school-blue hover:bg-school-blue/90">
+          <Save className="h-4 w-4 mr-2" />
+          Save All Changes
+        </Button>
+      </div>
 
-              <div>
-                <Label htmlFor="missionStatement">Mission Statement</Label>
-                <Textarea
-                  id="missionStatement"
-                  name="missionStatement"
-                  value={generalContent.missionStatement}
-                  onChange={handleInputChange}
-                  rows={3}
-                  placeholder="Enter mission statement"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="visionStatement">Vision Statement</Label>
-                <Textarea
-                  id="visionStatement"
-                  name="visionStatement"
-                  value={generalContent.visionStatement}
-                  onChange={handleInputChange}
-                  rows={3}
-                  placeholder="Enter vision statement"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="updates">
-          <LatestUpdatesManager />
-        </TabsContent>
-
-        <TabsContent value="founders">
-          <FoundersManager />
-        </TabsContent>
-      </Tabs>
+      {/* Additional Managers */}
+      <LatestUpdatesManager />
+      <FoundersManager />
     </div>
   );
 };
