@@ -4,17 +4,64 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Simplified admin collection rules
-    match /admins/{document=**} {
-      allow create: if true; // Allow everyone to register for admin
-      allow read, update, delete: if request.auth != null; // Only signed-in users can read/modify
+    // Enhanced admin collection rules with proper validation
+    match /admins/{adminId} {
+      // Allow creation only with proper validation
+      allow create: if isValidAdminData(request.resource.data) &&
+                       request.auth != null &&
+                       request.auth.token.email_verified == true;
+      
+      // Allow reading for authenticated users only
+      allow read: if request.auth != null;
+      
+      // Allow updates only by approved admins with proper validation
+      allow update: if request.auth != null &&
+                       isApprovedAdmin() &&
+                       isValidAdminUpdate(request.resource.data, resource.data);
+      
+      // Allow deletion only by approved admins
+      allow delete: if request.auth != null && isApprovedAdmin();
     }
     
-    // Admin login activities collection
-    match /admin_login_activities/{document=**} {
-      allow create: if true; // Allow login activity logging
-      allow read: if request.auth != null; // Only signed-in users can read
-      allow update, delete: if false; // Prevent modifications for audit trail integrity
+    // Admin login activities collection with enhanced security
+    match /admin_login_activities/{activityId} {
+      // Allow creation only with proper validation
+      allow create: if isValidLoginActivity(request.resource.data);
+      
+      // Allow reading only for approved admins
+      allow read: if request.auth != null && isApprovedAdmin();
+      
+      // Prevent modifications for audit trail integrity
+      allow update, delete: if false;
+    }
+    
+    // Helper functions for validation
+    function isValidAdminData(data) {
+      return data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt']) &&
+             data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 50 &&
+             data.lastName is string && data.lastName.size() > 0 && data.lastName.size() <= 50 &&
+             data.email is string && data.email.matches('.*@.*\\..*') && data.email.size() <= 100 &&
+             data.phone is string && data.phone.matches('\\+91[0-9]{10}') &&
+             data.status in ['pending', 'approved', 'rejected', 'revoked'] &&
+             data.requestedAt is string;
+    }
+    
+    function isValidAdminUpdate(newData, oldData) {
+      // Only allow status updates and approval fields
+      return newData.diff(oldData).affectedKeys().hasOnly(['status', 'approvedAt', 'approvedBy', 'rejectedAt', 'rejectedBy', 'revokedAt', 'revokedBy']) &&
+             (newData.status == oldData.status || newData.status in ['pending', 'approved', 'rejected', 'revoked']);
+    }
+    
+    function isValidLoginActivity(data) {
+      return data.keys().hasAll(['email', 'loginTime', 'status']) &&
+             data.email is string && data.email.matches('.*@.*\\..*') &&
+             data.loginTime is string &&
+             data.status in ['success', 'failed'];
+    }
+    
+    function isApprovedAdmin() {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'approved';
     }
     
     // Default deny rule for all other collections
