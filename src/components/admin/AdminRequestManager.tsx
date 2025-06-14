@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus, Check, X, Loader2, Trash2, UserX } from 'lucide-react';
+import { UserPlus, Check, X, Loader2, Trash2, UserX, UserCheck } from 'lucide-react';
 import { getAdminRequests, AdminUser, cleanupInvalidAdminRequests } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -80,7 +81,7 @@ const AdminRequestManager = () => {
       if (approved) {
         // Check if the request has a password field
         const requestPassword = (request as any).password;
-        if (!requestPassword) {
+        if (!requestPassword && request.status === 'pending') {
           toast({
             title: "Error",
             description: "Cannot approve request: No password found in the registration data.",
@@ -90,37 +91,50 @@ const AdminRequestManager = () => {
           return;
         }
 
-        console.log('Creating Firebase account for approved user:', request.email);
+        console.log('Creating/Re-approving Firebase account for user:', request.email);
         
         try {
-          // Create Firebase account for the approved user using their actual password
-          const userCredential = await createUserWithEmailAndPassword(
-            auth, 
-            request.email, 
-            requestPassword
-          );
+          // For pending requests, create Firebase account
+          if (request.status === 'pending') {
+            const userCredential = await createUserWithEmailAndPassword(
+              auth, 
+              request.email, 
+              requestPassword
+            );
 
-          console.log('Firebase account created with UID:', userCredential.user.uid);
+            console.log('Firebase account created with UID:', userCredential.user.uid);
 
-          // Update the admin record with Firebase UID and approval info
-          await updateDoc(doc(db, 'admins', request.id), {
-            uid: userCredential.user.uid,
-            status: 'approved',
-            approvedAt: new Date().toISOString(),
-            approvedBy: currentAdminEmail || 'System',
-            password: null, // Remove the password for security
-          });
+            // Update the admin record with Firebase UID and approval info
+            await updateDoc(doc(db, 'admins', request.id), {
+              uid: userCredential.user.uid,
+              status: 'approved',
+              approvedAt: new Date().toISOString(),
+              approvedBy: currentAdminEmail || 'System',
+              password: null, // Remove the password for security
+            });
 
-          // Sign out the newly created user so the current admin can continue
-          await signOut(auth);
+            // Sign out the newly created user so the current admin can continue
+            await signOut(auth);
 
-          // Re-authenticate the current admin if they were signed out
-          // Note: The current admin will need to sign back in after this operation
+            toast({
+              title: "Request Approved",
+              description: "Admin access has been granted. The user can now login with their original password.",
+            });
+          } else if (request.status === 'revoked') {
+            // For revoked requests, just update the status back to approved
+            await updateDoc(doc(db, 'admins', request.id), {
+              status: 'approved',
+              reapprovedAt: new Date().toISOString(),
+              reapprovedBy: currentAdminEmail || 'System',
+              revokedAt: null,
+              revokedBy: null,
+            });
 
-          toast({
-            title: "Request Approved",
-            description: "Admin access has been granted. The user can now login with their original password.",
-          });
+            toast({
+              title: "Access Re-approved",
+              description: "Admin access has been restored successfully.",
+            });
+          }
 
         } catch (createError: any) {
           console.error('Error creating Firebase account:', createError);
@@ -130,14 +144,18 @@ const AdminRequestManager = () => {
             console.log('Email already exists in Firebase Auth, updating status only');
             await updateDoc(doc(db, 'admins', request.id), {
               status: 'approved',
-              approvedAt: new Date().toISOString(),
-              approvedBy: currentAdminEmail || 'System',
+              approvedAt: request.status === 'pending' ? new Date().toISOString() : request.approvedAt,
+              reapprovedAt: request.status === 'revoked' ? new Date().toISOString() : undefined,
+              approvedBy: request.status === 'pending' ? (currentAdminEmail || 'System') : request.approvedBy,
+              reapprovedBy: request.status === 'revoked' ? (currentAdminEmail || 'System') : undefined,
               password: null, // Remove the password for security
+              revokedAt: null,
+              revokedBy: null,
             });
             
             toast({
-              title: "Request Approved",
-              description: "Admin access granted (user account already existed).",
+              title: request.status === 'pending' ? "Request Approved" : "Access Re-approved",
+              description: request.status === 'pending' ? "Admin access granted (user account already existed)." : "Admin access has been restored successfully.",
             });
           } else {
             throw createError;
@@ -342,9 +360,10 @@ const AdminRequestManager = () => {
                           {request.approvedAt && new Date(request.approvedAt).toLocaleDateString()}
                           {request.rejectedAt && new Date(request.rejectedAt).toLocaleDateString()}
                           {request.revokedAt && new Date(request.revokedAt).toLocaleDateString()}
+                          {(request as any).reapprovedAt && new Date((request as any).reapprovedAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          {request.approvedBy || request.rejectedBy || request.revokedBy || '-'}
+                          {request.approvedBy || request.rejectedBy || request.revokedBy || (request as any).reapprovedBy || '-'}
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
@@ -379,6 +398,18 @@ const AdminRequestManager = () => {
                               >
                                 <UserX className="h-4 w-4 mr-1" />
                                 Remove Access
+                              </Button>
+                            )}
+                            {request.status === 'revoked' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                disabled={actionLoading}
+                                onClick={() => handleApproval(request, true)}
+                                className="border-green-500 text-green-500 hover:bg-green-50"
+                              >
+                                <UserCheck className="h-4 w-4 mr-1" />
+                                Re-approve
                               </Button>
                             )}
                           </div>
