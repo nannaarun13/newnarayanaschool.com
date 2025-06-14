@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,15 +11,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { getAdminByEmail } from '@/utils/authUtils';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword, sendPasswordResetEmail, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 type LoginMode = 'login' | 'forgot-password';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(1, { message: "Password is required." }),
+  password: z.string().min(8, { message: "Password must be at least 8 characters." }),
 });
 
 const forgotPasswordSchema = z.object({
@@ -45,23 +46,71 @@ const Login = () => {
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     setLoading(true);
     try {
-      const admin = await getAdminByEmail(values.email);
-
-      if (!admin) {
-        toast({ title: "Login Failed", description: "This email is not registered.", variant: "destructive" });
-        setLoading(false);
-        return;
+      // Special handling for the specific admin email
+      if (values.email === 'arunnanna3@gmail.com' && values.password === 'Arun@2004') {
+        try {
+          // Try to sign in first
+          await signInWithEmailAndPassword(auth, values.email, values.password);
+        } catch (signInError: any) {
+          if (signInError.code === 'auth/user-not-found') {
+            // User doesn't exist, create them
+            try {
+              const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+              // Add admin record to Firestore
+              await setDoc(doc(db, 'admins', userCredential.user.uid), {
+                firstName: 'NANNA',
+                lastName: 'ARUN',
+                email: values.email,
+                phone: '+91 9848047368',
+                status: 'approved',
+                requestedAt: new Date().toISOString(),
+                approvedAt: new Date().toISOString(),
+                approvedBy: 'system'
+              });
+            } catch (createError: any) {
+              if (createError.code === 'auth/email-already-in-use') {
+                // If email exists but sign in failed, try again
+                await signInWithEmailAndPassword(auth, values.email, values.password);
+              } else {
+                throw createError;
+              }
+            }
+          } else if (signInError.code === 'auth/wrong-password') {
+            throw new Error('Invalid password');
+          } else {
+            throw signInError;
+          }
+        }
+      } else {
+        // Regular login flow for other users
+        await signInWithEmailAndPassword(auth, values.email, values.password);
+        
+        // Check if user has admin record
+        const user = auth.currentUser;
+        if (user) {
+          const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+          if (!adminDoc.exists()) {
+            await auth.signOut();
+            toast({ 
+              title: "Access Denied", 
+              description: "This email is not registered as an admin.", 
+              variant: "destructive" 
+            });
+            setLoading(false);
+            return;
+          }
+        }
       }
       
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      
       toast({ title: "Login Successful", description: "Welcome to the admin panel!" });
-      // Navigation is handled by RouteProtection
-      // navigate('/admin');
-
+      
     } catch (error: any) {
       console.error('Login error:', error);
-      toast({ title: "Login Failed", description: "Invalid email or password.", variant: "destructive" });
+      let errorMessage = "Invalid email or password.";
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
     }
     setLoading(false);
   };
@@ -194,7 +243,7 @@ const Login = () => {
                 </div>
                 <div className="text-center">
                    <Button variant="link" className="text-gray-600" onClick={() => navigate('/')}>
-                     <Home /> Return to Site
+                     <Home className="mr-2 h-4 w-4" /> Return to Site
                    </Button>
                 </div>
               </div>
