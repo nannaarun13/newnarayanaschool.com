@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
-import { subscribeToSchoolData, updateSchoolData } from '@/utils/schoolDataUtils';
+import { subscribeToSchoolData, updateSchoolData, getSchoolData } from '@/utils/schoolDataUtils';
 import { Loader2 } from 'lucide-react';
 import { Unsubscribe } from 'firebase/firestore';
 
@@ -377,36 +376,45 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
   const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
-    console.log('Setting up real-time listener for school data...');
+    console.log('SchoolContext: Initializing...');
     
-    // Set up real-time listener that works for ALL pages
+    // First, try to load cached data immediately
+    const loadInitialData = async () => {
+      try {
+        const cachedData = localStorage.getItem('schoolData');
+        if (cachedData) {
+          const parsedData = { ...defaultSchoolData, ...JSON.parse(cachedData) };
+          console.log('SchoolContext: Loading cached data immediately');
+          dispatch({ type: 'SET_SCHOOL_DATA', payload: parsedData });
+        }
+        
+        // Then fetch fresh data from Firestore
+        const freshData = await getSchoolData();
+        console.log('SchoolContext: Fresh data loaded:', freshData);
+        dispatch({ type: 'SET_SCHOOL_DATA', payload: freshData });
+      } catch (error) {
+        console.error('SchoolContext: Error loading initial data:', error);
+        dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+      }
+    };
+
+    loadInitialData();
+    
+    // Set up real-time listener for ongoing updates
     unsubscribeRef.current = subscribeToSchoolData(
       (data) => {
-        console.log('Real-time data update received:', data);
+        console.log('SchoolContext: Real-time update received:', data);
         dispatch({ type: 'SET_SCHOOL_DATA', payload: data });
       },
       (error) => {
-        console.error("Real-time subscription error:", error);
-        // Still set loading to false and use cached data
-        const cachedData = localStorage.getItem('schoolData');
-        if (cachedData) {
-          try {
-            const parsedData = JSON.parse(cachedData);
-            dispatch({ type: 'SET_SCHOOL_DATA', payload: { ...defaultSchoolData, ...parsedData } });
-          } catch (parseError) {
-            console.error('Failed to parse cached data:', parseError);
-            dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
-          }
-        } else {
-          dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
-        }
+        console.error("SchoolContext: Real-time subscription error:", error);
+        // Context will keep using the last successfully loaded data
       }
     );
 
-    // Cleanup function
     return () => {
       if (unsubscribeRef.current) {
-        console.log('Cleaning up real-time listener...');
+        console.log('SchoolContext: Cleaning up...');
         unsubscribeRef.current();
       }
     };
@@ -415,11 +423,11 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
   // Handle online/offline events to retry sync
   useEffect(() => {
     const handleOnline = () => {
-      console.log('Connection restored, data will sync automatically...');
+      console.log('SchoolContext: Connection restored, data will sync automatically...');
     };
 
     const handleOffline = () => {
-      console.log('Connection lost, changes will be queued for sync...');
+      console.log('SchoolContext: Connection lost, changes will be queued for sync...');
     };
 
     window.addEventListener('online', handleOnline);
