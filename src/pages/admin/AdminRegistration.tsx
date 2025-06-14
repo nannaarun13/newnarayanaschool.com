@@ -15,12 +15,19 @@ import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
+const passwordValidation = new RegExp(
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{12,}$/
+);
+
 const registrationSchema = z.object({
     firstName: z.string().min(1, "First name is required."),
     lastName: z.string().min(1, "Last name is required."),
     email: z.string().email("Please enter a valid email address."),
     phone: z.string().regex(/^\+91[6-9]\d{9}$/, "Phone number must be in format +91XXXXXXXXXX."),
-    password: z.string().min(8, "Password must be at least 8 characters long."),
+    password: z.string().min(12, "Password must be at least 12 characters long.")
+      .regex(passwordValidation, {
+        message: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character."
+      }),
     confirmPassword: z.string(),
   }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match.",
@@ -48,8 +55,6 @@ const AdminRegistration = () => {
       const user = userCredential.user;
 
       const adminRequest = {
-        uid: user.uid,
-        id: user.uid,
         firstName: values.firstName.toUpperCase(),
         lastName: values.lastName.toUpperCase(),
         email: values.email,
