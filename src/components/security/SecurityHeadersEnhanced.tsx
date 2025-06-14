@@ -1,0 +1,98 @@
+
+import { useEffect } from 'react';
+import { SECURITY_CONFIG } from '@/utils/securityConfig';
+
+const SecurityHeadersEnhanced = () => {
+  useEffect(() => {
+    const addMetaTag = (name: string, content: string) => {
+      const existing = document.querySelector(`meta[name="${name}"]`);
+      if (existing) {
+        existing.setAttribute('content', content);
+      } else {
+        const meta = document.createElement('meta');
+        meta.name = name;
+        meta.content = content;
+        document.head.appendChild(meta);
+      }
+    };
+
+    const addHttpEquivTag = (httpEquiv: string, content: string) => {
+      const existing = document.querySelector(`meta[http-equiv="${httpEquiv}"]`);
+      if (existing) {
+        existing.setAttribute('content', content);
+      } else {
+        const meta = document.createElement('meta');
+        meta.setAttribute('http-equiv', httpEquiv);
+        meta.content = content;
+        document.head.appendChild(meta);
+      }
+    };
+
+    // Enhanced security headers
+    if (SECURITY_CONFIG.headers.enableHSTS) {
+      addHttpEquivTag('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    }
+
+    addHttpEquivTag('X-Content-Type-Options', 'nosniff');
+    addHttpEquivTag('X-Frame-Options', 'DENY');
+    addHttpEquivTag('X-XSS-Protection', '1; mode=block');
+    
+    if (SECURITY_CONFIG.headers.enableReferrerPolicy) {
+      addHttpEquivTag('Referrer-Policy', 'strict-origin-when-cross-origin');
+    }
+
+    // Enhanced Content Security Policy
+    if (SECURITY_CONFIG.headers.enableCSP) {
+      const csp = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://*.firebaseapp.com https://www.gstatic.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: https: blob:",
+        "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com",
+        "frame-src 'self' https://*.firebaseapp.com https://www.google.com",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+        "block-all-mixed-content",
+        "upgrade-insecure-requests"
+      ].join('; ');
+      
+      addHttpEquivTag('Content-Security-Policy', csp);
+    }
+
+    // Additional security meta tags
+    addMetaTag('robots', 'noindex, nofollow, noarchive, nosnippet');
+    addMetaTag('format-detection', 'telephone=no');
+    addMetaTag('theme-color', '#1e40af'); // School blue for security consistency
+    
+    // Permissions Policy (formerly Feature Policy)
+    addHttpEquivTag('Permissions-Policy', 
+      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=()'
+    );
+
+    // Cross-Origin policies
+    addHttpEquivTag('Cross-Origin-Embedder-Policy', 'require-corp');
+    addHttpEquivTag('Cross-Origin-Opener-Policy', 'same-origin');
+    addHttpEquivTag('Cross-Origin-Resource-Policy', 'same-origin');
+
+    // Add integrity to external resources
+    const addIntegrityToExternalScripts = () => {
+      const scripts = document.querySelectorAll('script[src^="https://"]');
+      scripts.forEach(script => {
+        if (!script.hasAttribute('integrity')) {
+          // In production, you should add actual integrity hashes
+          script.setAttribute('crossorigin', 'anonymous');
+        }
+      });
+    };
+
+    addIntegrityToExternalScripts();
+
+  }, []);
+
+  return null;
+};
+
+export default SecurityHeadersEnhanced;

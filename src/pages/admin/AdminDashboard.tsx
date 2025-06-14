@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -13,8 +11,8 @@ import NoticeManager from '@/components/admin/NoticeManager';
 import AdmissionManager from '@/components/admin/AdmissionManager';
 import ContactManager from '@/components/admin/ContactManager';
 import AdminRequestManager from '@/components/admin/AdminRequestManager';
-import SecurityMonitorEnhanced from '@/components/security/SecurityMonitorEnhanced';
-import SecurityHeaders from '@/components/security/SecurityHeaders';
+import SecurityHeadersEnhanced from '@/components/security/SecurityHeadersEnhanced';
+import SecurityMetricsDashboard from '@/components/security/SecurityMetricsDashboard';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("content");
@@ -49,7 +47,7 @@ const AdminDashboard = () => {
 
   return (
     <>
-      <SecurityHeaders />
+      <SecurityHeadersEnhanced />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -112,6 +110,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="security" className="space-y-6">
+            <SecurityMetricsDashboard />
             <SecurityMonitorEnhanced />
           </TabsContent>
         </Tabs>
@@ -121,4 +120,3 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-
