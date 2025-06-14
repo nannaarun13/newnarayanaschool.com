@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Check, X, Loader2, Trash2, UserX } from 'lucide-react';
 import { getAdminRequests, AdminUser, cleanupInvalidAdminRequests } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { 
   Table,
@@ -92,31 +92,57 @@ const AdminRequestManager = () => {
 
         console.log('Creating Firebase account for approved user:', request.email);
         
-        // Create Firebase account for the approved user using their actual password
-        const userCredential = await createUserWithEmailAndPassword(
-          auth, 
-          request.email, 
-          requestPassword
-        );
+        try {
+          // Create Firebase account for the approved user using their actual password
+          const userCredential = await createUserWithEmailAndPassword(
+            auth, 
+            request.email, 
+            requestPassword
+          );
 
-        console.log('Firebase account created with UID:', userCredential.user.uid);
+          console.log('Firebase account created with UID:', userCredential.user.uid);
 
-        // Update the admin record with Firebase UID and approval info (and remove password!)
-        await updateDoc(doc(db, 'admins', request.id), {
-          uid: userCredential.user.uid,
-          status: 'approved',
-          approvedAt: new Date().toISOString(),
-          approvedBy: currentAdminEmail || 'System',
-          password: null, // Remove the password for security
-        });
+          // Update the admin record with Firebase UID and approval info
+          await updateDoc(doc(db, 'admins', request.id), {
+            uid: userCredential.user.uid,
+            status: 'approved',
+            approvedAt: new Date().toISOString(),
+            approvedBy: currentAdminEmail || 'System',
+            password: null, // Remove the password for security
+          });
 
-        // Sign out the newly created user so admin can continue
-        await auth.signOut();
+          // Sign out the newly created user so the current admin can continue
+          await signOut(auth);
 
-        toast({
-          title: "Request Approved",
-          description: "Admin access has been granted. The user can now login with their original password.",
-        });
+          // Re-authenticate the current admin if they were signed out
+          // Note: The current admin will need to sign back in after this operation
+
+          toast({
+            title: "Request Approved",
+            description: "Admin access has been granted. The user can now login with their original password.",
+          });
+
+        } catch (createError: any) {
+          console.error('Error creating Firebase account:', createError);
+          
+          if (createError.code === 'auth/email-already-in-use') {
+            // Email already exists in Firebase Auth, just update the status
+            console.log('Email already exists in Firebase Auth, updating status only');
+            await updateDoc(doc(db, 'admins', request.id), {
+              status: 'approved',
+              approvedAt: new Date().toISOString(),
+              approvedBy: currentAdminEmail || 'System',
+              password: null, // Remove the password for security
+            });
+            
+            toast({
+              title: "Request Approved",
+              description: "Admin access granted (user account already existed).",
+            });
+          } else {
+            throw createError;
+          }
+        }
       } else {
         // Update the request status to rejected instead of deleting
         await updateDoc(doc(db, 'admins', request.id), {
@@ -137,28 +163,12 @@ const AdminRequestManager = () => {
     } catch (error: any) {
       console.error('Error updating request:', error);
       let errorMessage = "Failed to update request status.";
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = "Email already exists. Request marked as approved anyway.";
-        // Still update the status in Firestore
-        const currentUser = auth.currentUser;
-        await updateDoc(doc(db, 'admins', request.id), {
-          status: 'approved',
-          approvedAt: new Date().toISOString(),
-          approvedBy: currentUser?.email || 'System',
-          password: null,
-        });
-        await loadRequests();
-        toast({
-          title: "Request Approved",
-          description: "Admin access granted (user account already existed).",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive"
-        });
-      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
     }
     setActionLoading(false);
   };

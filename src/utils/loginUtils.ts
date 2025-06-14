@@ -1,7 +1,7 @@
 
 import { signInWithEmailAndPassword, sendPasswordResetEmail, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import * as z from "zod";
 
 export const loginSchema = z.object({
@@ -64,34 +64,58 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
   } else {
     // Regular login flow for other users
     console.log('Attempting regular user login');
-    const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-    const user = userCredential.user;
-    
-    // Check if user has admin record and is approved
-    console.log('Checking admin status for user:', user.uid);
     try {
-      const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+      
+      // Check if user has admin record and is approved
+      console.log('Checking admin status for user:', user.uid);
+      
+      // First try to find admin record by UID
+      let adminDoc = await getDoc(doc(db, 'admins', user.uid));
+      
       if (!adminDoc.exists()) {
-        console.log('No admin record found, signing out');
-        await auth.signOut();
-        throw new Error('This email is not registered as an admin.');
+        // If not found by UID, try to find by email
+        console.log('Admin record not found by UID, searching by email');
+        const q = query(collection(db, 'admins'), where('email', '==', values.email), where('status', '==', 'approved'));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          console.log('No approved admin record found, signing out');
+          await auth.signOut();
+          throw new Error('This email is not registered as an admin or your access is pending approval.');
+        }
+        
+        // Update the admin record with the Firebase UID if found by email
+        const adminDocFromEmail = querySnapshot.docs[0];
+        await setDoc(doc(db, 'admins', user.uid), {
+          ...adminDocFromEmail.data(),
+          uid: user.uid
+        });
+        
+        console.log('Admin record found by email and updated with UID');
+      } else {
+        const adminData = adminDoc.data();
+        if (adminData.status !== 'approved') {
+          console.log('Admin not approved, signing out');
+          await auth.signOut();
+          throw new Error('Your admin access request is pending approval or has been rejected.');
+        }
       }
       
-      const adminData = adminDoc.data();
-      if (adminData.status !== 'approved') {
-        console.log('Admin not approved, signing out');
-        await auth.signOut();
-        throw new Error('Your admin access request is pending approval or has been rejected.');
-      }
-      
-      console.log('Admin record found and approved for user');
+      console.log('Admin login successful');
     } catch (error: any) {
-      console.error('Error checking admin record:', error);
-      await auth.signOut();
+      console.error('Login error details:', error);
+      
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        throw new Error('Invalid email or password.');
+      }
+      
       if (error.message.includes('pending approval') || error.message.includes('not registered')) {
         throw error;
       }
-      throw new Error('Unable to verify admin status. Please try again later.');
+      
+      throw new Error('Login failed. Please try again.');
     }
   }
 };
