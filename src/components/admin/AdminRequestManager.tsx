@@ -18,6 +18,7 @@ const AdminRequestManager = () => {
     setListLoading(true);
     try {
         const requests = await getAdminRequests();
+        console.log('Loaded admin requests:', requests);
         setAdminRequests(requests);
     } catch (error) {
         console.error("Failed to load admin requests:", error);
@@ -101,9 +102,17 @@ const AdminRequestManager = () => {
     setActionLoading(false);
   };
 
-  const pendingRequests = adminRequests.filter(r => r.status === 'pending');
-  const approvedRequests = adminRequests.filter(r => r.status === 'approved');
-  const rejectedRequests = adminRequests.filter(r => r.status === 'rejected');
+  // Fixed filtering logic with proper null checks
+  const pendingRequests = adminRequests.filter(r => r && r.status === 'pending');
+  const approvedRequests = adminRequests.filter(r => r && r.status === 'approved');
+  const rejectedRequests = adminRequests.filter(r => r && r.status === 'rejected');
+
+  console.log('Request counts:', {
+    total: adminRequests.length,
+    pending: pendingRequests.length,
+    approved: approvedRequests.length,
+    rejected: rejectedRequests.length
+  });
 
   return (
     <div className="space-y-6">
