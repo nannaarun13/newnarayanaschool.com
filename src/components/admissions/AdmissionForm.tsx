@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,14 +45,18 @@ const AdmissionForm = () => {
     return classOptions.indexOf(className);
   };
 
-  const getAvailableClassesForApplication = () => {
-    if (!formData.previousClass) return classOptions;
+  const getAvailablePreviousClasses = () => {
+    if (!formData.classApplied) return classOptions;
     
-    const previousIndex = getClassIndex(formData.previousClass);
-    if (previousIndex === -1) return classOptions;
+    const appliedIndex = getClassIndex(formData.classApplied);
+    if (appliedIndex === -1) return classOptions;
     
-    // Return classes from NURSERY to the selected previous class (inclusive)
-    return classOptions.slice(0, previousIndex + 1);
+    // Return classes from NURSERY to one class below the applied class
+    // If applying for NURSERY, show NURSERY only
+    // If applying for LKG, show NURSERY to LKG
+    // If applying for CLASS 1, show NURSERY to UKG, etc.
+    const maxIndex = appliedIndex === 0 ? 0 : appliedIndex - 1;
+    return classOptions.slice(0, maxIndex + 1);
   };
 
   const formatPhoneNumber = (value: string) => {
@@ -91,12 +94,14 @@ const AdmissionForm = () => {
     setFormData(prev => {
       const newData = { ...prev, [name]: value };
       
-      // Reset class applied if previous class changes and it's no longer valid
-      if (name === 'previousClass' && prev.classApplied) {
-        const previousIndex = getClassIndex(value);
-        const appliedIndex = getClassIndex(prev.classApplied);
-        if (appliedIndex > previousIndex) {
-          newData.classApplied = '';
+      // Reset previous class if class applied changes and current previous class is no longer valid
+      if (name === 'classApplied' && prev.previousClass) {
+        const appliedIndex = getClassIndex(value);
+        const previousIndex = getClassIndex(prev.previousClass);
+        
+        // If previous class is equal to or higher than applied class, reset it
+        if (previousIndex >= appliedIndex) {
+          newData.previousClass = '';
         }
       }
       
@@ -108,7 +113,7 @@ const AdmissionForm = () => {
     if (!formData.previousClass || !formData.classApplied) {
       toast({
         title: "Validation Error",
-        description: "Please select both previous class and class applied for.",
+        description: "Please select both class applied for and previous class.",
         variant: "destructive"
       });
       return false;
@@ -117,10 +122,10 @@ const AdmissionForm = () => {
     const previousIndex = getClassIndex(formData.previousClass);
     const appliedIndex = getClassIndex(formData.classApplied);
     
-    if (appliedIndex > previousIndex) {
+    if (previousIndex >= appliedIndex) {
       toast({
         title: "Validation Error",
-        description: "Class applied for cannot be higher than previous class.",
+        description: "Previous class must be lower than class applied for.",
         variant: "destructive"
       });
       return false;
@@ -214,14 +219,14 @@ const AdmissionForm = () => {
                     <SelectValue placeholder="Select class applied for" />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAvailableClassesForApplication().map((className) => (
+                    {classOptions.map((className) => (
                       <SelectItem key={className} value={className}>
                         {className}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500 mt-1">Must be equal to or lower than previous class</p>
+                <p className="text-xs text-gray-500 mt-1">Select the class you want to apply for</p>
               </div>
               
               <div>
@@ -231,13 +236,14 @@ const AdmissionForm = () => {
                     <SelectValue placeholder="Select previous class" />
                   </SelectTrigger>
                   <SelectContent>
-                    {classOptions.map((className) => (
+                    {getAvailablePreviousClasses().map((className) => (
                       <SelectItem key={className} value={className}>
                         {className}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-gray-500 mt-1">Must be lower than class applied for</p>
               </div>
               
               <div>
