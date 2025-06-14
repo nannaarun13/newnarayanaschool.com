@@ -3,11 +3,19 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus, Check, X, Loader2, Trash2 } from 'lucide-react';
+import { UserPlus, Check, X, Loader2, Trash2, UserX } from 'lucide-react';
 import { getAdminRequests, AdminUser, cleanupInvalidAdminRequests } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 const AdminRequestManager = () => {
   const { toast } = useToast();
@@ -72,7 +80,6 @@ const AdminRequestManager = () => {
 
       if (approved) {
         // Create Firebase account for the approved user using their requested password
-        // Only proceed if password exists on the admin request document
         const userCredential = await createUserWithEmailAndPassword(
           auth, 
           request.email, 
@@ -96,12 +103,17 @@ const AdminRequestManager = () => {
           description: "Admin access has been granted. The user can now login.",
         });
       } else {
-        // Just delete the request if rejected
-        await deleteDoc(doc(db, 'admins', request.id));
+        // Update the request status to rejected instead of deleting
+        await updateDoc(doc(db, 'admins', request.id), {
+          status: 'rejected',
+          rejectedAt: new Date().toISOString(),
+          rejectedBy: currentAdminEmail || 'System',
+          password: null, // Remove the password for security
+        });
         
         toast({
           title: "Request Rejected",
-          description: "Admin access request has been rejected and removed.",
+          description: "Admin access request has been rejected.",
           variant: "destructive"
         });
       }
@@ -131,17 +143,49 @@ const AdminRequestManager = () => {
     setActionLoading(false);
   };
 
+  const handleRemoveAccess = async (request: AdminUser) => {
+    setActionLoading(true);
+    try {
+      const currentUser = auth.currentUser;
+      const currentAdminEmail = currentUser?.email;
+
+      // Update the admin record to revoke access
+      await updateDoc(doc(db, 'admins', request.id), {
+        status: 'revoked',
+        revokedAt: new Date().toISOString(),
+        revokedBy: currentAdminEmail || 'System',
+      });
+
+      toast({
+        title: "Access Revoked",
+        description: "Admin access has been successfully revoked.",
+      });
+      
+      await loadRequests(); // Reload to show updated status
+    } catch (error) {
+      console.error('Error revoking access:', error);
+      toast({
+        title: "Error",
+        description: "Failed to revoke admin access.",
+        variant: "destructive"
+      });
+    }
+    setActionLoading(false);
+  };
+
   // Filter requests with proper null/undefined checks
   const validRequests = adminRequests.filter(r => r && r.status);
   const pendingRequests = validRequests.filter(r => r.status === 'pending');
   const approvedRequests = validRequests.filter(r => r.status === 'approved');
   const rejectedRequests = validRequests.filter(r => r.status === 'rejected');
+  const revokedRequests = validRequests.filter(r => r.status === 'revoked');
 
   console.log('Request counts:', {
     total: validRequests.length,
     pending: pendingRequests.length,
     approved: approvedRequests.length,
-    rejected: rejectedRequests.length
+    rejected: rejectedRequests.length,
+    revoked: revokedRequests.length
   });
 
   return (
@@ -164,7 +208,7 @@ const AdminRequestManager = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
@@ -197,9 +241,17 @@ const AdminRequestManager = () => {
             </div>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-600">{revokedRequests.length}</p>
+              <p className="text-sm text-gray-600">Revoked</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Requests List */}
+      {/* Requests Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -215,12 +267,24 @@ const AdminRequestManager = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {validRequests.length > 0 ? validRequests.map((request) => (
-                <div key={request.id} className="border rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="font-semibold text-lg">
+              {validRequests.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Request Date</TableHead>
+                      <TableHead>Action Date</TableHead>
+                      <TableHead>Action By</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {validRequests.map((request) => (
+                      <TableRow key={request.id}>
+                        <TableCell className="font-medium">
                           {request?.firstName && typeof request.firstName === "string" 
                             ? request.firstName.toUpperCase() 
                             : ""}
@@ -228,58 +292,72 @@ const AdminRequestManager = () => {
                           {request?.lastName && typeof request.lastName === "string" 
                             ? request.lastName.toUpperCase() 
                             : ""}
-                        </h3>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          request.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {request.status?.toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p><strong>Email:</strong> {request.email}</p>
-                          <p><strong>Phone:</strong> {request.phone}</p>
-                        </div>
-                        <div>
-                          <p><strong>Requested:</strong> {new Date(request.requestedAt).toLocaleDateString()}</p>
-                          <p><strong>Time:</strong> {new Date(request.requestedAt).toLocaleTimeString()}</p>
-                          {request.approvedAt && (
-                            <p><strong>Approved:</strong> {new Date(request.approvedAt).toLocaleDateString()}</p>
-                          )}
-                          {request.approvedBy && (
-                            <p><strong>Approved By:</strong> {request.approvedBy}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      {request.status === 'pending' && (
-                        <>
-                          <Button 
-                            variant="default" 
-                            size="sm"
-                            disabled={actionLoading}
-                            onClick={() => handleApproval(request, true)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            disabled={actionLoading}
-                            onClick={() => handleApproval(request, false)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )) : (
+                        </TableCell>
+                        <TableCell>{request.email}</TableCell>
+                        <TableCell>{request.phone}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            request.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {request.status?.toUpperCase()}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(request.requestedAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          {request.approvedAt && new Date(request.approvedAt).toLocaleDateString()}
+                          {request.rejectedAt && new Date(request.rejectedAt).toLocaleDateString()}
+                          {request.revokedAt && new Date(request.revokedAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          {request.approvedBy || request.rejectedBy || request.revokedBy || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            {request.status === 'pending' && (
+                              <>
+                                <Button 
+                                  variant="default" 
+                                  size="sm"
+                                  disabled={actionLoading}
+                                  onClick={() => handleApproval(request, true)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  disabled={actionLoading}
+                                  onClick={() => handleApproval(request, false)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            {request.status === 'approved' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                disabled={actionLoading}
+                                onClick={() => handleRemoveAccess(request)}
+                                className="border-red-500 text-red-500 hover:bg-red-50"
+                              >
+                                <UserX className="h-4 w-4 mr-1" />
+                                Remove Access
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
                 <p className="text-center text-gray-500 py-8">No admin access requests yet.</p>
               )}
             </div>

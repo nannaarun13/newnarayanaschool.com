@@ -6,13 +6,17 @@ export interface AdminUser {
   uid: string; // Firebase Auth UID or custom ID
   id: string; // Firestore Document ID
   firstName: string;
-  lastName:string;
+  lastName: string;
   email: string;
   phone: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'revoked';
   requestedAt: string; // ISO string
   approvedAt?: string;
   approvedBy?: string; // email of the approving admin
+  rejectedAt?: string;
+  rejectedBy?: string; // email of the rejecting admin
+  revokedAt?: string;
+  revokedBy?: string; // email of the revoking admin
 }
 
 // Helper function to validate if a date string is valid
@@ -84,18 +88,30 @@ export const getAdminRequests = async (): Promise<AdminUser[]> => {
 // Updates an admin's status in Firestore
 export const updateAdminRequestStatus = async (
   uid: string,
-  status: 'approved' | 'rejected',
+  status: 'approved' | 'rejected' | 'revoked',
   approvedByEmail?: string
 ): Promise<void> => {
   try {
     const adminDocRef = doc(db, 'admins', uid);
     const updateData: any = { status };
+    
     if (status === 'approved') {
       updateData.approvedAt = new Date().toISOString();
       if (approvedByEmail) {
         updateData.approvedBy = approvedByEmail;
       }
+    } else if (status === 'rejected') {
+      updateData.rejectedAt = new Date().toISOString();
+      if (approvedByEmail) {
+        updateData.rejectedBy = approvedByEmail;
+      }
+    } else if (status === 'revoked') {
+      updateData.revokedAt = new Date().toISOString();
+      if (approvedByEmail) {
+        updateData.revokedBy = approvedByEmail;
+      }
     }
+    
     await updateDoc(adminDocRef, updateData);
     console.log('Admin request status updated for UID:', uid, 'to:', status);
   } catch (error) {
