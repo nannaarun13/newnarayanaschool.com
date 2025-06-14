@@ -4,6 +4,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // School configuration collection for real-time updates
+    match /school/{docId} {
+      // Allow public read access for the website
+      allow read: if true;
+      
+      // Allow write access only for approved admins
+      allow write: if request.auth != null && isApprovedAdmin();
+    }
+    
     // Enhanced admin collection rules with proper validation
     match /admins/{adminId} {
       // Allow creation only with proper validation

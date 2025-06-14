@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { getSchoolData, updateSchoolData } from '@/utils/schoolDataUtils';
+import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
+import { subscribeToSchoolData, updateSchoolData } from '@/utils/schoolDataUtils';
 import { Loader2 } from 'lucide-react';
+import { Unsubscribe } from 'firebase/firestore';
 
 // Define the data structure for a navigation item
 export interface NavigationItem {
@@ -259,53 +260,56 @@ const initialState: SchoolState = {
   loading: true,
 };
 
-// Reducer function to handle state updates
+// Enhanced reducer with optimistic updates
 const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState => {
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
       return { ...state, data: action.payload, loading: false };
     case 'UPDATE_SCHOOL_DATA':
-      return { ...state, data: { ...state.data, ...action.payload } };
+      const updatedData = { ...state.data, ...action.payload };
+      // Trigger Firestore update asynchronously
+      updateSchoolData(action.payload).catch(console.error);
+      return { ...state, data: updatedData };
     case 'ADD_GALLERY_IMAGE':
-      return { ...state, data: { ...state.data, galleryImages: [...state.data.galleryImages, action.payload] } };
+      const newGalleryData = { ...state.data, galleryImages: [...state.data.galleryImages, action.payload] };
+      updateSchoolData({ galleryImages: newGalleryData.galleryImages }).catch(console.error);
+      return { ...state, data: newGalleryData };
     case 'UPDATE_GALLERY_IMAGE':
-      return {
-        ...state,
-        data: {
-          ...state.data,
-          galleryImages: state.data.galleryImages.map(image =>
-            image.id === action.payload.id ? action.payload : image
-          ),
-        },
+      const updatedGalleryData = {
+        ...state.data,
+        galleryImages: state.data.galleryImages.map(image =>
+          image.id === action.payload.id ? action.payload : image
+        ),
       };
+      updateSchoolData({ galleryImages: updatedGalleryData.galleryImages }).catch(console.error);
+      return { ...state, data: updatedGalleryData };
     case 'DELETE_GALLERY_IMAGE':
-      return {
-        ...state,
-        data: {
-          ...state.data,
-          galleryImages: state.data.galleryImages.filter(image => image.id !== action.payload),
-        },
+      const filteredGalleryData = {
+        ...state.data,
+        galleryImages: state.data.galleryImages.filter(image => image.id !== action.payload),
       };
+      updateSchoolData({ galleryImages: filteredGalleryData.galleryImages }).catch(console.error);
+      return { ...state, data: filteredGalleryData };
     case 'ADD_NOTICE':
-      return { ...state, data: { ...state.data, notices: [...state.data.notices, action.payload] } };
+      const newNoticesData = { ...state.data, notices: [...state.data.notices, action.payload] };
+      updateSchoolData({ notices: newNoticesData.notices }).catch(console.error);
+      return { ...state, data: newNoticesData };
     case 'UPDATE_NOTICE':
-      return {
-        ...state,
-        data: {
-          ...state.data,
-          notices: state.data.notices.map(notice =>
-            notice.id === action.payload.id ? { ...notice, title: action.payload.title, content: action.payload.content } : notice
-          ),
-        },
+      const updatedNoticesData = {
+        ...state.data,
+        notices: state.data.notices.map(notice =>
+          notice.id === action.payload.id ? { ...notice, title: action.payload.title, content: action.payload.content } : notice
+        ),
       };
+      updateSchoolData({ notices: updatedNoticesData.notices }).catch(console.error);
+      return { ...state, data: updatedNoticesData };
     case 'DELETE_NOTICE':
-      return {
-        ...state,
-        data: {
-          ...state.data,
-          notices: state.data.notices.filter(notice => notice.id !== action.payload),
-        },
+      const filteredNoticesData = {
+        ...state.data,
+        notices: state.data.notices.filter(notice => notice.id !== action.payload),
       };
+      updateSchoolData({ notices: filteredNoticesData.notices }).catch(console.error);
+      return { ...state, data: filteredNoticesData };
     case 'ADD_ADMISSION_INQUIRY':
       return { ...state, admissionInquiries: [...state.admissionInquiries, action.payload] };
     case 'ADD_CONTACT_MESSAGE':
@@ -313,37 +317,33 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
     case 'INCREMENT_VISITORS':
       return { ...state, siteVisitors: state.siteVisitors + 1 };
     case 'ADD_LATEST_UPDATE':
-      return { 
-        ...state, 
-        data: { 
-          ...state.data, 
-          latestUpdates: [...state.data.latestUpdates, action.payload] 
-        } 
+      const newUpdatesData = { 
+        ...state.data, 
+        latestUpdates: [...state.data.latestUpdates, action.payload] 
       };
+      updateSchoolData({ latestUpdates: newUpdatesData.latestUpdates }).catch(console.error);
+      return { ...state, data: newUpdatesData };
     case 'DELETE_LATEST_UPDATE':
-      return {
-        ...state,
-        data: {
-          ...state.data,
-          latestUpdates: state.data.latestUpdates.filter(update => update.id !== action.payload),
-        },
+      const filteredUpdatesData = {
+        ...state.data,
+        latestUpdates: state.data.latestUpdates.filter(update => update.id !== action.payload),
       };
+      updateSchoolData({ latestUpdates: filteredUpdatesData.latestUpdates }).catch(console.error);
+      return { ...state, data: filteredUpdatesData };
     case 'ADD_FOUNDER':
-      return { 
-        ...state, 
-        data: { 
-          ...state.data, 
-          founders: [...state.data.founders, action.payload] 
-        } 
+      const newFoundersData = { 
+        ...state.data, 
+        founders: [...state.data.founders, action.payload] 
       };
+      updateSchoolData({ founders: newFoundersData.founders }).catch(console.error);
+      return { ...state, data: newFoundersData };
     case 'DELETE_FOUNDER':
-      return {
-        ...state,
-        data: {
-          ...state.data,
-          founders: state.data.founders.filter(founder => founder.id !== action.payload),
-        },
+      const filteredFoundersData = {
+        ...state.data,
+        founders: state.data.founders.filter(founder => founder.id !== action.payload),
       };
+      updateSchoolData({ founders: filteredFoundersData.founders }).catch(console.error);
+      return { ...state, data: filteredFoundersData };
     default:
       return state;
   }
@@ -370,19 +370,30 @@ export const useSchool = () => {
 
 export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(schoolReducer, initialState);
+  const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const schoolData = await getSchoolData();
-        dispatch({ type: 'SET_SCHOOL_DATA', payload: schoolData });
-      } catch (error) {
-        console.error("Failed to load school data from Firestore:", error);
-        dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData }); // Fallback to defaults on error
+    console.log('Setting up real-time listener for school data...');
+    
+    // Set up real-time listener
+    unsubscribeRef.current = subscribeToSchoolData(
+      (data) => {
+        console.log('Real-time data update received:', data);
+        dispatch({ type: 'SET_SCHOOL_DATA', payload: data });
+      },
+      (error) => {
+        console.error("Real-time subscription error:", error);
+        dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+      }
+    );
+
+    // Cleanup function
+    return () => {
+      if (unsubscribeRef.current) {
+        console.log('Cleaning up real-time listener...');
+        unsubscribeRef.current();
       }
     };
-
-    loadData();
   }, []);
 
   if (state.loading) {
