@@ -1,5 +1,5 @@
 
-import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export interface AdminUser {
@@ -15,16 +15,65 @@ export interface AdminUser {
   approvedBy?: string; // email of the approving admin
 }
 
-// Fetches all admin requests from Firestore
+// Helper function to validate if a date string is valid
+const isValidDate = (dateString: string): boolean => {
+  if (!dateString || typeof dateString !== 'string') return false;
+  const date = new Date(dateString);
+  return !isNaN(date.getTime()) && dateString !== 'Invalid Date';
+};
+
+// Removes admin records with invalid dates from Firestore
+export const cleanupInvalidAdminRequests = async (): Promise<number> => {
+  try {
+    const q = query(collection(db, 'admins'));
+    const querySnapshot = await getDocs(q);
+    let deletedCount = 0;
+    
+    const deletePromises: Promise<void>[] = [];
+    
+    querySnapshot.forEach((docSnapshot) => {
+      const data = docSnapshot.data();
+      const hasInvalidDate = !isValidDate(data.requestedAt) || 
+                            (data.approvedAt && !isValidDate(data.approvedAt));
+      
+      if (hasInvalidDate) {
+        console.log('Deleting admin record with invalid date:', docSnapshot.id, data);
+        deletePromises.push(deleteDoc(doc(db, 'admins', docSnapshot.id)));
+        deletedCount++;
+      }
+    });
+    
+    await Promise.all(deletePromises);
+    console.log(`Cleaned up ${deletedCount} admin records with invalid dates`);
+    return deletedCount;
+  } catch (error) {
+    console.error('Error cleaning up invalid admin requests:', error);
+    return 0;
+  }
+};
+
+// Fetches all admin requests from Firestore (filtered for valid dates)
 export const getAdminRequests = async (): Promise<AdminUser[]> => {
   try {
     const q = query(collection(db, 'admins'));
     const querySnapshot = await getDocs(q);
     const requests: AdminUser[] = [];
+    
     querySnapshot.forEach((doc) => {
-      // Make sure to include the id from the document
-      requests.push({ uid: doc.data().uid || doc.id, id: doc.id, ...doc.data() } as AdminUser);
+      const data = doc.data();
+      
+      // Only include records with valid requestedAt dates
+      if (isValidDate(data.requestedAt)) {
+        requests.push({ 
+          uid: data.uid || doc.id, 
+          id: doc.id, 
+          ...data 
+        } as AdminUser);
+      } else {
+        console.warn('Skipping admin record with invalid date:', doc.id, data);
+      }
     });
+    
     return requests;
   } catch (error) {
     console.error('Error getting admin requests:', error);

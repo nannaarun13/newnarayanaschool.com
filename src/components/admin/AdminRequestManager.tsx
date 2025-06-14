@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus, Check, X, Loader2 } from 'lucide-react';
-import { getAdminRequests, AdminUser } from '@/utils/authUtils';
+import { UserPlus, Check, X, Loader2, Trash2 } from 'lucide-react';
+import { getAdminRequests, AdminUser, cleanupInvalidAdminRequests } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -13,6 +13,7 @@ const AdminRequestManager = () => {
   const [adminRequests, setAdminRequests] = useState<AdminUser[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [listLoading, setListLoading] = useState(true);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
 
   const loadRequests = async () => {
     setListLoading(true);
@@ -29,6 +30,33 @@ const AdminRequestManager = () => {
         });
     }
     setListLoading(false);
+  };
+
+  const handleCleanupInvalidDates = async () => {
+    setCleanupLoading(true);
+    try {
+      const deletedCount = await cleanupInvalidAdminRequests();
+      if (deletedCount > 0) {
+        toast({
+          title: "Cleanup Complete",
+          description: `Removed ${deletedCount} admin record(s) with invalid dates.`,
+        });
+        await loadRequests(); // Reload the list
+      } else {
+        toast({
+          title: "No Invalid Records",
+          description: "All admin records have valid dates.",
+        });
+      }
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      toast({
+        title: "Cleanup Failed",
+        description: "Failed to cleanup invalid records.",
+        variant: "destructive"
+      });
+    }
+    setCleanupLoading(false);
   };
 
   useEffect(() => {
@@ -102,13 +130,14 @@ const AdminRequestManager = () => {
     setActionLoading(false);
   };
 
-  // Fixed filtering logic with proper null checks
-  const pendingRequests = adminRequests.filter(r => r && r.status === 'pending');
-  const approvedRequests = adminRequests.filter(r => r && r.status === 'approved');
-  const rejectedRequests = adminRequests.filter(r => r && r.status === 'rejected');
+  // Filter requests with proper null/undefined checks
+  const validRequests = adminRequests.filter(r => r && r.status);
+  const pendingRequests = validRequests.filter(r => r.status === 'pending');
+  const approvedRequests = validRequests.filter(r => r.status === 'approved');
+  const rejectedRequests = validRequests.filter(r => r.status === 'rejected');
 
   console.log('Request counts:', {
-    total: adminRequests.length,
+    total: validRequests.length,
     pending: pendingRequests.length,
     approved: approvedRequests.length,
     rejected: rejectedRequests.length
@@ -118,6 +147,19 @@ const AdminRequestManager = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">Admin Access Requests</h2>
+        <Button
+          onClick={handleCleanupInvalidDates}
+          disabled={cleanupLoading}
+          variant="outline"
+          className="border-red-500 text-red-500 hover:bg-red-50"
+        >
+          {cleanupLoading ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4 mr-2" />
+          )}
+          Cleanup Invalid Dates
+        </Button>
       </div>
 
       {/* Stats */}
@@ -125,7 +167,7 @@ const AdminRequestManager = () => {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-school-blue">{adminRequests.length}</p>
+              <p className="text-2xl font-bold text-school-blue">{validRequests.length}</p>
               <p className="text-sm text-gray-600">Total Requests</p>
             </div>
           </CardContent>
@@ -172,18 +214,18 @@ const AdminRequestManager = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {adminRequests.length > 0 ? adminRequests.map((request) => (
+              {validRequests.length > 0 ? validRequests.map((request) => (
                 <div key={request.id} className="border rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center space-x-3">
                         <h3 className="font-semibold text-lg">
-                          {request && typeof request.firstName === "string" && request.firstName
-                            ? request.firstName.toUpperCase()
+                          {request?.firstName && typeof request.firstName === "string" 
+                            ? request.firstName.toUpperCase() 
                             : ""}
                           {" "}
-                          {request && typeof request.lastName === "string" && request.lastName
-                            ? request.lastName.toUpperCase()
+                          {request?.lastName && typeof request.lastName === "string" 
+                            ? request.lastName.toUpperCase() 
                             : ""}
                         </h3>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
