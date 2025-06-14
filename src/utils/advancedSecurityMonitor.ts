@@ -259,7 +259,10 @@ class AdvancedSecurityMonitor {
       );
 
       const querySnapshot = await getDocs(q);
-      const events = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const events = querySnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      })) as (SecurityEvent & { id: string })[];
 
       return {
         totalEvents: events.length,
@@ -275,11 +278,11 @@ class AdvancedSecurityMonitor {
     }
   }
 
-  private groupEventsByType(events: any[]): Record<string, number> {
+  private groupEventsByType(events: (SecurityEvent & { id: string })[]): Record<string, number> {
     return events.reduce((acc, event) => {
       acc[event.type] = (acc[event.type] || 0) + 1;
       return acc;
-    }, {});
+    }, {} as Record<string, number>);
   }
 }
 

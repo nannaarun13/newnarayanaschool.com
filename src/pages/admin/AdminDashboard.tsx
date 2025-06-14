@@ -13,6 +13,7 @@ import ContactManager from '@/components/admin/ContactManager';
 import AdminRequestManager from '@/components/admin/AdminRequestManager';
 import SecurityHeadersEnhanced from '@/components/security/SecurityHeadersEnhanced';
 import SecurityMetricsDashboard from '@/components/security/SecurityMetricsDashboard';
+import SecurityMonitorEnhanced from '@/components/security/SecurityMonitorEnhanced';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("content");
