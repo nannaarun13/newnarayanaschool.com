@@ -20,28 +20,49 @@ const RouteProtection = ({ children }: { children: React.ReactNode }) => {
 
       if (user) {
         // User is logged in
-        const isAdmin = await isUserAdmin(user.uid);
-        if (isAdmin) {
-          // User is an approved admin
+        console.log('User logged in:', user.email);
+        
+        // Special handling for the hardcoded admin
+        if (user.email === 'arunnanna3@gmail.com') {
+          console.log('Hardcoded admin user detected, allowing access');
           if (onAuthRoute) {
             navigate('/admin', { replace: true });
           }
         } else {
-          // User is not an approved admin
-          if (onAdminRoute && !onAuthRoute) {
-             toast({
-              title: "Access Denied",
-              description: "Your admin account is pending approval or not authorized.",
-              variant: "destructive",
-            });
-            await auth.signOut();
-            navigate('/login', { replace: true });
-          } else {
-            // Logged-in non-admin on a public route, this is fine.
-            // If they are on an auth route, we can log them out if we want to enforce a clean slate.
-             if (onAuthRoute) {
+          // For other users, try to check admin status
+          try {
+            const isAdmin = await isUserAdmin(user.uid);
+            if (isAdmin) {
+              // User is an approved admin
+              if (onAuthRoute) {
+                navigate('/admin', { replace: true });
+              }
+            } else {
+              // User is not an approved admin
+              if (onAdminRoute && !onAuthRoute) {
+                toast({
+                  title: "Access Denied",
+                  description: "Your admin account is pending approval or not authorized.",
+                  variant: "destructive",
+                });
                 await auth.signOut();
-             }
+                navigate('/login', { replace: true });
+              } else if (onAuthRoute) {
+                await auth.signOut();
+              }
+            }
+          } catch (error) {
+            console.error('Error checking admin status:', error);
+            // If there's an error checking admin status, deny access to admin routes
+            if (onAdminRoute && !onAuthRoute) {
+              toast({
+                title: "Access Denied",
+                description: "Unable to verify admin status. Please try again later.",
+                variant: "destructive",
+              });
+              await auth.signOut();
+              navigate('/login', { replace: true });
+            }
           }
         }
       } else {
