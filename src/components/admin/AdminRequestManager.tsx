@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,8 +37,8 @@ const AdminRequestManager = () => {
   const handleApproval = async (request: AdminUser, approved: boolean) => {
     setActionLoading(true);
     try {
-      const user = auth.currentUser;
-      const currentAdminEmail = user?.email;
+      const currentUser = auth.currentUser;
+      const currentAdminEmail = currentUser?.email;
       
       if (approved) {
         // Create Firebase account for the approved user
@@ -86,7 +85,7 @@ const AdminRequestManager = () => {
         await updateDoc(doc(db, 'admins', request.id), {
           status: 'approved',
           approvedAt: new Date().toISOString(),
-          approvedBy: user?.email || 'System'
+          approvedBy: currentUser?.email || 'System'
         });
         await loadRequests();
       }
