@@ -1,4 +1,3 @@
-
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { SchoolData, defaultSchoolData } from '@/contexts/SchoolContext';
@@ -10,14 +9,11 @@ export const getSchoolData = async (): Promise<SchoolData> => {
   try {
     const docSnap = await getDoc(schoolConfigRef());
     if (docSnap.exists()) {
-      const data = { ...defaultSchoolData, ...docSnap.data() };
-      // Always cache the latest data
-      localStorage.setItem('schoolData', JSON.stringify(data));
-      return data;
+      // Merge fetched data with defaults to ensure all properties are present
+      return { ...defaultSchoolData, ...docSnap.data() };
     } else {
       // If no config exists in Firestore, create it with default data
       await setDoc(schoolConfigRef(), defaultSchoolData);
-      localStorage.setItem('schoolData', JSON.stringify(defaultSchoolData));
       return defaultSchoolData;
     }
   } catch (error) {
@@ -38,7 +34,7 @@ export const getSchoolData = async (): Promise<SchoolData> => {
 // Enhanced update with local caching and retry
 export const updateSchoolData = async (data: Partial<SchoolData>): Promise<void> => {
   try {
-    // Update Firestore first
+    // Update Firestore
     await updateDoc(schoolConfigRef(), data);
     
     // Update local cache on successful write
@@ -55,12 +51,6 @@ export const updateSchoolData = async (data: Partial<SchoolData>): Promise<void>
     const pendingUpdates = JSON.parse(localStorage.getItem('pendingUpdates') || '[]');
     pendingUpdates.push({ data, timestamp: Date.now() });
     localStorage.setItem('pendingUpdates', JSON.stringify(pendingUpdates));
-    
-    // Still update local cache optimistically
-    const currentCache = localStorage.getItem('schoolData');
-    const cachedData = currentCache ? JSON.parse(currentCache) : defaultSchoolData;
-    const updatedCache = { ...cachedData, ...data };
-    localStorage.setItem('schoolData', JSON.stringify(updatedCache));
     
     throw error;
   }
