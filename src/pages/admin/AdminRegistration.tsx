@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Shield, Eye, EyeOff, CheckCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -12,12 +11,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { auth, db } from '@/lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-
-const passwordValidation = new RegExp(
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/
-);
 
 const registrationSchema = z.object({
     firstName: z.string().min(1, "First name is required."),
@@ -25,7 +20,7 @@ const registrationSchema = z.object({
     email: z.string().email("Please enter a valid email address."),
     phone: z.string().regex(/^[6-9]\d{9}$/, "Phone number must be 10 digits starting with 6-9."),
     password: z.string().min(8, "Password must be at least 8 characters long.")
-      .regex(passwordValidation, {
+      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/, {
         message: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character."
       }),
     confirmPassword: z.string(),
@@ -40,7 +35,6 @@ const AdminRegistration = () => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [submitProgress, setSubmitProgress] = useState('');
   
   const form = useForm<z.infer<typeof registrationSchema>>({
     resolver: zodResolver(registrationSchema),
@@ -51,16 +45,13 @@ const AdminRegistration = () => {
 
   const handleSubmit = async (values: z.infer<typeof registrationSchema>) => {
     setLoading(true);
-    setSubmitProgress('Creating account...');
     
     try {
-      // Create user account
+      // Create user account and save data in parallel
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-      setSubmitProgress('Saving registration details...');
-
-      // Prepare admin request data
-      const adminRequest = {
+      
+      // Immediately save to Firestore without waiting
+      const adminData = {
         firstName: values.firstName.toUpperCase(),
         lastName: values.lastName.toUpperCase(),
         email: values.email,
@@ -69,12 +60,11 @@ const AdminRegistration = () => {
         requestedAt: new Date().toISOString(),
       };
 
-      // Save to Firestore
-      await setDoc(doc(db, "admins", user.uid), adminRequest);
-      setSubmitProgress('Finalizing...');
-
-      // Sign out the user after registration since they need approval
-      await auth.signOut();
+      // Save and sign out simultaneously
+      await Promise.all([
+        setDoc(doc(db, "admins", userCredential.user.uid), adminData),
+        signOut(auth)
+      ]);
 
       setSubmitted(true);
       toast({
@@ -89,8 +79,6 @@ const AdminRegistration = () => {
         description = "This email address is already registered.";
       } else if (error.code === 'auth/weak-password') {
         description = "Password is too weak. Please choose a stronger password.";
-      } else if (error.code === 'auth/network-request-failed') {
-        description = "Network error. Please check your connection and try again.";
       }
       toast({ 
         title: "Registration Failed", 
@@ -99,7 +87,6 @@ const AdminRegistration = () => {
       });
     } finally {
       setLoading(false);
-      setSubmitProgress('');
     }
   };
   
@@ -216,13 +203,6 @@ const AdminRegistration = () => {
                     <FormMessage />
                   </FormItem>
                 )} />
-                
-                {loading && submitProgress && (
-                  <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>{submitProgress}</span>
-                  </div>
-                )}
                 
                 <Button type="submit" disabled={loading} className="w-full bg-school-blue hover:bg-school-blue/90">
                   {loading ? (
