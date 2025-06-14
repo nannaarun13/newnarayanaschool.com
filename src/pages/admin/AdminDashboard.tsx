@@ -1,12 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ContentManagement } from '@/components/admin/ContentManagement';
-import { GalleryManagement } from '@/components/admin/GalleryManagement';
-import { NoticeManagement } from '@/components/admin/NoticeManagement';
-import { UpdateManagement } from '@/components/admin/UpdateManagement';
-import { AdmissionManagement } from '@/components/admin/AdmissionManagement';
-import { ContactInfoManagement } from '@/components/admin/ContactInfoManagement';
-import { AdminRequestList } from '@/components/admin/AdminRequestList';
+import ContentManager from '@/components/admin/ContentManager';
+import GalleryManager from '@/components/admin/GalleryManager';
+import NoticeManager from '@/components/admin/NoticeManager';
+import AdmissionManager from '@/components/admin/AdmissionManager';
+import ContactManager from '@/components/admin/ContactManager';
+import AdminRequestManager from '@/components/admin/AdminRequestManager';
 import SecurityMonitorEnhanced from '@/components/security/SecurityMonitorEnhanced';
 import SecurityHeaders from '@/components/security/SecurityHeaders';
 
@@ -27,11 +27,10 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7">
             <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="gallery">Gallery</TabsTrigger>
             <TabsTrigger value="notices">Notices</TabsTrigger>
-            <TabsTrigger value="updates">Updates</TabsTrigger>
             <TabsTrigger value="admissions">Admissions</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
             <TabsTrigger value="requests">Requests</TabsTrigger>
@@ -39,31 +38,27 @@ const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="content" className="space-y-6">
-            <ContentManagement />
+            <ContentManager />
           </TabsContent>
 
           <TabsContent value="gallery" className="space-y-6">
-            <GalleryManagement />
+            <GalleryManager />
           </TabsContent>
 
           <TabsContent value="notices" className="space-y-6">
-            <NoticeManagement />
-          </TabsContent>
-
-          <TabsContent value="updates" className="space-y-6">
-            <UpdateManagement />
+            <NoticeManager />
           </TabsContent>
 
           <TabsContent value="admissions" className="space-y-6">
-            <AdmissionManagement />
+            <AdmissionManager />
           </TabsContent>
 
           <TabsContent value="contact" className="space-y-6">
-            <ContactInfoManagement />
+            <ContactManager />
           </TabsContent>
 
           <TabsContent value="requests" className="space-y-6">
-            <AdminRequestList />
+            <AdminRequestManager />
           </TabsContent>
 
           <TabsContent value="security" className="space-y-6">
