@@ -16,7 +16,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
 const passwordValidation = new RegExp(
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{12,}$/
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/
 );
 
 const registrationSchema = z.object({
@@ -24,7 +24,7 @@ const registrationSchema = z.object({
     lastName: z.string().min(1, "Last name is required."),
     email: z.string().email("Please enter a valid email address."),
     phone: z.string().regex(/^\+91[6-9]\d{9}$/, "Phone number must be in format +91XXXXXXXXXX."),
-    password: z.string().min(12, "Password must be at least 12 characters long.")
+    password: z.string().min(8, "Password must be at least 8 characters long.")
       .regex(passwordValidation, {
         message: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character."
       }),
