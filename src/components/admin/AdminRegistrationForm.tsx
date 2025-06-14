@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +36,7 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
       // Generate a unique ID for the request
       const requestId = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Save admin request to Firestore without Firebase Auth
+      // Save admin request to Firestore, including password for future account creation
       const adminData = {
         uid: requestId, // Use custom ID instead of Firebase auth UID
         firstName: values.firstName.toUpperCase(),

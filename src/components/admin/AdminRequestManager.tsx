@@ -39,26 +39,28 @@ const AdminRequestManager = () => {
     try {
       const currentUser = auth.currentUser;
       const currentAdminEmail = currentUser?.email;
-      
+
       if (approved) {
-        // Create Firebase account for the approved user
+        // Create Firebase account for the approved user using their requested password
+        // Only proceed if password exists on the admin request document
         const userCredential = await createUserWithEmailAndPassword(
           auth, 
           request.email, 
-          'TempPassword123!'
+          (request as any).password || "TempPassword123!"
         );
-        
-        // Update the admin record with Firebase UID and approval info
+
+        // Update the admin record with Firebase UID and approval info (and remove password!)
         await updateDoc(doc(db, 'admins', request.id), {
           uid: userCredential.user.uid,
           status: 'approved',
           approvedAt: new Date().toISOString(),
-          approvedBy: currentAdminEmail || 'System'
+          approvedBy: currentAdminEmail || 'System',
+          password: null, // Remove the password for security
         });
-        
+
         // Sign out the newly created user so admin can continue
         await auth.signOut();
-        
+
         toast({
           title: "Request Approved",
           description: "Admin access has been granted. The user can now login.",
@@ -85,7 +87,8 @@ const AdminRequestManager = () => {
         await updateDoc(doc(db, 'admins', request.id), {
           status: 'approved',
           approvedAt: new Date().toISOString(),
-          approvedBy: currentUser?.email || 'System'
+          approvedBy: currentUser?.email || 'System',
+          password: null,
         });
         await loadRequests();
       }
