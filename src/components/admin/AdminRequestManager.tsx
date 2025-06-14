@@ -45,7 +45,7 @@ const AdminRequestManager = () => {
         const userCredential = await createUserWithEmailAndPassword(
           auth, 
           request.email, 
-          (request as any).password || 'TempPassword123!'
+          'TempPassword123!'
         );
         
         // Update the admin record with Firebase UID and approval info
@@ -53,8 +53,7 @@ const AdminRequestManager = () => {
           uid: userCredential.user.uid,
           status: 'approved',
           approvedAt: new Date().toISOString(),
-          approvedBy: currentAdminEmail || 'System',
-          password: undefined // Remove password from storage
+          approvedBy: currentAdminEmail || 'System'
         });
         
         // Sign out the newly created user so admin can continue
@@ -82,6 +81,7 @@ const AdminRequestManager = () => {
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Email already exists. Request marked as approved anyway.";
         // Still update the status in Firestore
+        const currentUser = auth.currentUser;
         await updateDoc(doc(db, 'admins', request.id), {
           status: 'approved',
           approvedAt: new Date().toISOString(),
