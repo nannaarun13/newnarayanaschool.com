@@ -1,0 +1,84 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Admin collection rules
+    match /admins/{adminId} {
+      // Allow users to create their own admin request (for registration)
+      allow create: if request.auth != null 
+        && request.auth.uid == adminId
+        && request.resource.data.status == 'pending'
+        && request.resource.data.email == request.auth.token.email;
+      
+      // Allow users to read their own admin record
+      allow read: if request.auth != null 
+        && (request.auth.uid == adminId || isApprovedAdmin(request.auth.uid));
+      
+      // Only approved admins can update admin records (for approval/rejection)
+      allow update: if request.auth != null 
+        && isApprovedAdmin(request.auth.uid)
+        && isValidStatusUpdate(resource.data, request.resource.data);
+      
+      // Only approved admins can delete admin records
+      allow delete: if request.auth != null 
+        && isApprovedAdmin(request.auth.uid);
+      
+      // Allow approved admins to list all admin records
+      allow list: if request.auth != null 
+        && isApprovedAdmin(request.auth.uid);
+    }
+    
+    // Admin login activities collection
+    match /admin_login_activities/{activityId} {
+      // Only approved admins can create login activity records
+      allow create: if request.auth != null 
+        && isApprovedAdmin(request.auth.uid)
+        && request.resource.data.adminId == request.auth.uid;
+      
+      // Only approved admins can read login activities
+      allow read: if request.auth != null 
+        && isApprovedAdmin(request.auth.uid);
+      
+      // Only approved admins can list login activities
+      allow list: if request.auth != null 
+        && isApprovedAdmin(request.auth.uid);
+    }
+    
+    // Helper function to check if user is an approved admin
+    function isApprovedAdmin(uid) {
+      return uid == 'hardcoded-admin' || 
+             exists(/databases/$(database)/documents/admins/$(uid)) &&
+             get(/databases/$(database)/documents/admins/$(uid)).data.status == 'approved';
+    }
+    
+    // Helper function to validate status updates
+    function isValidStatusUpdate(oldData, newData) {
+      let allowedStatusChanges = [
+        // Pending to approved/rejected
+        (oldData.status == 'pending' && (newData.status == 'approved' || newData.status == 'rejected')),
+        // Approved to revoked
+        (oldData.status == 'approved' && newData.status == 'revoked'),
+        // Revoked to approved (re-approval)
+        (oldData.status == 'revoked' && newData.status == 'approved'),
+        // Rejected to approved (second chance approval)
+        (oldData.status == 'rejected' && newData.status == 'approved')
+      ];
+      
+      return allowedStatusChanges.hasAny([true]) && 
+             // Ensure required fields are present for status changes
+             (newData.status == 'approved' ? 
+               ('approvedAt' in newData && 'approvedBy' in newData) : true) &&
+             (newData.status == 'rejected' ? 
+               ('rejectedAt' in newData && 'rejectedBy' in newData) : true) &&
+             (newData.status == 'revoked' ? 
+               ('revokedAt' in newData && 'revokedBy' in newData) : true);
+    }
+    
+    // Default deny rule for all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
