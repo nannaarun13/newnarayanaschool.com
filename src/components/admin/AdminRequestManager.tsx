@@ -3,11 +3,11 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus, Check, X, Loader2, Trash2, UserX, UserCheck } from 'lucide-react';
-import { getAdminRequests, AdminUser, cleanupInvalidAdminRequests } from '@/utils/authUtils';
+import { UserPlus, Check, X, Loader2, UserX, UserCheck } from 'lucide-react';
+import { getAdminRequests, AdminUser } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { 
   Table,
   TableBody,
@@ -22,7 +22,6 @@ const AdminRequestManager = () => {
   const [adminRequests, setAdminRequests] = useState<AdminUser[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [listLoading, setListLoading] = useState(true);
-  const [cleanupLoading, setCleanupLoading] = useState(false);
 
   const loadRequests = async () => {
     setListLoading(true);
@@ -41,33 +40,6 @@ const AdminRequestManager = () => {
     setListLoading(false);
   };
 
-  const handleCleanupInvalidDates = async () => {
-    setCleanupLoading(true);
-    try {
-      const deletedCount = await cleanupInvalidAdminRequests();
-      if (deletedCount > 0) {
-        toast({
-          title: "Cleanup Complete",
-          description: `Removed ${deletedCount} admin record(s) with invalid data.`,
-        });
-        await loadRequests(); // Reload the list
-      } else {
-        toast({
-          title: "No Invalid Records",
-          description: "All admin records are valid.",
-        });
-      }
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-      toast({
-        title: "Cleanup Failed",
-        description: "Failed to cleanup invalid records.",
-        variant: "destructive"
-      });
-    }
-    setCleanupLoading(false);
-  };
-
   useEffect(() => {
     loadRequests();
   }, []);
@@ -79,23 +51,14 @@ const AdminRequestManager = () => {
       const currentAdminEmail = currentUser?.email;
 
       if (approved) {
-        // Check if the request has a password field
+        // For both pending and revoked requests, we need to ensure Firebase account exists
         const requestPassword = (request as any).password;
-        if (!requestPassword && request.status === 'pending') {
-          toast({
-            title: "Error",
-            description: "Cannot approve request: No password found in the registration data.",
-            variant: "destructive"
-          });
-          setActionLoading(false);
-          return;
-        }
-
+        
         console.log('Creating/Re-approving Firebase account for user:', request.email);
         
         try {
-          // For pending requests, create Firebase account
-          if (request.status === 'pending') {
+          // Try to create Firebase account first
+          if (request.status === 'pending' && requestPassword) {
             const userCredential = await createUserWithEmailAndPassword(
               auth, 
               request.email, 
@@ -121,19 +84,66 @@ const AdminRequestManager = () => {
               description: "Admin access has been granted. The user can now login with their original password.",
             });
           } else if (request.status === 'revoked') {
-            // For revoked requests, just update the status back to approved
-            await updateDoc(doc(db, 'admins', request.id), {
-              status: 'approved',
-              reapprovedAt: new Date().toISOString(),
-              reapprovedBy: currentAdminEmail || 'System',
-              revokedAt: null,
-              revokedBy: null,
-            });
+            // For revoked requests, try to create account if it doesn't exist
+            // We'll use a default password that the user will need to reset
+            try {
+              if (requestPassword) {
+                // If we have the original password, use it
+                const userCredential = await createUserWithEmailAndPassword(
+                  auth, 
+                  request.email, 
+                  requestPassword
+                );
+                console.log('Firebase account recreated for revoked user with UID:', userCredential.user.uid);
+                
+                await updateDoc(doc(db, 'admins', request.id), {
+                  uid: userCredential.user.uid,
+                  status: 'approved',
+                  reapprovedAt: new Date().toISOString(),
+                  reapprovedBy: currentAdminEmail || 'System',
+                  revokedAt: null,
+                  revokedBy: null,
+                  password: null, // Remove the password for security
+                });
 
-            toast({
-              title: "Access Re-approved",
-              description: "Admin access has been restored successfully.",
-            });
+                // Sign out the newly created user
+                await signOut(auth);
+              } else {
+                // If no password available, just update the status
+                await updateDoc(doc(db, 'admins', request.id), {
+                  status: 'approved',
+                  reapprovedAt: new Date().toISOString(),
+                  reapprovedBy: currentAdminEmail || 'System',
+                  revokedAt: null,
+                  revokedBy: null,
+                });
+              }
+
+              toast({
+                title: "Access Re-approved",
+                description: requestPassword ? 
+                  "Admin access has been restored. User can login with their original password." :
+                  "Admin access has been restored. User may need to reset their password.",
+              });
+            } catch (createError: any) {
+              if (createError.code === 'auth/email-already-in-use') {
+                // Account exists, just update status
+                await updateDoc(doc(db, 'admins', request.id), {
+                  status: 'approved',
+                  reapprovedAt: new Date().toISOString(),
+                  reapprovedBy: currentAdminEmail || 'System',
+                  revokedAt: null,
+                  revokedBy: null,
+                });
+                
+                toast({
+                  title: "Access Re-approved",
+                  description: "Admin access has been restored successfully.",
+                });
+              } else {
+                throw createError;
+              }
+            }
           }
 
         } catch (createError: any) {
@@ -240,19 +250,6 @@ const AdminRequestManager = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">Admin Access Requests</h2>
-        <Button
-          onClick={handleCleanupInvalidDates}
-          disabled={cleanupLoading}
-          variant="outline"
-          className="border-red-500 text-red-500 hover:bg-red-50"
-        >
-          {cleanupLoading ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4 mr-2" />
-          )}
-          Clean Up Data
-        </Button>
       </div>
 
       {/* Stats */}
