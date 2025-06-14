@@ -1,4 +1,3 @@
-
 import DOMPurify from 'dompurify';
 
 export interface SanitizationOptions {
@@ -38,8 +37,7 @@ export const sanitizeInput = (
     sanitized = DOMPurify.sanitize(sanitized, {
       ALLOWED_TAGS: allowedTags.length > 0 ? allowedTags : ['b', 'i', 'em', 'strong', 'p', 'br'],
       ALLOWED_ATTR: ['class', 'id'],
-      FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input'],
-      STRIP_COMMENTS: true
+      FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input']
     });
   } else if (stripTags) {
     // Remove all HTML tags
