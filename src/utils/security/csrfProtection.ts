@@ -1,18 +1,13 @@
 
-import { CSRFToken } from './CSRFToken';
-import { CSRFValidator } from './CSRFValidator';
-import { CSRFMiddleware } from './CSRFMiddleware';
+import { validateCSRFToken } from './inputSanitization';
 
 class CSRFProtection {
   private static instance: CSRFProtection;
-  private tokenManager: CSRFToken;
-  private validator: CSRFValidator;
-  private middleware: CSRFMiddleware;
+  private token: string | null = null;
+  private readonly TOKEN_KEY = '__csrf_token__';
 
   private constructor() {
-    this.tokenManager = new CSRFToken();
-    this.validator = new CSRFValidator();
-    this.middleware = new CSRFMiddleware(this.tokenManager, this.validator);
+    this.initializeToken();
   }
 
   public static getInstance(): CSRFProtection {
@@ -22,97 +17,86 @@ class CSRFProtection {
     return CSRFProtection.instance;
   }
 
+  private generateToken(): string {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  }
+
+  private initializeToken(): void {
+    try {
+      const storedToken = sessionStorage.getItem(this.TOKEN_KEY);
+      if (storedToken && this.isValidToken(storedToken)) {
+        this.token = storedToken;
+      } else {
+        this.refreshToken();
+      }
+    } catch (error) {
+      console.error('CSRF token initialization failed:', error);
+      this.refreshToken();
+    }
+  }
+
+  private isValidToken(token: string): boolean {
+    return typeof token === 'string' && token.length === 64 && /^[a-f0-9]+$/.test(token);
+  }
+
   public getToken(): string {
-    return this.tokenManager.getToken();
+    if (!this.token) {
+      this.refreshToken();
+    }
+    return this.token!;
   }
 
   public refreshToken(): void {
-    this.tokenManager.refreshToken();
+    this.token = this.generateToken();
+    try {
+      sessionStorage.setItem(this.TOKEN_KEY, this.token);
+    } catch (error) {
+      console.error('Failed to store CSRF token:', error);
+    }
   }
 
   public validateToken(providedToken: string): boolean {
-    const expectedToken = this.tokenManager.getCurrentToken();
-    if (!expectedToken) return false;
-    return this.validator.validateToken(providedToken, expectedToken);
-  }
-
-  public validateOrigin(origin?: string): boolean {
-    return this.validator.validateOrigin(origin);
+    if (!this.token) {
+      return false;
+    }
+    return validateCSRFToken(providedToken, this.token);
   }
 
   public getHeaders(): Record<string, string> {
-    const headers = this.validator.getHeaders();
-    headers['X-CSRF-Token'] = this.getToken();
-    return headers;
-  }
-
-  public validateRequest(providedToken?: string, origin?: string): boolean {
-    if (!providedToken) return false;
-    const expectedToken = this.tokenManager.getCurrentToken();
-    if (!expectedToken) return false;
-    return this.validator.validateRequest(providedToken, expectedToken, origin);
+    return {
+      'X-CSRF-Token': this.getToken(),
+      'X-Requested-With': 'XMLHttpRequest'
+    };
   }
 }
 
 export const csrfProtection = CSRFProtection.getInstance();
 
-// Enhanced admin operation validation with origin checking
-export const validateAdminOperation = (providedToken?: string, origin?: string): boolean => {
-  return csrfProtection.validateRequest(providedToken, origin);
+// Helper function for admin operations
+export const validateAdminOperation = (providedToken?: string): boolean => {
+  if (!providedToken) {
+    console.warn('CSRF token missing for admin operation');
+    return false;
+  }
+  
+  const isValid = csrfProtection.validateToken(providedToken);
+  if (!isValid) {
+    console.warn('Invalid CSRF token for admin operation');
+  }
+  
+  return isValid;
 };
 
-// Enhanced middleware with comprehensive protection
+// Middleware for protecting state-changing operations
 export const withCSRFProtection = (operation: Function) => {
   return (...args: any[]) => {
     const token = csrfProtection.getToken();
-    const origin = window.location.origin;
-    
     if (!token) {
       throw new Error('CSRF protection not available');
     }
     
-    if (!csrfProtection.validateOrigin()) {
-      throw new Error('Invalid request origin');
-    }
-    
-    return operation(...args, { 
-      csrfToken: token,
-      origin: origin,
-      timestamp: Date.now()
-    });
+    return operation(...args, { csrfToken: token });
   };
 };
-
-// Form protection helper
-export const protectForm = (formElement: HTMLFormElement): void => {
-  if (!formElement) return;
-  
-  // Add CSRF token as hidden input
-  const existingToken = formElement.querySelector('input[name="csrf_token"]') as HTMLInputElement;
-  if (existingToken) {
-    existingToken.value = csrfProtection.getToken();
-  } else {
-    const tokenInput = document.createElement('input');
-    tokenInput.type = 'hidden';
-    tokenInput.name = 'csrf_token';
-    tokenInput.value = csrfProtection.getToken();
-    formElement.appendChild(tokenInput);
-  }
-  
-  // Add origin validation
-  formElement.addEventListener('submit', (event) => {
-    if (!csrfProtection.validateOrigin()) {
-      event.preventDefault();
-      console.error('Form submission blocked: invalid origin');
-      alert('Security error: Invalid request origin');
-    }
-  });
-};
-
-// Auto-protect all forms on page load
-if (typeof window !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
-    const forms = document.querySelectorAll('form') as NodeListOf<HTMLFormElement>;
-    forms.forEach(protectForm);
-  });
-}

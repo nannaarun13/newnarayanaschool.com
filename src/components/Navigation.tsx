@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSchool } from '@/contexts/SchoolContext';
 import { Button } from '@/components/ui/button';
-import { Menu, LogIn } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -35,18 +35,6 @@ const Navigation = () => {
           {item.name}
         </Link>
       ))}
-      <Link
-        to="/login"
-        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 flex items-center gap-2 ${
-          location.pathname === '/login'
-            ? 'bg-school-blue text-white'
-            : 'text-school-blue hover:bg-school-blue-light'
-        } ${mobile ? 'block w-full text-left' : ''}`}
-        onClick={() => mobile && setIsOpen(false)}
-      >
-        <LogIn className="h-4 w-4" />
-        Admin Login
-      </Link>
     </>
   );
 
