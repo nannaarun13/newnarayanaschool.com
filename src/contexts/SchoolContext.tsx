@@ -1,5 +1,6 @@
-
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { getSchoolData, updateSchoolData } from '@/utils/schoolDataUtils';
+import { Loader2 } from 'lucide-react';
 
 // Define the data structure for a navigation item
 export interface NavigationItem {
@@ -116,6 +117,7 @@ export interface SchoolState {
   admissionInquiries: AdmissionInquiry[];
   contactMessages: ContactMessage[];
   siteVisitors: number;
+  loading: boolean;
 }
 
 // Define the actions that can be dispatched to update the state
@@ -254,13 +256,14 @@ const initialState: SchoolState = {
   admissionInquiries: [],
   contactMessages: [],
   siteVisitors: 0,
+  loading: true,
 };
 
 // Reducer function to handle state updates
 const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState => {
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
-      return { ...state, data: action.payload };
+      return { ...state, data: action.payload, loading: false };
     case 'UPDATE_SCHOOL_DATA':
       return { ...state, data: { ...state.data, ...action.payload } };
     case 'ADD_GALLERY_IMAGE':
@@ -367,6 +370,31 @@ export const useSchool = () => {
 
 export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(schoolReducer, initialState);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const schoolData = await getSchoolData();
+        dispatch({ type: 'SET_SCHOOL_DATA', payload: schoolData });
+      } catch (error) {
+        console.error("Failed to load school data from Firestore:", error);
+        dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData }); // Fallback to defaults on error
+      }
+    };
+
+    loadData();
+  }, []);
+
+  if (state.loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white z-[999]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-school-blue" />
+          <p className="text-lg text-gray-700">Loading School Data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <SchoolContext.Provider value={{ state, dispatch }}>

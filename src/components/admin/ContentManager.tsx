@@ -8,10 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
-import { Save } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 import LatestUpdatesManager from './LatestUpdatesManager';
 import FoundersManager from './FoundersManager';
+import { updateSchoolData } from '@/utils/schoolDataUtils';
 
 const ContentManager = () => {
   const { state, dispatch } = useSchool();
@@ -27,21 +28,38 @@ const ContentManager = () => {
     schoolName: state.data.schoolName || 'New Narayana School',
     schoolNameImage: state.data.schoolNameImage || ''
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setGeneralContent(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    dispatch({
-      type: 'UPDATE_SCHOOL_DATA',
-      payload: generalContent
-    });
-    toast({
-      title: "Content Updated",
-      description: "School content has been updated successfully.",
-    });
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Save to Firestore first
+      await updateSchoolData(generalContent);
+
+      // Then update local state
+      dispatch({
+        type: 'UPDATE_SCHOOL_DATA',
+        payload: generalContent
+      });
+
+      toast({
+        title: "Content Updated",
+        description: "School content has been saved successfully.",
+      });
+    } catch (error) {
+      console.error("Failed to save content:", error);
+      toast({
+        title: "Save Failed",
+        description: "Could not save your changes. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setIsSaving(false);
   };
 
   return (
@@ -62,9 +80,13 @@ const ContentManager = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>General School Content</CardTitle>
-                <Button onClick={handleSave} className="bg-school-blue hover:bg-school-blue/90">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                <Button onClick={handleSave} disabled={isSaving} className="bg-school-blue hover:bg-school-blue/90">
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
             </CardHeader>
