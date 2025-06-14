@@ -1,3 +1,4 @@
+
 import DOMPurify from 'dompurify';
 
 // Configure DOMPurify for strict sanitization
@@ -10,7 +11,8 @@ const purifyConfig = {
   RETURN_DOM_IMPORT: false,
   SANITIZE_DOM: true,
   FORCE_BODY: false,
-  SANITIZE_NAMED_PROPS: true
+  SANITIZE_NAMED_PROPS: true,
+  KEEP_CONTENT: true
 };
 
 export const sanitizeHtml = (dirty: string): string => {
