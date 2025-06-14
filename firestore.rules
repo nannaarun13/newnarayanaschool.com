@@ -10,9 +10,10 @@ service cloud.firestore {
       allow create: if request.auth != null 
         && request.auth.uid == adminId
         && request.resource.data.status == 'pending'
-        && request.resource.data.email == request.auth.token.email;
+        && request.resource.data.email == request.auth.token.email
+        && isValidAdminData(request.resource.data);
       
-      // Allow users to read their own admin record
+      // Allow users to read their own admin record or approved admins can read all
       allow read: if request.auth != null 
         && (request.auth.uid == adminId || isApprovedAdmin(request.auth.uid));
       
@@ -35,7 +36,7 @@ service cloud.firestore {
       // Only approved admins can create login activity records
       allow create: if request.auth != null 
         && isApprovedAdmin(request.auth.uid)
-        && request.resource.data.adminId == request.auth.uid;
+        && isValidLoginActivity(request.resource.data);
       
       // Only approved admins can read login activities
       allow read: if request.auth != null 
@@ -44,13 +45,38 @@ service cloud.firestore {
       // Only approved admins can list login activities
       allow list: if request.auth != null 
         && isApprovedAdmin(request.auth.uid);
+      
+      // Prevent updates and deletes for audit trail integrity
+      allow update, delete: if false;
     }
     
     // Helper function to check if user is an approved admin
     function isApprovedAdmin(uid) {
-      return uid == 'hardcoded-admin' || 
-             exists(/databases/$(database)/documents/admins/$(uid)) &&
+      return exists(/databases/$(database)/documents/admins/$(uid)) &&
              get(/databases/$(database)/documents/admins/$(uid)).data.status == 'approved';
+    }
+    
+    // Helper function to validate admin data
+    function isValidAdminData(data) {
+      return data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt']) &&
+             data.firstName is string && data.firstName.size() > 0 &&
+             data.lastName is string && data.lastName.size() > 0 &&
+             data.email is string && data.email.matches('.*@.*\\..*') &&
+             data.phone is string && data.phone.size() > 0 &&
+             data.status is string &&
+             data.requestedAt is string;
+    }
+    
+    // Helper function to validate login activity data
+    function isValidLoginActivity(data) {
+      return data.keys().hasAll(['email', 'loginTime', 'status']) &&
+             data.email is string && data.email.matches('.*@.*\\..*') &&
+             data.loginTime is string &&
+             data.status is string && data.status in ['success', 'failed'] &&
+             (!('adminId' in data) || data.adminId is string) &&
+             (!('ipAddress' in data) || data.ipAddress is string) &&
+             (!('userAgent' in data) || data.userAgent is string) &&
+             (!('failureReason' in data) || data.failureReason is string);
     }
     
     // Helper function to validate status updates
@@ -73,7 +99,12 @@ service cloud.firestore {
              (newData.status == 'rejected' ? 
                ('rejectedAt' in newData && 'rejectedBy' in newData) : true) &&
              (newData.status == 'revoked' ? 
-               ('revokedAt' in newData && 'revokedBy' in newData) : true);
+               ('revokedAt' in newData && 'revokedBy' in newData) : true) &&
+             // Prevent modification of core user data during status updates
+             newData.firstName == oldData.firstName &&
+             newData.lastName == oldData.lastName &&
+             newData.email == oldData.email &&
+             newData.phone == oldData.phone;
     }
     
     // Default deny rule for all other collections
