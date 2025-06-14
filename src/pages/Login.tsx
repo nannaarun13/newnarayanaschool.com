@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,12 +53,6 @@ const Login = () => {
         return;
       }
       
-      if (admin.status !== 'approved') {
-        toast({ title: "Access Denied", description: "Your admin access request is pending approval or has been rejected.", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-
       await signInWithEmailAndPassword(auth, values.email, values.password);
       
       toast({ title: "Login Successful", description: "Welcome to the admin panel!" });

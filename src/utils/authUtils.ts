@@ -1,4 +1,3 @@
-
 import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -54,15 +53,17 @@ export const updateAdminRequestStatus = async (
   }
 };
 
-// Checks if a user is an approved admin by their UID
+// Checks if a user is an admin by their UID.
+// NOTE: This check has been modified to bypass the approval status.
+// It now returns true if an admin record exists for the UID, regardless of status.
 export const isUserAdmin = async (uid: string): Promise<boolean> => {
   try {
     const adminDocRef = doc(db, 'admins', uid);
     const docSnap = await getDoc(adminDocRef);
 
     if (docSnap.exists()) {
-      const adminData = docSnap.data();
-      return adminData.status === 'approved';
+      // User is considered an admin if a record exists.
+      return true;
     }
     return false;
   } catch (error) {
