@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
 import { Save, Plus, Trash2 } from 'lucide-react';
+import { updateSchoolData } from '@/utils/schoolDataUtils';
 
 const ContactManager = () => {
   const { state, dispatch } = useSchool();
@@ -75,15 +76,41 @@ const ContactManager = () => {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    console.log('Saving contact information...');
+    
+    // Update local state first
     dispatch({
       type: 'UPDATE_SCHOOL_DATA',
       payload: { contactInfo: contactData }
     });
-    toast({
-      title: "Contact Information Updated",
-      description: "Contact details have been updated successfully.",
-    });
+    
+    // Try to save to Firestore
+    try {
+      await updateSchoolData({ contactInfo: contactData });
+      console.log('Contact info saved to Firestore successfully');
+      
+      toast({
+        title: "Contact Information Updated",
+        description: "Contact details have been updated successfully.",
+      });
+    } catch (error: any) {
+      console.error('Failed to save contact info to Firestore:', error);
+      
+      if (error.code === 'permission-denied') {
+        toast({
+          title: "Contact Updated Locally",
+          description: "Contact information updated locally. Database permissions need configuration for persistence.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Partial Save",
+          description: "Contact updated locally but couldn't sync to database.",
+          variant: "default",
+        });
+      }
+    }
   };
 
   return (

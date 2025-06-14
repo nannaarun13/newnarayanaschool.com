@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { updateSchoolData } from '@/utils/schoolDataUtils';
 
 const NoticeManager = () => {
   const { state, dispatch } = useSchool();
@@ -15,7 +17,24 @@ const NoticeManager = () => {
   const [editingNotice, setEditingNotice] = useState<string | null>(null);
   const [editData, setEditData] = useState({ title: '', content: '' });
 
-  const handleAddNotice = () => {
+  const saveToFirestore = async () => {
+    try {
+      console.log('Saving notices to Firestore...');
+      await updateSchoolData({ notices: state.data.notices });
+      console.log('Notices saved to Firestore successfully');
+    } catch (error: any) {
+      console.error('Failed to save notices to Firestore:', error);
+      if (error.code === 'permission-denied') {
+        toast({
+          title: "Notice Updated Locally",
+          description: "Notice updated locally. Database permissions need configuration for persistence.",
+          variant: "default",
+        });
+      }
+    }
+  };
+
+  const handleAddNotice = async () => {
     if (!newNotice.title || !newNotice.content) {
       toast({
         title: "Missing Information",
@@ -38,10 +57,14 @@ const NoticeManager = () => {
     });
 
     setNewNotice({ title: '', content: '' });
+    
     toast({
       title: "Notice Added",
       description: "New notice has been published.",
     });
+
+    // Try to save to Firestore
+    setTimeout(saveToFirestore, 100);
   };
 
   const handleEditNotice = (notice: any) => {
@@ -49,7 +72,7 @@ const NoticeManager = () => {
     setEditData({ title: notice.title, content: notice.content });
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editData.title || !editData.content) {
       toast({
         title: "Missing Information",
@@ -66,10 +89,14 @@ const NoticeManager = () => {
 
     setEditingNotice(null);
     setEditData({ title: '', content: '' });
+    
     toast({
       title: "Notice Updated",
       description: "Notice has been updated successfully.",
     });
+
+    // Try to save to Firestore
+    setTimeout(saveToFirestore, 100);
   };
 
   const handleCancelEdit = () => {
@@ -77,15 +104,19 @@ const NoticeManager = () => {
     setEditData({ title: '', content: '' });
   };
 
-  const handleDeleteNotice = (id: string) => {
+  const handleDeleteNotice = async (id: string) => {
     dispatch({
       type: 'DELETE_NOTICE',
       payload: id
     });
+    
     toast({
       title: "Notice Deleted",
       description: "Notice has been removed.",
     });
+
+    // Try to save to Firestore
+    setTimeout(saveToFirestore, 100);
   };
 
   return (
