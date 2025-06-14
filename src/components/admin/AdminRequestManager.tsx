@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,13 +40,13 @@ const AdminRequestManager = () => {
       if (deletedCount > 0) {
         toast({
           title: "Cleanup Complete",
-          description: `Removed ${deletedCount} admin record(s) with invalid dates.`,
+          description: `Removed ${deletedCount} admin record(s) with invalid data.`,
         });
         await loadRequests(); // Reload the list
       } else {
         toast({
           title: "No Invalid Records",
-          description: "All admin records have valid dates.",
+          description: "All admin records are valid.",
         });
       }
     } catch (error) {
@@ -158,7 +159,7 @@ const AdminRequestManager = () => {
           ) : (
             <Trash2 className="h-4 w-4 mr-2" />
           )}
-          Cleanup Invalid Dates
+          Clean Up Data
         </Button>
       </div>
 
