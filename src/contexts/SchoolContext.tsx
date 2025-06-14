@@ -379,16 +379,27 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     console.log('Setting up real-time listener for school data...');
     
-    // Set up real-time listener with enhanced error handling
+    // Set up real-time listener that works for ALL pages
     unsubscribeRef.current = subscribeToSchoolData(
       (data) => {
-        console.log('Real-time data update received and cached locally');
+        console.log('Real-time data update received:', data);
         dispatch({ type: 'SET_SCHOOL_DATA', payload: data });
       },
       (error) => {
         console.error("Real-time subscription error:", error);
-        // Still set loading to false even if there's an error
-        dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+        // Still set loading to false and use cached data
+        const cachedData = localStorage.getItem('schoolData');
+        if (cachedData) {
+          try {
+            const parsedData = JSON.parse(cachedData);
+            dispatch({ type: 'SET_SCHOOL_DATA', payload: { ...defaultSchoolData, ...parsedData } });
+          } catch (parseError) {
+            console.error('Failed to parse cached data:', parseError);
+            dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+          }
+        } else {
+          dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+        }
       }
     );
 
@@ -404,8 +415,7 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
   // Handle online/offline events to retry sync
   useEffect(() => {
     const handleOnline = () => {
-      console.log('Connection restored, processing pending updates...');
-      // Will be handled by the subscription callback
+      console.log('Connection restored, data will sync automatically...');
     };
 
     const handleOffline = () => {
