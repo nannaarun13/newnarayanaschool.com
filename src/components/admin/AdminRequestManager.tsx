@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { getAdminRequests, AdminUser } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
+import QuickAdminApproval from './QuickAdminApproval';
 import { 
   Table,
   TableBody,
@@ -251,6 +251,9 @@ const AdminRequestManager = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">Admin Access Requests</h2>
       </div>
+
+      {/* Quick Admin Approval */}
+      <QuickAdminApproval onAdminCreated={loadRequests} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
