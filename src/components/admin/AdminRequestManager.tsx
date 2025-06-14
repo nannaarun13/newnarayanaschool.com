@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -79,12 +78,28 @@ const AdminRequestManager = () => {
       const currentAdminEmail = currentUser?.email;
 
       if (approved) {
-        // Create Firebase account for the approved user using their requested password
+        // Check if the request has a password field
+        const requestPassword = (request as any).password;
+        if (!requestPassword) {
+          toast({
+            title: "Error",
+            description: "Cannot approve request: No password found in the registration data.",
+            variant: "destructive"
+          });
+          setActionLoading(false);
+          return;
+        }
+
+        console.log('Creating Firebase account for approved user:', request.email);
+        
+        // Create Firebase account for the approved user using their actual password
         const userCredential = await createUserWithEmailAndPassword(
           auth, 
           request.email, 
-          (request as any).password || "TempPassword123!"
+          requestPassword
         );
+
+        console.log('Firebase account created with UID:', userCredential.user.uid);
 
         // Update the admin record with Firebase UID and approval info (and remove password!)
         await updateDoc(doc(db, 'admins', request.id), {
@@ -100,7 +115,7 @@ const AdminRequestManager = () => {
 
         toast({
           title: "Request Approved",
-          description: "Admin access has been granted. The user can now login.",
+          description: "Admin access has been granted. The user can now login with their original password.",
         });
       } else {
         // Update the request status to rejected instead of deleting
@@ -133,12 +148,17 @@ const AdminRequestManager = () => {
           password: null,
         });
         await loadRequests();
+        toast({
+          title: "Request Approved",
+          description: "Admin access granted (user account already existed).",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
       }
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
     }
     setActionLoading(false);
   };
