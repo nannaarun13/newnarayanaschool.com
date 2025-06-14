@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -13,8 +12,10 @@ import NoticeManager from '@/components/admin/NoticeManager';
 import AdmissionManager from '@/components/admin/AdmissionManager';
 import ContactManager from '@/components/admin/ContactManager';
 import AdminRequestManager from '@/components/admin/AdminRequestManager';
+import SecurityHeadersEnhanced from '@/components/security/SecurityHeadersEnhanced';
+import SecurityMetricsDashboard from '@/components/security/SecurityMetricsDashboard';
 import SecurityMonitorEnhanced from '@/components/security/SecurityMonitorEnhanced';
-import SecurityHeaders from '@/components/security/SecurityHeaders';
+import SyncStatusIndicator from '@/components/SyncStatusIndicator';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("content");
@@ -49,30 +50,33 @@ const AdminDashboard = () => {
 
   return (
     <>
-      <SecurityHeaders />
+      <SecurityHeadersEnhanced />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-school-blue mb-2">Admin Dashboard</h1>
             <p className="text-gray-600">Manage your school's content and settings</p>
           </div>
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              onClick={handleViewSite}
-              className="flex items-center space-x-2"
-            >
-              <Home className="h-4 w-4" />
-              <span>View Site</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              className="flex items-center space-x-2 text-red-600 border-red-200 hover:bg-red-50"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Logout</span>
-            </Button>
+          <div className="flex items-center space-x-4">
+            <SyncStatusIndicator />
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={handleViewSite}
+                className="flex items-center space-x-2"
+              >
+                <Home className="h-4 w-4" />
+                <span>View Site</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleLogout}
+                className="flex items-center space-x-2 text-red-600 border-red-200 hover:bg-red-50"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -112,6 +116,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="security" className="space-y-6">
+            <SecurityMetricsDashboard />
             <SecurityMonitorEnhanced />
           </TabsContent>
         </Tabs>
@@ -121,4 +126,3 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-

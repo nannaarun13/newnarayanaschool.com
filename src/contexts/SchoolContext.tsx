@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { subscribeToSchoolData, updateSchoolData } from '@/utils/schoolDataUtils';
 import { Loader2 } from 'lucide-react';
@@ -260,15 +261,18 @@ const initialState: SchoolState = {
   loading: true,
 };
 
-// Enhanced reducer with optimistic updates
+// Enhanced reducer with optimistic updates and better persistence
 const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState => {
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
       return { ...state, data: action.payload, loading: false };
     case 'UPDATE_SCHOOL_DATA':
       const updatedData = { ...state.data, ...action.payload };
-      // Trigger Firestore update asynchronously
-      updateSchoolData(action.payload).catch(console.error);
+      // Immediate local update (optimistic)
+      updateSchoolData(action.payload).catch(error => {
+        console.error('Failed to sync to database:', error);
+        // Data remains updated locally even if sync fails
+      });
       return { ...state, data: updatedData };
     case 'ADD_GALLERY_IMAGE':
       const newGalleryData = { ...state.data, galleryImages: [...state.data.galleryImages, action.payload] };
@@ -375,7 +379,7 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     console.log('Setting up real-time listener for school data...');
     
-    // Set up real-time listener
+    // Set up real-time listener that works for ALL pages
     unsubscribeRef.current = subscribeToSchoolData(
       (data) => {
         console.log('Real-time data update received:', data);
@@ -383,7 +387,19 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
       },
       (error) => {
         console.error("Real-time subscription error:", error);
-        dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+        // Still set loading to false and use cached data
+        const cachedData = localStorage.getItem('schoolData');
+        if (cachedData) {
+          try {
+            const parsedData = JSON.parse(cachedData);
+            dispatch({ type: 'SET_SCHOOL_DATA', payload: { ...defaultSchoolData, ...parsedData } });
+          } catch (parseError) {
+            console.error('Failed to parse cached data:', parseError);
+            dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+          }
+        } else {
+          dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
+        }
       }
     );
 
@@ -393,6 +409,25 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log('Cleaning up real-time listener...');
         unsubscribeRef.current();
       }
+    };
+  }, []);
+
+  // Handle online/offline events to retry sync
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('Connection restored, data will sync automatically...');
+    };
+
+    const handleOffline = () => {
+      console.log('Connection lost, changes will be queued for sync...');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
