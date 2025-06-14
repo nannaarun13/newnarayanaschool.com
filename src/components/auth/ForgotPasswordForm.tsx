@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { forgotPasswordSchema, handleForgotPassword } from '@/utils/loginUtils';
+import { SecureErrorHandler } from '@/utils/errorHandling';
 import * as z from "zod";
 
 interface ForgotPasswordFormProps {
@@ -28,16 +29,18 @@ const ForgotPasswordForm = ({ onBackToLogin }: ForgotPasswordFormProps) => {
       await handleForgotPassword(values);
       toast({
         title: "Reset Email Sent",
-        description: "Check your email for password reset instructions.",
+        description: "If an account with this email exists, you will receive password reset instructions.",
       });
       onBackToLogin();
     } catch (error: any) {
       console.error('Password reset error:', error);
+      
+      // Always show success message to prevent email enumeration
       toast({
-        title: "Error",
-        description: "Failed to send reset email. Please check the email address.",
-        variant: "destructive"
+        title: "Reset Email Sent",
+        description: "If an account with this email exists, you will receive password reset instructions.",
       });
+      onBackToLogin();
     }
     setLoading(false);
   };
@@ -52,7 +55,12 @@ const ForgotPasswordForm = ({ onBackToLogin }: ForgotPasswordFormProps) => {
             <FormItem>
               <FormLabel>Email Address *</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="Enter your email" {...field} />
+                <Input 
+                  type="email" 
+                  placeholder="Enter your email" 
+                  autoComplete="email"
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
