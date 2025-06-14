@@ -3,6 +3,7 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/aut
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { logAdminLogin, logFailedAdminLogin } from './loginActivityUtils';
+import { ensureDefaultAdmin, DEFAULT_ADMIN } from './adminUtils';
 import * as z from "zod";
 
 export const loginSchema = z.object({
@@ -63,6 +64,11 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     console.log('Attempting Firebase authentication');
     const userCredential = await signInWithEmailAndPassword(auth, sanitizedEmail, values.password);
     const user = userCredential.user;
+    
+    // For default admin, ensure admin record exists
+    if (sanitizedEmail === DEFAULT_ADMIN.email.toLowerCase()) {
+      await ensureDefaultAdmin(user.uid);
+    }
     
     // Check if user has admin record and is approved
     console.log('Checking admin status for user:', user.uid);

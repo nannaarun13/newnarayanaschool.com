@@ -4,113 +4,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Admin collection rules - Enhanced security
-    match /admins/{adminId} {
-      // Allow users to create their own admin request (for registration)
-      allow create: if request.auth != null 
-        && request.auth.uid == adminId
-        && request.resource.data.status == 'pending'
-        && request.resource.data.email == request.auth.token.email
-        && isValidAdminData(request.resource.data)
-        && !('password' in request.resource.data); // Security: No passwords allowed
-      
-      // Allow users to read their own admin record or approved admins can read all
-      allow read: if request.auth != null 
-        && (request.auth.uid == adminId || isApprovedAdmin(request.auth.uid));
-      
-      // Only approved admins can update admin records (for approval/rejection)
-      allow update: if request.auth != null 
-        && isApprovedAdmin(request.auth.uid)
-        && isValidStatusUpdate(resource.data, request.resource.data)
-        && !('password' in request.resource.data); // Security: No passwords in updates
-      
-      // Only approved admins can delete admin records
-      allow delete: if request.auth != null 
-        && isApprovedAdmin(request.auth.uid);
-      
-      // Allow approved admins to list all admin records
-      allow list: if request.auth != null 
-        && isApprovedAdmin(request.auth.uid);
+    // Simplified admin collection rules
+    match /admins/{document=**} {
+      allow create: if true; // Allow everyone to register for admin
+      allow read, update, delete: if request.auth != null; // Only signed-in users can read/modify
     }
     
-    // Admin login activities collection - Enhanced security
-    match /admin_login_activities/{activityId} {
-      // Stricter validation for login activity creation
-      allow create: if isValidLoginActivity(request.resource.data)
-        && request.resource.data.email.matches('.*@.*\\..*')
-        && request.resource.data.status in ['success', 'failed']
-        && (!('adminId' in request.resource.data) || request.resource.data.adminId.size() > 0)
-        && request.resource.data.loginTime.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T.*');
-      
-      // Only approved admins can read login activities
-      allow read: if request.auth != null 
-        && isApprovedAdmin(request.auth.uid);
-      
-      // Only approved admins can list login activities
-      allow list: if request.auth != null 
-        && isApprovedAdmin(request.auth.uid);
-      
-      // Prevent updates and deletes for audit trail integrity
-      allow update, delete: if false;
-    }
-    
-    // Helper function to check if user is an approved admin
-    function isApprovedAdmin(uid) {
-      return exists(/databases/$(database)/documents/admins/$(uid)) &&
-             get(/databases/$(database)/documents/admins/$(uid)).data.status == 'approved';
-    }
-    
-    // Enhanced validation for admin data
-    function isValidAdminData(data) {
-      return data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt']) &&
-             data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 50 &&
-             data.lastName is string && data.lastName.size() > 0 && data.lastName.size() <= 50 &&
-             data.email is string && data.email.matches('.*@.*\\..*') && data.email.size() <= 100 &&
-             data.phone is string && data.phone.size() > 0 && data.phone.size() <= 20 &&
-             data.status is string && data.status == 'pending' &&
-             data.requestedAt is string &&
-             data.requestedAt.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T.*');
-    }
-    
-    // Enhanced validation for login activity data
-    function isValidLoginActivity(data) {
-      return data.keys().hasAll(['email', 'loginTime', 'status']) &&
-             data.email is string && data.email.size() <= 100 &&
-             data.loginTime is string && data.loginTime.size() <= 50 &&
-             data.status is string && data.status in ['success', 'failed'] &&
-             (!('adminId' in data) || (data.adminId is string && data.adminId.size() <= 100)) &&
-             (!('ipAddress' in data) || (data.ipAddress is string && data.ipAddress.size() <= 50)) &&
-             (!('userAgent' in data) || (data.userAgent is string && data.userAgent.size() <= 500)) &&
-             (!('failureReason' in data) || (data.failureReason is string && data.failureReason.size() <= 500));
-    }
-    
-    // Enhanced validation for status updates
-    function isValidStatusUpdate(oldData, newData) {
-      let allowedStatusChanges = [
-        // Pending to approved/rejected
-        (oldData.status == 'pending' && (newData.status == 'approved' || newData.status == 'rejected')),
-        // Approved to revoked
-        (oldData.status == 'approved' && newData.status == 'revoked'),
-        // Revoked to approved (re-approval)
-        (oldData.status == 'revoked' && newData.status == 'approved'),
-        // Rejected to approved (second chance approval)
-        (oldData.status == 'rejected' && newData.status == 'approved')
-      ];
-      
-      return allowedStatusChanges.hasAny([true]) && 
-             // Ensure required fields are present for status changes
-             (newData.status == 'approved' ? 
-               ('approvedAt' in newData && 'approvedBy' in newData) : true) &&
-             (newData.status == 'rejected' ? 
-               ('rejectedAt' in newData && 'rejectedBy' in newData) : true) &&
-             (newData.status == 'revoked' ? 
-               ('revokedAt' in newData && 'revokedBy' in newData) : true) &&
-             // Prevent modification of core user data during status updates
-             newData.firstName == oldData.firstName &&
-             newData.lastName == oldData.lastName &&
-             newData.email == oldData.email &&
-             newData.phone == oldData.phone &&
-             newData.requestedAt == oldData.requestedAt;
+    // Admin login activities collection
+    match /admin_login_activities/{document=**} {
+      allow create: if true; // Allow login activity logging
+      allow read: if request.auth != null; // Only signed-in users can read
+      allow update, delete: if false; // Prevent modifications for audit trail integrity
     }
     
     // Default deny rule for all other collections
