@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { loginSchema, handleLogin } from '@/utils/loginUtils';
-import { SecureErrorHandler } from '@/utils/errorHandling';
 import * as z from "zod";
 
 interface LoginFormProps {
@@ -33,15 +33,11 @@ const LoginForm = ({ onForgotPassword, onRegisterClick, onHomeClick }: LoginForm
       toast({ title: "Login Successful", description: "Welcome to the admin panel!" });
     } catch (error: any) {
       console.error('Login error:', error);
-      
-      // Use secure error handler to get user-friendly message
-      const sanitizedMessage = SecureErrorHandler.sanitizeErrorMessage(error);
-      
-      toast({ 
-        title: "Login Failed", 
-        description: sanitizedMessage, 
-        variant: "destructive" 
-      });
+      let errorMessage = "Invalid email or password.";
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
     }
     setLoading(false);
   };
@@ -57,12 +53,7 @@ const LoginForm = ({ onForgotPassword, onRegisterClick, onHomeClick }: LoginForm
               <FormItem>
                 <FormLabel>Email Address *</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="email" 
-                    placeholder="Enter your email" 
-                    autoComplete="email"
-                    {...field} 
-                  />
+                  <Input type="email" placeholder="Enter your email" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -79,7 +70,6 @@ const LoginForm = ({ onForgotPassword, onRegisterClick, onHomeClick }: LoginForm
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
-                      autoComplete="current-password"
                       {...field}
                     />
                     <Button
@@ -88,7 +78,6 @@ const LoginForm = ({ onForgotPassword, onRegisterClick, onHomeClick }: LoginForm
                       size="icon"
                       className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
                       onClick={() => setShowPassword(!showPassword)}
-                      tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
