@@ -23,7 +23,7 @@ const registrationSchema = z.object({
     firstName: z.string().min(1, "First name is required."),
     lastName: z.string().min(1, "Last name is required."),
     email: z.string().email("Please enter a valid email address."),
-    phone: z.string().regex(/^\+91[6-9]\d{9}$/, "Phone number must be in format +91XXXXXXXXXX."),
+    phone: z.string().regex(/^[6-9]\d{9}$/, "Phone number must be 10 digits starting with 6-9."),
     password: z.string().min(8, "Password must be at least 8 characters long.")
       .regex(passwordValidation, {
         message: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character."
@@ -44,7 +44,7 @@ const AdminRegistration = () => {
   const form = useForm<z.infer<typeof registrationSchema>>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
-      firstName: '', lastName: '', email: '', phone: '+91', password: '', confirmPassword: ''
+      firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: ''
     }
   });
 
@@ -58,12 +58,15 @@ const AdminRegistration = () => {
         firstName: values.firstName.toUpperCase(),
         lastName: values.lastName.toUpperCase(),
         email: values.email,
-        phone: values.phone,
+        phone: `+91${values.phone}`,
         status: 'pending' as const,
         requestedAt: new Date().toISOString(),
       };
 
       await setDoc(doc(db, "admins", user.uid), adminRequest);
+
+      // Sign out the user after registration since they need approval
+      await auth.signOut();
 
       setSubmitted(true);
       toast({
@@ -90,7 +93,7 @@ const AdminRegistration = () => {
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Request Submitted</h2>
             <p className="text-gray-600 mb-6">
-              Your admin access request has been submitted successfully. You will be able to log in once your request is reviewed and approved.
+              Your admin access request has been submitted successfully. You will be able to log in once your request is reviewed and approved by the administrator.
             </p>
             <Button onClick={() => navigate('/login')} className="w-full bg-school-blue hover:bg-school-blue/90">
               Go to Login
@@ -144,7 +147,20 @@ const AdminRegistration = () => {
                 <FormField control={form.control} name="phone" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone Number *</FormLabel>
-                    <FormControl><Input type="tel" placeholder="+91XXXXXXXXXX" {...field} /></FormControl>
+                    <FormControl>
+                      <div className="flex">
+                        <span className="flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-gray-700">
+                          +91
+                        </span>
+                        <Input 
+                          type="tel" 
+                          placeholder="9876543210" 
+                          maxLength={10}
+                          className="rounded-l-none"
+                          {...field} 
+                        />
+                      </div>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

@@ -22,14 +22,14 @@ const RouteProtection = ({ children }: { children: React.ReactNode }) => {
         // User is logged in
         console.log('User logged in:', user.email);
         
-        // Special handling for the hardcoded admin
+        // Special handling for the hardcoded admin - always allow access
         if (user.email === 'arunnanna3@gmail.com') {
           console.log('Hardcoded admin user detected, allowing access');
           if (onAuthRoute) {
             navigate('/admin', { replace: true });
           }
         } else {
-          // For other users, try to check admin status
+          // For other users, check admin status and approval
           try {
             const isAdmin = await isUserAdmin(user.uid);
             if (isAdmin) {

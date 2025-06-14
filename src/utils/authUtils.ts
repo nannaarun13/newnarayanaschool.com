@@ -1,3 +1,4 @@
+
 import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -53,19 +54,18 @@ export const updateAdminRequestStatus = async (
   }
 };
 
-// Checks if a user is an admin by their UID.
-// NOTE: This check has been modified to bypass the approval status.
-// It now returns true if an admin record exists for the UID, regardless of status.
+// Checks if a user is an admin and approved
 export const isUserAdmin = async (uid: string): Promise<boolean> => {
   try {
-    const adminDocRef = doc(db, 'admins', uid);
-    const docSnap = await getDoc(adminDocRef);
-
-    if (docSnap.exists()) {
-      // User is considered an admin if a record exists.
-      return true;
+    // Special case for hardcoded admin
+    const user = await getDoc(doc(db, 'admins', uid));
+    if (!user.exists()) {
+      return false;
     }
-    return false;
+    
+    const userData = user.data();
+    // Check if user is approved (or is the hardcoded admin)
+    return userData.status === 'approved' || userData.email === 'arunnanna3@gmail.com';
   } catch (error) {
     console.error('Error checking admin status:', error);
     return false;
@@ -73,7 +73,6 @@ export const isUserAdmin = async (uid: string): Promise<boolean> => {
 };
 
 // Gets admin user profile from Firestore by email.
-// NOTE: This requires appropriate Firestore security rules to prevent data exposure.
 export const getAdminByEmail = async (email: string): Promise<AdminUser | null> => {
     try {
         const q = query(collection(db, "admins"), where("email", "==", email));

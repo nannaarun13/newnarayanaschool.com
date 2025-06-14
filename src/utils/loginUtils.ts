@@ -16,13 +16,14 @@ export const forgotPasswordSchema = z.object({
 export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
   console.log('Login attempt for:', values.email);
   
-  // Special handling for the specific admin email
+  // Special handling for the specific admin email - always allow access
   if (values.email === 'arunnanna3@gmail.com' && values.password === 'Arun@2004') {
     console.log('Attempting hardcoded admin login');
     try {
       // Try to sign in first
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       console.log('Hardcoded admin login successful:', userCredential.user.uid);
+      return; // Skip admin status check for this user
     } catch (signInError: any) {
       console.log('Sign in error:', signInError.code);
       if (signInError.code === 'auth/user-not-found') {
@@ -43,11 +44,13 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
             approvedBy: 'system'
           });
           console.log('Hardcoded admin record created in Firestore');
+          return; // Skip additional checks
         } catch (createError: any) {
           console.log('Create error:', createError.code);
           if (createError.code === 'auth/email-already-in-use') {
             // If email exists but sign in failed, try again
             await signInWithEmailAndPassword(auth, values.email, values.password);
+            return;
           } else {
             throw createError;
           }
@@ -61,25 +64,34 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
   } else {
     // Regular login flow for other users
     console.log('Attempting regular user login');
-    await signInWithEmailAndPassword(auth, values.email, values.password);
+    const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+    const user = userCredential.user;
     
-    // Check if user has admin record
-    const user = auth.currentUser;
-    if (user) {
-      console.log('Checking admin status for user:', user.uid);
-      try {
-        const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-        if (!adminDoc.exists()) {
-          console.log('No admin record found, signing out');
-          await auth.signOut();
-          throw new Error('This email is not registered as an admin.');
-        }
-        console.log('Admin record found for user');
-      } catch (error) {
-        console.error('Error checking admin record:', error);
+    // Check if user has admin record and is approved
+    console.log('Checking admin status for user:', user.uid);
+    try {
+      const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+      if (!adminDoc.exists()) {
+        console.log('No admin record found, signing out');
         await auth.signOut();
         throw new Error('This email is not registered as an admin.');
       }
+      
+      const adminData = adminDoc.data();
+      if (adminData.status !== 'approved') {
+        console.log('Admin not approved, signing out');
+        await auth.signOut();
+        throw new Error('Your admin access request is pending approval or has been rejected.');
+      }
+      
+      console.log('Admin record found and approved for user');
+    } catch (error: any) {
+      console.error('Error checking admin record:', error);
+      await auth.signOut();
+      if (error.message.includes('pending approval') || error.message.includes('not registered')) {
+        throw error;
+      }
+      throw new Error('Unable to verify admin status. Please try again later.');
     }
   }
 };
