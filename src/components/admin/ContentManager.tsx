@@ -17,14 +17,14 @@ const ContentManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    welcomeTitle: state.data.welcomeTitle,
+    schoolName: state.data.schoolName,
     welcomeMessage: state.data.welcomeMessage,
     aboutContent: state.data.aboutContent,
-    mission: state.data.mission,
-    vision: state.data.vision,
-    heroImage: state.data.heroImage,
-    principalMessage: state.data.principalMessage,
-    principalImage: state.data.principalImage
+    missionStatement: state.data.missionStatement,
+    visionStatement: state.data.visionStatement,
+    welcomeImage: state.data.welcomeImage,
+    schoolHistory: state.data.schoolHistory,
+    founderDetails: state.data.founderDetails
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -56,14 +56,14 @@ const ContentManager = () => {
 
     // Sanitize all inputs before saving
     const sanitizedData = {
-      welcomeTitle: sanitizeText(formData.welcomeTitle),
+      schoolName: sanitizeText(formData.schoolName),
       welcomeMessage: sanitizeHTML(formData.welcomeMessage),
       aboutContent: sanitizeHTML(formData.aboutContent),
-      mission: sanitizeHTML(formData.mission),
-      vision: sanitizeHTML(formData.vision),
-      heroImage: formData.heroImage, // Already validated by ImageUpload
-      principalMessage: sanitizeHTML(formData.principalMessage),
-      principalImage: formData.principalImage // Already validated by ImageUpload
+      missionStatement: sanitizeHTML(formData.missionStatement),
+      visionStatement: sanitizeHTML(formData.visionStatement),
+      welcomeImage: formData.welcomeImage, // Already validated by ImageUpload
+      schoolHistory: sanitizeHTML(formData.schoolHistory),
+      founderDetails: sanitizeHTML(formData.founderDetails)
     };
 
     dispatch({
@@ -87,19 +87,19 @@ const ContentManager = () => {
         </div>
       </div>
 
-      {/* Hero Section */}
+      {/* School Info Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Hero Section</CardTitle>
+          <CardTitle>School Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="welcomeTitle">Welcome Title *</Label>
+            <Label htmlFor="schoolName">School Name *</Label>
             <Input
-              id="welcomeTitle"
-              value={formData.welcomeTitle}
-              onChange={(e) => handleInputChange('welcomeTitle', e.target.value)}
-              placeholder="Enter welcome title"
+              id="schoolName"
+              value={formData.schoolName}
+              onChange={(e) => handleInputChange('schoolName', e.target.value)}
+              placeholder="Enter school name"
               maxLength={100}
             />
           </div>
@@ -120,9 +120,9 @@ const ContentManager = () => {
           </div>
 
           <ImageUpload
-            label="Hero Image"
-            currentImage={formData.heroImage}
-            onImageUpload={(url) => handleInputChange('heroImage', url)}
+            label="Welcome/Hero Image"
+            currentImage={formData.welcomeImage}
+            onImageUpload={(url) => handleInputChange('welcomeImage', url)}
           />
         </CardContent>
       </Card>
@@ -157,11 +157,11 @@ const ContentManager = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="mission">Mission Statement *</Label>
+            <Label htmlFor="missionStatement">Mission Statement *</Label>
             <Textarea
-              id="mission"
-              value={formData.mission}
-              onChange={(e) => handleInputChange('mission', e.target.value)}
+              id="missionStatement"
+              value={formData.missionStatement}
+              onChange={(e) => handleInputChange('missionStatement', e.target.value)}
               placeholder="Enter mission statement"
               rows={3}
               maxLength={1000}
@@ -169,11 +169,11 @@ const ContentManager = () => {
           </div>
           
           <div>
-            <Label htmlFor="vision">Vision Statement *</Label>
+            <Label htmlFor="visionStatement">Vision Statement *</Label>
             <Textarea
-              id="vision"
-              value={formData.vision}
-              onChange={(e) => handleInputChange('vision', e.target.value)}
+              id="visionStatement"
+              value={formData.visionStatement}
+              onChange={(e) => handleInputChange('visionStatement', e.target.value)}
               placeholder="Enter vision statement"
               rows={3}
               maxLength={1000}
@@ -182,29 +182,35 @@ const ContentManager = () => {
         </CardContent>
       </Card>
 
-      {/* Principal Section */}
+      {/* History & Founder Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Principal Section</CardTitle>
+          <CardTitle>History & Founder</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="principalMessage">Principal Message</Label>
+            <Label htmlFor="schoolHistory">School History</Label>
             <Textarea
-              id="principalMessage"
-              value={formData.principalMessage}
-              onChange={(e) => handleInputChange('principalMessage', e.target.value)}
-              placeholder="Enter principal's message"
+              id="schoolHistory"
+              value={formData.schoolHistory}
+              onChange={(e) => handleInputChange('schoolHistory', e.target.value)}
+              placeholder="Enter school history"
               rows={4}
               maxLength={2000}
             />
           </div>
 
-          <ImageUpload
-            label="Principal Image"
-            currentImage={formData.principalImage}
-            onImageUpload={(url) => handleInputChange('principalImage', url)}
-          />
+          <div>
+            <Label htmlFor="founderDetails">Founder Details</Label>
+            <Textarea
+              id="founderDetails"
+              value={formData.founderDetails}
+              onChange={(e) => handleInputChange('founderDetails', e.target.value)}
+              placeholder="Enter founder details"
+              rows={4}
+              maxLength={2000}
+            />
+          </div>
         </CardContent>
       </Card>
 
