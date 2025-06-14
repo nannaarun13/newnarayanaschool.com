@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Shield } from 'lucide-react';
+import { Eye, EyeOff, Shield, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -198,6 +198,11 @@ const Login = () => {
                   <Button variant="outline" onClick={() => navigate('/admin/register')} className="w-full border-school-blue text-school-blue hover:bg-school-blue hover:text-white">
                     Request Admin Access
                   </Button>
+                </div>
+                <div className="text-center">
+                   <Button variant="link" className="text-gray-600" onClick={() => navigate('/')}>
+                     <Home /> Return to Site
+                   </Button>
                 </div>
               </div>
             )}

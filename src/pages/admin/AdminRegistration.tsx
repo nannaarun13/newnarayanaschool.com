@@ -44,7 +44,7 @@ const AdminRegistration = () => {
   const form = useForm<z.infer<typeof registrationSchema>>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
-      firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: ''
+      firstName: '', lastName: '', email: '', phone: '+91', password: '', confirmPassword: ''
     }
   });
 
