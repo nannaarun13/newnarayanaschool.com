@@ -3,8 +3,8 @@ import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'fireb
 import { db } from '@/lib/firebase';
 
 export interface AdminUser {
-  uid: string; // Firebase Auth UID
-  id: string; // Firestore Document ID, can be the same as UID
+  uid: string; // Firebase Auth UID or custom ID
+  id: string; // Firestore Document ID
   firstName: string;
   lastName:string;
   email: string;
@@ -23,7 +23,7 @@ export const getAdminRequests = async (): Promise<AdminUser[]> => {
     const requests: AdminUser[] = [];
     querySnapshot.forEach((doc) => {
       // Make sure to include the id from the document
-      requests.push({ uid: doc.id, id: doc.id, ...doc.data() } as AdminUser);
+      requests.push({ uid: doc.data().uid || doc.id, id: doc.id, ...doc.data() } as AdminUser);
     });
     return requests;
   } catch (error) {
@@ -58,9 +58,20 @@ export const updateAdminRequestStatus = async (
 export const isUserAdmin = async (uid: string): Promise<boolean> => {
   try {
     // Special case for hardcoded admin
+    if (uid === 'hardcoded-admin') {
+      return true;
+    }
+    
     const user = await getDoc(doc(db, 'admins', uid));
     if (!user.exists()) {
-      return false;
+      // Try to find by Firebase UID in case document ID is different
+      const q = query(collection(db, 'admins'), where('uid', '==', uid));
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        return false;
+      }
+      const userData = querySnapshot.docs[0].data();
+      return userData.status === 'approved' || userData.email === 'arunnanna3@gmail.com';
     }
     
     const userData = user.data();
@@ -81,7 +92,7 @@ export const getAdminByEmail = async (email: string): Promise<AdminUser | null> 
             return null;
         }
         const adminDoc = querySnapshot.docs[0];
-        return { id: adminDoc.id, uid: adminDoc.id, ...adminDoc.data() } as AdminUser;
+        return { id: adminDoc.id, uid: adminDoc.data().uid || adminDoc.id, ...adminDoc.data() } as AdminUser;
     } catch (error) {
         console.error("Error getting admin by email:", error);
         return null;

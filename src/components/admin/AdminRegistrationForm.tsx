@@ -9,9 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { auth, db } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 import { registrationSchema, type RegistrationFormData } from '@/utils/adminRegistrationSchema';
 
 interface AdminRegistrationFormProps {
@@ -35,24 +34,22 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
     setLoading(true);
     
     try {
-      // Create user account and save data in parallel
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      // Generate a unique ID for the request
+      const requestId = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Immediately save to Firestore without waiting
+      // Save admin request to Firestore without Firebase Auth
       const adminData = {
+        uid: requestId, // Use custom ID instead of Firebase auth UID
         firstName: values.firstName.toUpperCase(),
         lastName: values.lastName.toUpperCase(),
         email: values.email,
         phone: `+91${values.phone}`,
+        password: values.password, // Store password for later account creation
         status: 'pending' as const,
         requestedAt: new Date().toISOString(),
       };
 
-      // Save and sign out simultaneously
-      await Promise.all([
-        setDoc(doc(db, "admins", userCredential.user.uid), adminData),
-        signOut(auth)
-      ]);
+      await addDoc(collection(db, "admins"), adminData);
 
       onSuccess();
       toast({
@@ -62,15 +59,9 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
 
     } catch (error: any) {
       console.error("Registration error:", error);
-      let description = "Failed to submit registration. Please try again.";
-      if (error.code === 'auth/email-already-in-use') {
-        description = "This email address is already registered.";
-      } else if (error.code === 'auth/weak-password') {
-        description = "Password is too weak. Please choose a stronger password.";
-      }
       toast({ 
         title: "Registration Failed", 
-        description, 
+        description: "Failed to submit registration. Please try again.", 
         variant: "destructive" 
       });
     } finally {

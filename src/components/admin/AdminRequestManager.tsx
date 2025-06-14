@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Check, X, Loader2 } from 'lucide-react';
-import { getAdminRequests, updateAdminRequestStatus, AdminUser } from '@/utils/authUtils';
-import { auth } from '@/lib/firebase';
+import { getAdminRequests, AdminUser } from '@/utils/authUtils';
+import { auth, db } from '@/lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const AdminRequestManager = () => {
   const { toast } = useToast();
@@ -33,33 +35,64 @@ const AdminRequestManager = () => {
     loadRequests();
   }, []);
 
-  const handleApproval = async (uid: string, approved: boolean) => {
+  const handleApproval = async (request: AdminUser, approved: boolean) => {
     setActionLoading(true);
     try {
       const user = auth.currentUser;
       const currentAdminEmail = user?.email;
       
       if (approved) {
-        await updateAdminRequestStatus(uid, 'approved', currentAdminEmail || 'System');
+        // Create Firebase account for the approved user
+        const userCredential = await createUserWithEmailAndPassword(
+          auth, 
+          request.email, 
+          (request as any).password || 'TempPassword123!'
+        );
+        
+        // Update the admin record with Firebase UID and approval info
+        await updateDoc(doc(db, 'admins', request.id), {
+          uid: userCredential.user.uid,
+          status: 'approved',
+          approvedAt: new Date().toISOString(),
+          approvedBy: currentAdminEmail || 'System',
+          password: undefined // Remove password from storage
+        });
+        
+        // Sign out the newly created user so admin can continue
+        await auth.signOut();
+        
         toast({
           title: "Request Approved",
           description: "Admin access has been granted. The user can now login.",
         });
       } else {
-        await updateAdminRequestStatus(uid, 'rejected', currentAdminEmail || 'System');
+        // Just delete the request if rejected
+        await deleteDoc(doc(db, 'admins', request.id));
+        
         toast({
           title: "Request Rejected",
-          description: "Admin access request has been rejected.",
+          description: "Admin access request has been rejected and removed.",
           variant: "destructive"
         });
       }
       
       await loadRequests(); // Reload to show updated status
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating request:', error);
+      let errorMessage = "Failed to update request status.";
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "Email already exists. Request marked as approved anyway.";
+        // Still update the status in Firestore
+        await updateDoc(doc(db, 'admins', request.id), {
+          status: 'approved',
+          approvedAt: new Date().toISOString(),
+          approvedBy: user?.email || 'System'
+        });
+        await loadRequests();
+      }
       toast({
         title: "Error",
-        description: "Failed to update request status.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -168,7 +201,7 @@ const AdminRequestManager = () => {
                             variant="default" 
                             size="sm"
                             disabled={actionLoading}
-                            onClick={() => handleApproval(request.uid, true)}
+                            onClick={() => handleApproval(request, true)}
                             className="bg-green-600 hover:bg-green-700"
                           >
                             <Check className="h-4 w-4" />
@@ -177,7 +210,7 @@ const AdminRequestManager = () => {
                             variant="destructive" 
                             size="sm"
                             disabled={actionLoading}
-                            onClick={() => handleApproval(request.uid, false)}
+                            onClick={() => handleApproval(request, false)}
                           >
                             <X className="h-4 w-4" />
                           </Button>
