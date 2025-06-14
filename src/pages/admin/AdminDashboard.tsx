@@ -22,38 +22,26 @@ import NoticeManager from '@/components/admin/NoticeManager';
 import AdmissionManager from '@/components/admin/AdmissionManager';
 import ContactManager from '@/components/admin/ContactManager';
 import AdminRequestManager from '@/components/admin/AdminRequestManager';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { state } = useSchool();
   const [activeTab, setActiveTab] = useState('overview');
-  const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
 
   useEffect(() => {
-    // Check authentication
-    const authStatus = localStorage.getItem('isAdminAuthenticated');
-    const adminEmail = localStorage.getItem('adminEmail');
-    
-    if (authStatus === 'true' && adminEmail) {
-      setIsAuthenticated(true);
-      setLoading(false);
-    } else {
-      toast({
-        title: "Access Denied",
-        description: "Please login to access the admin panel.",
-        variant: "destructive"
-      });
-      navigate('/login');
+    const user = auth.currentUser;
+    if (user) {
+      setAdminEmail(user.email || 'Admin');
     }
-  }, [navigate, toast]);
+  }, []);
 
   const handleLogout = async () => {
     try {
-      localStorage.removeItem('isAdminAuthenticated');
-      localStorage.removeItem('adminEmail');
-      
+      await signOut(auth);
       toast({
         title: "Logged Out",
         description: "You have been successfully logged out.",
@@ -67,21 +55,6 @@ const AdminDashboard = () => {
       });
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Shield className="h-16 w-16 text-school-blue mx-auto mb-4 animate-pulse" />
-          <p className="text-gray-600">Loading admin dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
 
   const dashboardStats = [
     { 
@@ -121,7 +94,7 @@ const AdminDashboard = () => {
               <div>
                 <h1 className="text-2xl font-bold text-school-blue">Admin Dashboard</h1>
                 <p className="text-gray-600">New Narayana School Management</p>
-                <p className="text-sm text-gray-500">Welcome, Admin</p>
+                <p className="text-sm text-gray-500">Welcome, {adminEmail}</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -136,7 +109,7 @@ const AdminDashboard = () => {
               <Button 
                 variant="outline" 
                 onClick={handleLogout}
-                className="border-red-500 text-red-500 hover:bg-red-50"
+                className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
@@ -157,7 +130,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="contact">Contact</TabsTrigger>
             <TabsTrigger value="approvals">Admin Approval</TabsTrigger>
           </TabsList>
-
+          
           <TabsContent value="overview" className="space-y-6">
             {/* Dashboard Stats */}
             <section>
@@ -235,7 +208,7 @@ const AdminDashboard = () => {
                           <li>Admin registration & approval system active</li>
                           <li>Password reset with Firebase configured</li>
                           <li>Protected admin routes implemented</li>
-                          <li>Session management secured</li>
+                          <li>Session management secured via Firebase</li>
                         </ul>
                       </div>
                     </div>
@@ -250,8 +223,7 @@ const AdminDashboard = () => {
                         <h3 className="text-lg font-semibold text-blue-800">Access Control</h3>
                         <p className="text-blue-700">Admin approval system active</p>
                         <ul className="mt-2 text-sm text-blue-600 list-disc list-inside">
-                          <li>Registration requests require approval</li>
-                          <li>Pre-approved: arunnanna3@gmail.com</li>
+                          <li>Registration requests require approval via Firestore</li>
                           <li>Unapproved users cannot access admin panel</li>
                           <li>Firebase password reset enabled</li>
                         </ul>

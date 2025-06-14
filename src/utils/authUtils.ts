@@ -1,135 +1,89 @@
 
+import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 export interface AdminUser {
-  id: string;
+  uid: string; // Firebase Auth UID
+  id: string; // Firestore Document ID, can be the same as UID
   firstName: string;
-  lastName: string;
+  lastName:string;
   email: string;
   phone: string;
   status: 'pending' | 'approved' | 'rejected';
-  requestedAt: string;
+  requestedAt: string; // ISO string
   approvedAt?: string;
-  approvedBy?: string;
+  approvedBy?: string; // email of the approving admin
 }
 
-export const checkAdminAuth = (): boolean => {
+// Fetches all admin requests from Firestore
+export const getAdminRequests = async (): Promise<AdminUser[]> => {
   try {
-    const isAuthenticated = localStorage.getItem('isAdminAuthenticated');
-    const adminEmail = localStorage.getItem('adminEmail');
-    console.log('Auth check - isAuthenticated:', isAuthenticated, 'adminEmail:', adminEmail);
-    return isAuthenticated === 'true' && !!adminEmail;
-  } catch (error) {
-    console.error('Error checking admin auth:', error);
-    return false;
-  }
-};
-
-export const setAdminAuth = (email: string): void => {
-  try {
-    localStorage.setItem('isAdminAuthenticated', 'true');
-    localStorage.setItem('adminEmail', email);
-    console.log('Admin auth set for:', email);
-  } catch (error) {
-    console.error('Error setting admin auth:', error);
-  }
-};
-
-export const clearAdminAuth = (): void => {
-  try {
-    localStorage.removeItem('isAdminAuthenticated');
-    localStorage.removeItem('adminEmail');
-    console.log('Admin auth cleared');
-  } catch (error) {
-    console.error('Error clearing admin auth:', error);
-  }
-};
-
-export const getAdminEmail = (): string | null => {
-  try {
-    return localStorage.getItem('adminEmail');
-  } catch (error) {
-    console.error('Error getting admin email:', error);
-    return null;
-  }
-};
-
-export const getAdminRequests = (): AdminUser[] => {
-  try {
-    const requests = localStorage.getItem('adminRequests');
-    return requests ? JSON.parse(requests) : [];
+    const q = query(collection(db, 'admins'));
+    const querySnapshot = await getDocs(q);
+    const requests: AdminUser[] = [];
+    querySnapshot.forEach((doc) => {
+      // Make sure to include the id from the document
+      requests.push({ uid: doc.id, id: doc.id, ...doc.data() } as AdminUser);
+    });
+    return requests;
   } catch (error) {
     console.error('Error getting admin requests:', error);
     return [];
   }
 };
 
-export const saveAdminRequest = (request: AdminUser): void => {
+// Updates an admin's status in Firestore
+export const updateAdminRequestStatus = async (
+  uid: string,
+  status: 'approved' | 'rejected',
+  approvedByEmail?: string
+): Promise<void> => {
   try {
-    const requests = getAdminRequests();
-    requests.push(request);
-    localStorage.setItem('adminRequests', JSON.stringify(requests));
-    console.log('Admin request saved for:', request.email);
-  } catch (error) {
-    console.error('Error saving admin request:', error);
-  }
-};
-
-export const updateAdminRequestStatus = (email: string, status: 'approved' | 'rejected', approvedBy?: string): void => {
-  try {
-    const requests = getAdminRequests();
-    const updatedRequests = requests.map(request => 
-      request.email === email 
-        ? { 
-            ...request, 
-            status, 
-            approvedAt: status === 'approved' ? new Date().toISOString() : undefined,
-            approvedBy 
-          }
-        : request
-    );
-    localStorage.setItem('adminRequests', JSON.stringify(updatedRequests));
-    console.log('Admin request status updated for:', email, 'to:', status);
+    const adminDocRef = doc(db, 'admins', uid);
+    const updateData: any = { status };
+    if (status === 'approved') {
+      updateData.approvedAt = new Date().toISOString();
+      if (approvedByEmail) {
+        updateData.approvedBy = approvedByEmail;
+      }
+    }
+    await updateDoc(adminDocRef, updateData);
+    console.log('Admin request status updated for UID:', uid, 'to:', status);
   } catch (error) {
     console.error('Error updating admin request status:', error);
   }
 };
 
-export const isEmailApproved = (email: string): boolean => {
+// Checks if a user is an approved admin by their UID
+export const isUserAdmin = async (uid: string): Promise<boolean> => {
   try {
-    // Grant access to specific email
-    if (email === 'arunnanna3@gmail.com') {
-      console.log('Pre-approved email detected:', email);
-      return true;
+    const adminDocRef = doc(db, 'admins', uid);
+    const docSnap = await getDoc(adminDocRef);
+
+    if (docSnap.exists()) {
+      const adminData = docSnap.data();
+      return adminData.status === 'approved';
     }
-    
-    const requests = getAdminRequests();
-    const request = requests.find(req => req.email === email);
-    const isApproved = request?.status === 'approved';
-    console.log('Email approval check for:', email, 'result:', isApproved);
-    return isApproved;
+    return false;
   } catch (error) {
-    console.error('Error checking email approval:', error);
+    console.error('Error checking admin status:', error);
     return false;
   }
 };
 
-export const isValidAdminCredentials = (email: string, password: string): boolean => {
-  try {
-    // Check if email is approved
-    if (!isEmailApproved(email)) {
-      console.log('Email not approved:', email);
-      return false;
+// Gets admin user profile from Firestore by email.
+// NOTE: This requires appropriate Firestore security rules to prevent data exposure.
+export const getAdminByEmail = async (email: string): Promise<AdminUser | null> => {
+    try {
+        const q = query(collection(db, "admins"), where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            return null;
+        }
+        const adminDoc = querySnapshot.docs[0];
+        return { id: adminDoc.id, uid: adminDoc.id, ...adminDoc.data() } as AdminUser;
+    } catch (error) {
+        console.error("Error getting admin by email:", error);
+        return null;
     }
-    
-    // Specific credentials for approved email
-    if (email === 'arunnanna3@gmail.com' && password === 'Arun@2004') {
-      console.log('Valid credentials for pre-approved email');
-      return true;
-    }
-    
-    console.log('Invalid credentials for:', email);
-    return false;
-  } catch (error) {
-    console.error('Error validating admin credentials:', error);
-    return false;
-  }
-};
+}

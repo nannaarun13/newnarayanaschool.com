@@ -7,7 +7,25 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Shield, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { saveAdminRequest, AdminUser } from '@/utils/authUtils';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { auth, db } from '@/lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+
+const registrationSchema = z.object({
+    firstName: z.string().min(1, "First name is required."),
+    lastName: z.string().min(1, "Last name is required."),
+    email: z.string().email("Please enter a valid email address."),
+    phone: z.string().regex(/^\+91[6-9]\d{9}$/, "Phone number must be in format +91XXXXXXXXXX."),
+    password: z.string().min(8, "Password must be at least 8 characters long."),
+    confirmPassword: z.string(),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"],
+});
 
 const AdminRegistration = () => {
   const { toast } = useToast();
@@ -16,118 +34,49 @@ const AdminRegistration = () => {
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: ''
+  const form = useForm<z.infer<typeof registrationSchema>>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: {
+      firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: ''
+    }
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const validateForm = () => {
-    if (!formData.firstName.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "First name is required.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    if (!formData.lastName.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Last name is required.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a valid email address.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    const phoneRegex = /^\+91[6-9]\d{9}$/;
-    if (!phoneRegex.test(formData.phone)) {
-      toast({
-        title: "Validation Error",
-        description: "Phone number must be in format +91XXXXXXXXXX.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    if (formData.password.length < 6) {
-      toast({
-        title: "Validation Error",
-        description: "Password must be at least 6 characters long.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Password Mismatch",
-        description: "Passwords do not match.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
+  const handleSubmit = async (values: z.infer<typeof registrationSchema>) => {
     setLoading(true);
-    
     try {
-      const adminRequest: AdminUser = {
-        id: Date.now().toString(),
-        firstName: formData.firstName.toUpperCase(),
-        lastName: formData.lastName.toUpperCase(),
-        email: formData.email,
-        phone: formData.phone,
-        status: 'pending',
-        requestedAt: new Date().toISOString()
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      const adminRequest = {
+        uid: user.uid,
+        id: user.uid,
+        firstName: values.firstName.toUpperCase(),
+        lastName: values.lastName.toUpperCase(),
+        email: values.email,
+        phone: values.phone,
+        status: 'pending' as const,
+        requestedAt: new Date().toISOString(),
       };
 
-      saveAdminRequest(adminRequest);
+      await setDoc(doc(db, "admins", user.uid), adminRequest);
+
       setSubmitted(true);
-      
       toast({
         title: "Registration Submitted",
         description: "Your admin access request has been submitted for approval.",
       });
-    } catch (error) {
-      toast({
-        title: "Registration Failed",
-        description: "Failed to submit registration. Please try again.",
-        variant: "destructive"
-      });
+
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      let description = "Failed to submit registration. Please try again.";
+      if (error.code === 'auth/email-already-in-use') {
+        description = "This email address is already registered.";
+      }
+      toast({ title: "Registration Failed", description, variant: "destructive" });
     }
-    
     setLoading(false);
   };
-
+  
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-school-blue-light to-school-orange-light p-4">
@@ -136,12 +85,9 @@ const AdminRegistration = () => {
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Request Submitted</h2>
             <p className="text-gray-600 mb-6">
-              Your admin access request has been submitted successfully. You will receive notification once your request is reviewed and approved.
+              Your admin access request has been submitted successfully. You will be able to log in once your request is reviewed and approved.
             </p>
-            <Button 
-              onClick={() => navigate('/login')} 
-              className="w-full bg-school-blue hover:bg-school-blue/90"
-            >
+            <Button onClick={() => navigate('/login')} className="w-full bg-school-blue hover:bg-school-blue/90">
               Go to Login
             </Button>
           </CardContent>
@@ -158,7 +104,6 @@ const AdminRegistration = () => {
           <h1 className="text-3xl font-bold text-school-blue mb-2">Admin Registration</h1>
           <p className="text-gray-600">Request access to the admin panel</p>
         </div>
-
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl text-center text-school-blue">
@@ -166,112 +111,68 @@ const AdminRegistration = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">First Name *</Label>
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    placeholder="First name"
-                    required
-                  />
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                   <FormField control={form.control} name="firstName" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name *</FormLabel>
+                        <FormControl><Input placeholder="First name" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                   <FormField control={form.control} name="lastName" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name *</FormLabel>
+                        <FormControl><Input placeholder="Last name" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                 </div>
-                <div>
-                  <Label htmlFor="lastName">Last Name *</Label>
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    placeholder="Last name"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="your.email@domain.com"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phone">Phone Number *</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="+91XXXXXXXXXX"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="password">Password *</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="Enter password"
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Confirm password"
-                  required
-                />
-              </div>
-
-              <Button 
-                type="submit" 
-                disabled={loading}
-                className="w-full bg-school-blue hover:bg-school-blue/90"
-              >
-                {loading ? 'Submitting...' : 'Submit Registration'}
-              </Button>
-            </form>
-
+                <FormField control={form.control} name="email" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address *</FormLabel>
+                    <FormControl><Input type="email" placeholder="your.email@domain.com" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="phone" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number *</FormLabel>
+                    <FormControl><Input type="tel" placeholder="+91XXXXXXXXXX" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="password" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password *</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input type={showPassword ? "text" : "password"} placeholder="Enter password" {...field} />
+                        <Button type="button" variant="ghost" size="icon" className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8" onClick={() => setShowPassword(!showPassword)}>
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password *</FormLabel>
+                    <FormControl><Input type="password" placeholder="Confirm password" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <Button type="submit" disabled={loading} className="w-full bg-school-blue hover:bg-school-blue/90">
+                  {loading ? 'Submitting...' : 'Submit Registration'}
+                </Button>
+              </form>
+            </Form>
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Already have access?{' '}
-                <Button 
-                  variant="link" 
-                  className="text-school-blue p-0" 
-                  onClick={() => navigate('/login')}
-                >
+                <Button variant="link" className="text-school-blue p-0" onClick={() => navigate('/login')}>
                   Sign In
                 </Button>
               </p>

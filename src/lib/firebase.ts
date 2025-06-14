@@ -1,9 +1,11 @@
-
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
+// IMPORTANT: For production applications, you should secure these keys.
+// Consider using environment variables and Firebase App Check.
+// See: https://firebase.google.com/docs/app-check
 const firebaseConfig = {
   apiKey: "AIzaSyDMswGY1AAL7k6bGaTq8pjZ-NAx3Ii22VQ",
   authDomain: "newnarayanaschool-2022.firebaseapp.com",
