@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import Header from './Header';
 import Navigation from './Navigation';
 import Footer from './Footer';
-import SyncStatusIndicator from './SyncStatusIndicator';
 import { useSchool } from '@/contexts/SchoolContext';
 
 const Layout = () => {
@@ -39,11 +38,6 @@ const Layout = () => {
         <Outlet />
       </main>
       <Footer />
-      
-      {/* Global sync status indicator for public pages */}
-      <div className="fixed bottom-4 right-4 z-50">
-        <SyncStatusIndicator />
-      </div>
     </div>
   );
 };
