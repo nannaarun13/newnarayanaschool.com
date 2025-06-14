@@ -1,5 +1,5 @@
 
-interface SecurityError {
+interface SecurityError extends Error {
   code: string;
   message: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
@@ -40,6 +40,7 @@ export class SecureErrorHandler {
 
   static handleValidationError(originalError: Error, field?: string): SecurityError {
     const error: SecurityError = {
+      name: 'SecurityError',
       code: ERROR_CODES.VALIDATION_ERROR,
       message: `Validation failed${field ? ` for field: ${field}` : ''}`,
       severity: 'low',
@@ -53,6 +54,7 @@ export class SecureErrorHandler {
 
   static handleAuthenticationError(originalError: Error): SecurityError {
     const error: SecurityError = {
+      name: 'SecurityError',
       code: ERROR_CODES.AUTHENTICATION_FAILED,
       message: 'Authentication attempt failed',
       severity: 'medium',
@@ -66,6 +68,7 @@ export class SecureErrorHandler {
 
   static handleRateLimitError(originalError: Error): SecurityError {
     const error: SecurityError = {
+      name: 'SecurityError',
       code: ERROR_CODES.RATE_LIMIT_EXCEEDED,
       message: 'Rate limit exceeded',
       severity: 'high',
@@ -79,6 +82,7 @@ export class SecureErrorHandler {
 
   static handleSuspiciousActivity(originalError: Error, details?: string): SecurityError {
     const error: SecurityError = {
+      name: 'SecurityError',
       code: ERROR_CODES.SUSPICIOUS_ACTIVITY,
       message: `Suspicious activity detected${details ? `: ${details}` : ''}`,
       severity: 'critical',
@@ -92,6 +96,7 @@ export class SecureErrorHandler {
 
   static handleNetworkError(originalError: Error): SecurityError {
     const error: SecurityError = {
+      name: 'SecurityError',
       code: ERROR_CODES.NETWORK_ERROR,
       message: 'Network operation failed',
       severity: 'low',
@@ -105,6 +110,7 @@ export class SecureErrorHandler {
 
   static handleUnknownError(originalError: Error): SecurityError {
     const error: SecurityError = {
+      name: 'SecurityError',
       code: ERROR_CODES.UNKNOWN_ERROR,
       message: 'Unknown error occurred',
       severity: 'medium',
