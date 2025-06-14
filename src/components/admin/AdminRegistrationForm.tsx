@@ -1,16 +1,28 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { db } from '@/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import { registrationSchema, type RegistrationFormData } from '@/utils/adminRegistrationSchema';
+import { registrationSchema } from '@/utils/adminRegistrationSchema';
+import * as z from "zod";
+
+// Security fix: Remove password fields from registration
+const secureRegistrationSchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(50, "First name too long"),
+  lastName: z.string().min(1, "Last name is required").max(50, "Last name too long"),
+  email: z.string().email("Invalid email address").max(100, "Email too long"),
+  phone: z.string().regex(/^[0-9]{10}$/, "Phone number must be 10 digits"),
+});
+
+type SecureRegistrationFormData = z.infer<typeof secureRegistrationSchema>;
 
 interface AdminRegistrationFormProps {
   onSuccess: () => void;
@@ -20,30 +32,28 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   
-  const form = useForm<RegistrationFormData>({
-    resolver: zodResolver(registrationSchema),
+  const form = useForm<SecureRegistrationFormData>({
+    resolver: zodResolver(secureRegistrationSchema),
     defaultValues: {
-      firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: ''
+      firstName: '', lastName: '', email: '', phone: ''
     }
   });
 
-  const handleSubmit = async (values: RegistrationFormData) => {
+  const handleSubmit = async (values: SecureRegistrationFormData) => {
     setLoading(true);
     
     try {
       // Generate a unique ID for the request
       const requestId = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Save admin request to Firestore, including password for future account creation
+      // Security fix: Store only basic info, no passwords
       const adminData = {
-        uid: requestId, // Use custom ID instead of Firebase auth UID
+        uid: requestId,
         firstName: values.firstName.toUpperCase(),
         lastName: values.lastName.toUpperCase(),
-        email: values.email,
+        email: values.email.toLowerCase().trim(),
         phone: `+91${values.phone}`,
-        password: values.password, // Store password for later account creation
         status: 'pending' as const,
         requestedAt: new Date().toISOString(),
       };
@@ -53,7 +63,7 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
       onSuccess();
       toast({
         title: "Registration Submitted Successfully",
-        description: "Your admin access request has been submitted and is pending approval.",
+        description: "Your admin access request has been submitted. You'll need to create your Firebase account separately after approval.",
       });
 
     } catch (error: any) {
@@ -122,39 +132,12 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
                 <FormMessage />
               </FormItem>
             )} />
-            <FormField control={form.control} name="password" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password *</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input 
-                      type={showPassword ? "text" : "password"} 
-                      placeholder="Enter password" 
-                      {...field} 
-                      disabled={loading}
-                    />
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8" 
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={loading}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm Password *</FormLabel>
-                <FormControl><Input type="password" placeholder="Confirm password" {...field} disabled={loading} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <p className="text-sm text-blue-800">
+                <strong>Security Notice:</strong> After approval, you'll need to create your Firebase account separately using the same email address.
+              </p>
+            </div>
             
             <Button type="submit" disabled={loading} className="w-full bg-school-blue hover:bg-school-blue/90">
               {loading ? (

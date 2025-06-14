@@ -12,34 +12,75 @@ export interface LoginActivity {
   failureReason?: string;
 }
 
-// Secure client IP detection without external API dependency
-const getClientIP = (): string => {
+// Enhanced input sanitization
+const sanitizeString = (input: string, maxLength: number = 500): string => {
+  if (!input || typeof input !== 'string') return 'unknown';
+  // Remove any potential script tags, HTML, and limit length
+  return input
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/[<>'"]/g, '') // Remove potentially dangerous characters
+    .trim()
+    .substring(0, maxLength);
+};
+
+const sanitizeEmail = (email: string): string => {
+  if (!email || typeof email !== 'string') return '';
+  return email.toLowerCase().trim().substring(0, 100);
+};
+
+// Secure client info detection without external dependencies
+const getSecureClientInfo = () => {
   try {
-    // In a production environment, you would get this from your server
-    // For now, we'll use a placeholder that doesn't make external requests
-    return 'client-ip'; // This should be set by your server/proxy
+    return {
+      // In production, IP should be set by server/proxy headers
+      ipAddress: 'client-detected', // Placeholder - should be server-provided
+      userAgent: sanitizeString(navigator.userAgent, 500)
+    };
   } catch (error) {
-    console.error('Error getting client IP:', error);
-    return 'unknown';
+    console.error('Error getting client info:', error);
+    return {
+      ipAddress: 'unknown',
+      userAgent: 'unknown'
+    };
   }
 };
 
-// Sanitize user agent to prevent XSS
-const sanitizeUserAgent = (userAgent: string): string => {
-  if (!userAgent || typeof userAgent !== 'string') return 'unknown';
-  // Remove any potential script tags or dangerous content
-  return userAgent.replace(/<[^>]*>/g, '').substring(0, 500);
+// Validate ISO date string
+const isValidISODate = (dateString: string): boolean => {
+  if (!dateString || typeof dateString !== 'string') return false;
+  const date = new Date(dateString);
+  return !isNaN(date.getTime()) && dateString.includes('T');
 };
 
-// Log successful admin login
+// Log successful admin login with enhanced security
 export const logAdminLogin = async (adminId: string, email: string): Promise<void> => {
   try {
+    // Enhanced input validation
+    if (!adminId || typeof adminId !== 'string' || adminId.length > 100) {
+      console.error('Invalid adminId provided');
+      return;
+    }
+
+    const sanitizedEmail = sanitizeEmail(email);
+    if (!sanitizedEmail || !sanitizedEmail.includes('@')) {
+      console.error('Invalid email provided');
+      return;
+    }
+
+    const clientInfo = getSecureClientInfo();
+    const loginTime = new Date().toISOString();
+
+    if (!isValidISODate(loginTime)) {
+      console.error('Invalid date generated');
+      return;
+    }
+
     const loginActivity: LoginActivity = {
-      adminId,
-      email: email.toLowerCase().trim(),
-      loginTime: new Date().toISOString(),
-      ipAddress: getClientIP(),
-      userAgent: sanitizeUserAgent(navigator.userAgent),
+      adminId: sanitizeString(adminId, 100),
+      email: sanitizedEmail,
+      loginTime,
+      ipAddress: clientInfo.ipAddress,
+      userAgent: clientInfo.userAgent,
       status: 'success'
     };
 
@@ -51,18 +92,34 @@ export const logAdminLogin = async (adminId: string, email: string): Promise<voi
   }
 };
 
-// Log failed admin login attempt
+// Log failed admin login attempt with enhanced security
 export const logFailedAdminLogin = async (email: string, reason: string): Promise<void> => {
   try {
-    // Sanitize inputs
-    const sanitizedEmail = email.toLowerCase().trim();
-    const sanitizedReason = reason.substring(0, 500); // Limit reason length
+    const sanitizedEmail = sanitizeEmail(email);
+    if (!sanitizedEmail || !sanitizedEmail.includes('@')) {
+      console.error('Invalid email provided');
+      return;
+    }
+
+    const sanitizedReason = sanitizeString(reason, 500);
+    if (!sanitizedReason) {
+      console.error('Invalid failure reason provided');
+      return;
+    }
+
+    const clientInfo = getSecureClientInfo();
+    const loginTime = new Date().toISOString();
+
+    if (!isValidISODate(loginTime)) {
+      console.error('Invalid date generated');
+      return;
+    }
 
     const loginActivity: Partial<LoginActivity> = {
       email: sanitizedEmail,
-      loginTime: new Date().toISOString(),
-      ipAddress: getClientIP(),
-      userAgent: sanitizeUserAgent(navigator.userAgent),
+      loginTime,
+      ipAddress: clientInfo.ipAddress,
+      userAgent: clientInfo.userAgent,
       status: 'failed',
       failureReason: sanitizedReason
     };
@@ -75,10 +132,10 @@ export const logFailedAdminLogin = async (email: string, reason: string): Promis
   }
 };
 
-// Get recent login activities with input validation
+// Get recent login activities with enhanced validation
 export const getRecentLoginActivities = async (limitCount: number = 50): Promise<LoginActivity[]> => {
   try {
-    // Validate and sanitize limit
+    // Enhanced input validation
     const sanitizedLimit = Math.min(Math.max(1, Number(limitCount) || 50), 100);
     
     const q = query(
@@ -92,9 +149,25 @@ export const getRecentLoginActivities = async (limitCount: number = 50): Promise
     
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      // Validate required fields
-      if (data.email && data.loginTime && data.status) {
-        activities.push({ ...data } as LoginActivity);
+      
+      // Enhanced data validation
+      if (data.email && 
+          data.loginTime && 
+          data.status && 
+          typeof data.email === 'string' &&
+          typeof data.loginTime === 'string' &&
+          ['success', 'failed'].includes(data.status) &&
+          isValidISODate(data.loginTime)) {
+        
+        activities.push({
+          adminId: data.adminId ? sanitizeString(data.adminId, 100) : '',
+          email: sanitizeEmail(data.email),
+          loginTime: data.loginTime,
+          ipAddress: data.ipAddress ? sanitizeString(data.ipAddress, 50) : undefined,
+          userAgent: data.userAgent ? sanitizeString(data.userAgent, 500) : undefined,
+          status: data.status,
+          failureReason: data.failureReason ? sanitizeString(data.failureReason, 500) : undefined
+        } as LoginActivity);
       }
     });
     

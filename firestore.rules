@@ -4,14 +4,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Admin collection rules
+    // Admin collection rules - Enhanced security
     match /admins/{adminId} {
       // Allow users to create their own admin request (for registration)
       allow create: if request.auth != null 
         && request.auth.uid == adminId
         && request.resource.data.status == 'pending'
         && request.resource.data.email == request.auth.token.email
-        && isValidAdminData(request.resource.data);
+        && isValidAdminData(request.resource.data)
+        && !('password' in request.resource.data); // Security: No passwords allowed
       
       // Allow users to read their own admin record or approved admins can read all
       allow read: if request.auth != null 
@@ -20,7 +21,8 @@ service cloud.firestore {
       // Only approved admins can update admin records (for approval/rejection)
       allow update: if request.auth != null 
         && isApprovedAdmin(request.auth.uid)
-        && isValidStatusUpdate(resource.data, request.resource.data);
+        && isValidStatusUpdate(resource.data, request.resource.data)
+        && !('password' in request.resource.data); // Security: No passwords in updates
       
       // Only approved admins can delete admin records
       allow delete: if request.auth != null 
@@ -31,11 +33,14 @@ service cloud.firestore {
         && isApprovedAdmin(request.auth.uid);
     }
     
-    // Admin login activities collection
+    // Admin login activities collection - Enhanced security
     match /admin_login_activities/{activityId} {
-      // Allow creating login activity records during authentication attempts
-      // This includes both successful and failed login attempts
-      allow create: if isValidLoginActivity(request.resource.data);
+      // Stricter validation for login activity creation
+      allow create: if isValidLoginActivity(request.resource.data)
+        && request.resource.data.email.matches('.*@.*\\..*')
+        && request.resource.data.status in ['success', 'failed']
+        && (!('adminId' in request.resource.data) || request.resource.data.adminId.size() > 0)
+        && request.resource.data.loginTime.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T.*');
       
       // Only approved admins can read login activities
       allow read: if request.auth != null 
@@ -55,30 +60,31 @@ service cloud.firestore {
              get(/databases/$(database)/documents/admins/$(uid)).data.status == 'approved';
     }
     
-    // Helper function to validate admin data
+    // Enhanced validation for admin data
     function isValidAdminData(data) {
       return data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt']) &&
-             data.firstName is string && data.firstName.size() > 0 &&
-             data.lastName is string && data.lastName.size() > 0 &&
-             data.email is string && data.email.matches('.*@.*\\..*') &&
-             data.phone is string && data.phone.size() > 0 &&
-             data.status is string &&
-             data.requestedAt is string;
+             data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 50 &&
+             data.lastName is string && data.lastName.size() > 0 && data.lastName.size() <= 50 &&
+             data.email is string && data.email.matches('.*@.*\\..*') && data.email.size() <= 100 &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() <= 20 &&
+             data.status is string && data.status == 'pending' &&
+             data.requestedAt is string &&
+             data.requestedAt.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T.*');
     }
     
-    // Helper function to validate login activity data
+    // Enhanced validation for login activity data
     function isValidLoginActivity(data) {
       return data.keys().hasAll(['email', 'loginTime', 'status']) &&
-             data.email is string && data.email.matches('.*@.*\\..*') &&
-             data.loginTime is string &&
+             data.email is string && data.email.size() <= 100 &&
+             data.loginTime is string && data.loginTime.size() <= 50 &&
              data.status is string && data.status in ['success', 'failed'] &&
-             (!('adminId' in data) || data.adminId is string) &&
-             (!('ipAddress' in data) || data.ipAddress is string) &&
-             (!('userAgent' in data) || data.userAgent is string) &&
-             (!('failureReason' in data) || data.failureReason is string);
+             (!('adminId' in data) || (data.adminId is string && data.adminId.size() <= 100)) &&
+             (!('ipAddress' in data) || (data.ipAddress is string && data.ipAddress.size() <= 50)) &&
+             (!('userAgent' in data) || (data.userAgent is string && data.userAgent.size() <= 500)) &&
+             (!('failureReason' in data) || (data.failureReason is string && data.failureReason.size() <= 500));
     }
     
-    // Helper function to validate status updates
+    // Enhanced validation for status updates
     function isValidStatusUpdate(oldData, newData) {
       let allowedStatusChanges = [
         // Pending to approved/rejected
@@ -103,7 +109,8 @@ service cloud.firestore {
              newData.firstName == oldData.firstName &&
              newData.lastName == oldData.lastName &&
              newData.email == oldData.email &&
-             newData.phone == oldData.phone;
+             newData.phone == oldData.phone &&
+             newData.requestedAt == oldData.requestedAt;
     }
     
     // Default deny rule for all other collections
