@@ -47,10 +47,17 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
       (data) => {
         console.log('Real-time data update received:', data);
         console.log('Gallery images in received data:', data.galleryImages);
+        
+        // Update the state with the received data
         dispatch({ type: 'SET_SCHOOL_DATA', payload: data });
-        // Explicitly sync gallery images to ensure they're updated
-        if (data.galleryImages) {
+        
+        // Ensure gallery images are properly synchronized
+        if (data.galleryImages && Array.isArray(data.galleryImages)) {
+          console.log('Syncing gallery images from Firestore:', data.galleryImages.length, 'images');
           dispatch({ type: 'SET_GALLERY_IMAGES', payload: data.galleryImages });
+        } else {
+          console.log('No gallery images found in Firestore data');
+          dispatch({ type: 'SET_GALLERY_IMAGES', payload: [] });
         }
       },
       (error) => {

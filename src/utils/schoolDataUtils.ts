@@ -22,26 +22,63 @@ export const updateSchoolData = async (data: Partial<SchoolData>): Promise<void>
   await updateDoc(schoolConfigRef(), data);
 };
 
-// Gallery-specific functions
+// Gallery-specific functions with improved error handling
 export const addGalleryImage = async (image: GalleryImage): Promise<void> => {
-  const docSnap = await getDoc(schoolConfigRef());
-  if (docSnap.exists()) {
-    const currentData = docSnap.data();
-    const currentGalleryImages = currentData.galleryImages || [];
-    await updateDoc(schoolConfigRef(), {
-      galleryImages: [...currentGalleryImages, image]
-    });
+  try {
+    console.log('Adding gallery image to Firestore:', image);
+    const docSnap = await getDoc(schoolConfigRef());
+    
+    if (docSnap.exists()) {
+      const currentData = docSnap.data();
+      const currentGalleryImages = currentData.galleryImages || [];
+      
+      // Ensure we don't add duplicates
+      const existingImage = currentGalleryImages.find((img: GalleryImage) => img.id === image.id);
+      if (existingImage) {
+        console.log('Image already exists, skipping add operation');
+        return;
+      }
+      
+      const updatedGalleryImages = [...currentGalleryImages, image];
+      
+      await updateDoc(schoolConfigRef(), {
+        galleryImages: updatedGalleryImages
+      });
+      
+      console.log('Gallery image successfully added to Firestore');
+    } else {
+      // Create the document with the new image
+      await setDoc(schoolConfigRef(), {
+        ...defaultSchoolData,
+        galleryImages: [image]
+      });
+      console.log('Created new school config with gallery image');
+    }
+  } catch (error) {
+    console.error('Error adding gallery image to Firestore:', error);
+    throw error;
   }
 };
 
 export const removeGalleryImage = async (imageId: string): Promise<void> => {
-  const docSnap = await getDoc(schoolConfigRef());
-  if (docSnap.exists()) {
-    const currentData = docSnap.data();
-    const currentGalleryImages = currentData.galleryImages || [];
-    await updateDoc(schoolConfigRef(), {
-      galleryImages: currentGalleryImages.filter((img: GalleryImage) => img.id !== imageId)
-    });
+  try {
+    console.log('Removing gallery image from Firestore:', imageId);
+    const docSnap = await getDoc(schoolConfigRef());
+    
+    if (docSnap.exists()) {
+      const currentData = docSnap.data();
+      const currentGalleryImages = currentData.galleryImages || [];
+      const filteredImages = currentGalleryImages.filter((img: GalleryImage) => img.id !== imageId);
+      
+      await updateDoc(schoolConfigRef(), {
+        galleryImages: filteredImages
+      });
+      
+      console.log('Gallery image successfully removed from Firestore');
+    }
+  } catch (error) {
+    console.error('Error removing gallery image from Firestore:', error);
+    throw error;
   }
 };
 
@@ -56,11 +93,19 @@ export const subscribeToSchoolData = (
       if (doc.exists()) {
         // Merge with defaults to ensure all properties are present
         const data = { ...defaultSchoolData, ...doc.data() } as SchoolData;
+        console.log('Received school data from Firestore:', {
+          hasGalleryImages: !!data.galleryImages,
+          galleryImagesCount: data.galleryImages?.length || 0
+        });
         callback(data);
       } else {
+        console.log('School config document does not exist, creating with defaults');
         // If document doesn't exist, create it with defaults
         setDoc(schoolConfigRef(), defaultSchoolData)
-          .then(() => callback(defaultSchoolData))
+          .then(() => {
+            console.log('Created default school config document');
+            callback(defaultSchoolData);
+          })
           .catch(onError || console.error);
       }
     },

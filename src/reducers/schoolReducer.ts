@@ -24,8 +24,13 @@ export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolS
       };
     case 'ADD_GALLERY_IMAGE':
       console.log('Adding gallery image:', action.payload);
-      // Optimistic update with database save
-      addGalleryImage(action.payload).catch(console.error);
+      // Save to Firestore immediately
+      addGalleryImage(action.payload).then(() => {
+        console.log('Gallery image saved to Firestore successfully');
+      }).catch((error) => {
+        console.error('Failed to save gallery image to Firestore:', error);
+      });
+      
       const newGalleryImages = [...state.galleryImages, action.payload];
       return { 
         ...state, 
@@ -37,8 +42,13 @@ export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolS
       };
     case 'REMOVE_GALLERY_IMAGE':
       console.log('Removing gallery image:', action.payload);
-      // Optimistic update with database save
-      removeGalleryImage(action.payload).catch(console.error);
+      // Remove from Firestore immediately
+      removeGalleryImage(action.payload).then(() => {
+        console.log('Gallery image removed from Firestore successfully');
+      }).catch((error) => {
+        console.error('Failed to remove gallery image from Firestore:', error);
+      });
+      
       const filteredImages = state.galleryImages.filter(img => img.id !== action.payload);
       return { 
         ...state, 
