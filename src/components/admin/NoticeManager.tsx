@@ -17,24 +17,7 @@ const NoticeManager = () => {
   const [editingNotice, setEditingNotice] = useState<string | null>(null);
   const [editData, setEditData] = useState({ title: '', content: '' });
 
-  const saveToFirestore = async () => {
-    try {
-      console.log('Saving notices to Firestore...');
-      await updateSchoolData({ notices: state.data.notices });
-      console.log('Notices saved to Firestore successfully');
-    } catch (error: any) {
-      console.error('Failed to save notices to Firestore:', error);
-      if (error.code === 'permission-denied') {
-        toast({
-          title: "Notice Updated Locally",
-          description: "Notice updated locally. Database permissions need configuration for persistence.",
-          variant: "default",
-        });
-      }
-    }
-  };
-
-  const handleAddNotice = async () => {
+  const handleAddNotice = () => {
     if (!newNotice.title || !newNotice.content) {
       toast({
         title: "Missing Information",
@@ -51,6 +34,8 @@ const NoticeManager = () => {
       date: new Date().toISOString().split('T')[0]
     };
 
+    const updatedNotices = [...state.data.notices, noticeData];
+
     dispatch({
       type: 'ADD_NOTICE',
       payload: noticeData
@@ -58,13 +43,19 @@ const NoticeManager = () => {
 
     setNewNotice({ title: '', content: '' });
     
-    toast({
-      title: "Notice Added",
-      description: "New notice has been published.",
+    updateSchoolData({ notices: updatedNotices }).then(() => {
+      toast({
+        title: "Notice Added",
+        description: "New notice has been published and saved.",
+      });
+    }).catch(error => {
+      console.error("Failed to save notice:", error);
+      toast({
+        title: "Error Saving Notice",
+        description: "There was a problem saving the notice to the database.",
+        variant: "destructive",
+      });
     });
-
-    // Try to save to Firestore
-    setTimeout(saveToFirestore, 100);
   };
 
   const handleEditNotice = (notice: any) => {
@@ -72,7 +63,7 @@ const NoticeManager = () => {
     setEditData({ title: notice.title, content: notice.content });
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!editData.title || !editData.content) {
       toast({
         title: "Missing Information",
@@ -81,6 +72,10 @@ const NoticeManager = () => {
       });
       return;
     }
+    
+    const updatedNotices = state.data.notices.map(n =>
+      n.id === editingNotice ? { ...n, title: editData.title, content: editData.content } : n
+    );
 
     dispatch({
       type: 'UPDATE_NOTICE',
@@ -90,13 +85,19 @@ const NoticeManager = () => {
     setEditingNotice(null);
     setEditData({ title: '', content: '' });
     
-    toast({
-      title: "Notice Updated",
-      description: "Notice has been updated successfully.",
+    updateSchoolData({ notices: updatedNotices }).then(() => {
+      toast({
+        title: "Notice Updated",
+        description: "Notice has been updated successfully and saved.",
+      });
+    }).catch(error => {
+      console.error("Failed to update notice:", error);
+      toast({
+        title: "Error Updating Notice",
+        description: "There was a problem updating the notice in the database.",
+        variant: "destructive",
+      });
     });
-
-    // Try to save to Firestore
-    setTimeout(saveToFirestore, 100);
   };
 
   const handleCancelEdit = () => {
@@ -104,19 +105,27 @@ const NoticeManager = () => {
     setEditData({ title: '', content: '' });
   };
 
-  const handleDeleteNotice = async (id: string) => {
+  const handleDeleteNotice = (id: string) => {
+    const updatedNotices = state.data.notices.filter(notice => notice.id !== id);
+
     dispatch({
       type: 'DELETE_NOTICE',
       payload: id
     });
     
-    toast({
-      title: "Notice Deleted",
-      description: "Notice has been removed.",
+    updateSchoolData({ notices: updatedNotices }).then(() => {
+      toast({
+        title: "Notice Deleted",
+        description: "Notice has been removed and saved.",
+      });
+    }).catch(error => {
+      console.error("Failed to delete notice:", error);
+      toast({
+        title: "Error Deleting Notice",
+        description: "There was a problem deleting the notice from the database.",
+        variant: "destructive",
+      });
     });
-
-    // Try to save to Firestore
-    setTimeout(saveToFirestore, 100);
   };
 
   return (

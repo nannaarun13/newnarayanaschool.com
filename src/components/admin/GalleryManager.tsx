@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Plus } from 'lucide-react';
 import ImageUpload from './ImageUpload';
+import { updateSchoolData } from '@/utils/schoolDataUtils';
 
 const GalleryManager = () => {
   const { state, dispatch } = useSchool();
@@ -39,26 +41,49 @@ const GalleryManager = () => {
       date: new Date().toISOString().split('T')[0]
     };
 
+    const updatedImages = [...state.data.galleryImages, imageData];
+
     dispatch({
       type: 'ADD_GALLERY_IMAGE',
       payload: imageData
     });
 
     setNewImage({ url: '', caption: '', category: '' });
-    toast({
-      title: "Image Added",
-      description: "New image has been added to the gallery.",
+
+    updateSchoolData({ galleryImages: updatedImages }).then(() => {
+      toast({
+        title: "Image Added",
+        description: "New image has been added to the gallery and saved.",
+      });
+    }).catch(error => {
+      console.error("Failed to save gallery changes:", error);
+      toast({
+        title: "Error Saving Image",
+        description: "There was a problem saving the image to the database.",
+        variant: "destructive",
+      });
     });
   };
 
   const handleDeleteImage = (id: string) => {
+    const updatedImages = state.data.galleryImages.filter(image => image.id !== id);
     dispatch({
       type: 'DELETE_GALLERY_IMAGE',
       payload: id
     });
-    toast({
-      title: "Image Deleted",
-      description: "Image has been removed from the gallery.",
+    
+    updateSchoolData({ galleryImages: updatedImages }).then(() => {
+      toast({
+        title: "Image Deleted",
+        description: "Image has been removed from the gallery and saved.",
+      });
+    }).catch(error => {
+      console.error("Failed to delete image:", error);
+      toast({
+        title: "Error Deleting Image",
+        description: "There was a problem deleting the image from the database.",
+        variant: "destructive",
+      });
     });
   };
 
