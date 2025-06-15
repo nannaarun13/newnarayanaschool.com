@@ -29,6 +29,7 @@ const App = () => (
         <BrowserRouter>
           <RouteProtection>
             <Routes>
+              {/* Public routes with layout */}
               <Route path="/" element={<Layout />}>
                 <Route index element={<Index />} />
                 <Route path="about" element={<About />} />
@@ -36,10 +37,16 @@ const App = () => (
                 <Route path="gallery" element={<Gallery />} />
                 <Route path="notice-board" element={<NoticeBoard />} />
                 <Route path="contact" element={<Contact />} />
-                <Route path="login" element={<Login />} />
-                <Route path="admin/register" element={<AdminRegistration />} />
-                <Route path="admin/*" element={<AdminDashboard />} />
               </Route>
+              
+              {/* Auth routes without layout */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/admin/register" element={<AdminRegistration />} />
+              
+              {/* Admin routes without layout */}
+              <Route path="/admin/*" element={<AdminDashboard />} />
+              
+              {/* 404 route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </RouteProtection>

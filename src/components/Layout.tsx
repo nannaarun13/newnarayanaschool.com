@@ -10,25 +10,10 @@ const Layout = () => {
   const location = useLocation();
   const { dispatch } = useSchool();
   
-  // Don't show header, navigation, and footer on admin pages and login
-  const isAdminPage = location.pathname.startsWith('/admin');
-  const isLoginPage = location.pathname === '/login';
-  
   useEffect(() => {
-    // Increment visitor count on page visits (except admin pages and login)
-    if (!isAdminPage && !isLoginPage) {
-      dispatch({ type: 'INCREMENT_VISITORS' });
-    }
-  }, [location.pathname, dispatch, isAdminPage, isLoginPage]);
-
-  // For login and admin pages, render without layout
-  if (isAdminPage || isLoginPage) {
-    return (
-      <div className="min-h-screen">
-        <Outlet />
-      </div>
-    );
-  }
+    // Increment visitor count on page visits
+    dispatch({ type: 'INCREMENT_VISITORS' });
+  }, [location.pathname, dispatch]);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
