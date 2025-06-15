@@ -44,12 +44,14 @@ const GalleryManager = () => {
         date: new Date().toISOString(),
       };
       
-      // Add to local state instead of database
+      console.log('Adding new gallery image:', imageData);
+      
+      // Dispatch to add image - this will handle Firestore sync automatically
       dispatch({ type: 'ADD_GALLERY_IMAGE', payload: imageData });
       
       toast({
         title: "Image Added",
-        description: "New image has been added to the gallery.",
+        description: "New image has been added to the gallery and saved.",
       });
       setNewImage({ url: '', caption: '', category: '' });
     } catch (error) {
@@ -66,7 +68,11 @@ const GalleryManager = () => {
 
   const handleDeleteImage = async (id: string) => {
     try {
+      console.log('Deleting gallery image:', id);
+      
+      // Dispatch to remove image - this will handle Firestore sync automatically
       dispatch({ type: 'REMOVE_GALLERY_IMAGE', payload: id });
+      
       toast({
         title: "Image Deleted",
         description: "Image has been removed from the gallery.",
@@ -82,6 +88,8 @@ const GalleryManager = () => {
   };
   
   const { galleryImages } = state;
+
+  console.log('Current gallery images in state:', galleryImages);
 
   return (
     <div className="space-y-6">
@@ -146,7 +154,7 @@ const GalleryManager = () => {
       {/* Current Images */}
       <Card>
         <CardHeader>
-          <CardTitle>Current Gallery Images</CardTitle>
+          <CardTitle>Current Gallery Images ({galleryImages.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {galleryImages.length === 0 ? (
