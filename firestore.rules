@@ -1,53 +1,47 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // School configuration collection for real-time updates
-    match /school/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null && isApprovedAdmin();
-    }
 
-    // New collection for gallery images
-    match /gallery/{imageId} {
-      allow read: if true;
-      allow write: if request.auth != null && isApprovedAdmin();
-    }
-    
-    // Admin collection rules
+    // --- Admins Collection ---
     match /admins/{adminId} {
-      // Allow creation of pending admin requests without authentication
-      allow create: if request.resource.data.status == 'pending' &&
-                      request.resource.data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt']) &&
-                      request.resource.data.firstName is string && request.resource.data.firstName.size() > 0 &&
-                      request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 &&
-                      request.resource.data.email is string && request.resource.data.email.size() > 0 &&
-                      request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
-                      request.resource.data.requestedAt is string;
-      // Allow reading for authenticated users only
+      allow create: if 
+        request.resource.data.status == 'pending' &&
+        request.resource.data.keys().hasOnly([
+          'firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt'
+        ]) &&
+        request.resource.data.firstName is string && request.resource.data.firstName.size() > 0 &&
+        request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 &&
+        request.resource.data.email is string && request.resource.data.email.size() > 0 &&
+        request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
+        request.resource.data.requestedAt is string;
       allow read: if request.auth != null;
-      // Allow updates and deletions only by approved admins
       allow update, delete: if request.auth != null && isApprovedAdmin();
     }
-    
-    // Admin login activity (security monitor) -- only for authenticated, approved admins
-    match /admin_login_activities/{loginId} {
-      allow read, write: if request.auth != null && isApprovedAdmin();
-    }
-    // Rate limiter collection -- only for authenticated, approved admins
-    match /rate_limits/{docId} {
-      allow read, write: if request.auth != null && isApprovedAdmin();
+
+    // --- School Collection ---
+    match /school/{docId} {
+      allow read: if true;
+      allow create: if request.resource.data.status == 'pending' &&
+        request.resource.data.keys().hasAll([
+          'firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt'
+        ]) &&
+        request.resource.data.firstName is string && request.resource.data.firstName.size() > 0 &&
+        request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 &&
+        request.resource.data.email is string && request.resource.data.email.size() > 0 &&
+        request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
+        request.resource.data.requestedAt is string;
+      allow update, delete: if request.auth != null && isApprovedAdmin();
     }
 
-    // Helper function for checking approved admin status
+    // --- Helper Function ---
     function isApprovedAdmin() {
-      return exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'approved';
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'approved';
     }
-    
-    // Default deny rule for all other collections
+
+    // --- Deny all other documents ---
     match /{document=**} {
       allow read, write: if false;
     }
