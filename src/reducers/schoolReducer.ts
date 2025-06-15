@@ -1,4 +1,3 @@
-
 import { SchoolState, SchoolAction } from '@/types';
 import { updateSchoolData, addGalleryImage, removeGalleryImage } from '@/utils/schoolDataUtils';
 
@@ -6,6 +5,7 @@ import { updateSchoolData, addGalleryImage, removeGalleryImage } from '@/utils/s
 export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState => {
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
+      console.log('Setting school data with gallery images:', action.payload.galleryImages);
       return { 
         ...state, 
         data: action.payload, 
@@ -13,15 +13,41 @@ export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolS
         loading: false 
       };
     case 'SET_GALLERY_IMAGES':
-      return { ...state, galleryImages: action.payload };
+      console.log('Setting gallery images:', action.payload);
+      return { 
+        ...state, 
+        galleryImages: action.payload,
+        data: {
+          ...state.data,
+          galleryImages: action.payload
+        }
+      };
     case 'ADD_GALLERY_IMAGE':
+      console.log('Adding gallery image:', action.payload);
       // Optimistic update with database save
       addGalleryImage(action.payload).catch(console.error);
-      return { ...state, galleryImages: [...state.galleryImages, action.payload] };
+      const newGalleryImages = [...state.galleryImages, action.payload];
+      return { 
+        ...state, 
+        galleryImages: newGalleryImages,
+        data: {
+          ...state.data,
+          galleryImages: newGalleryImages
+        }
+      };
     case 'REMOVE_GALLERY_IMAGE':
+      console.log('Removing gallery image:', action.payload);
       // Optimistic update with database save
       removeGalleryImage(action.payload).catch(console.error);
-      return { ...state, galleryImages: state.galleryImages.filter(img => img.id !== action.payload) };
+      const filteredImages = state.galleryImages.filter(img => img.id !== action.payload);
+      return { 
+        ...state, 
+        galleryImages: filteredImages,
+        data: {
+          ...state.data,
+          galleryImages: filteredImages
+        }
+      };
     case 'UPDATE_SCHOOL_DATA':
       const updatedData = { ...state.data, ...action.payload };
       // This is now deprecated for galleryImages, but kept for other partial updates
