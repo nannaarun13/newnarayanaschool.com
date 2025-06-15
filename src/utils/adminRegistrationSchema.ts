@@ -16,4 +16,6 @@ export const registrationSchema = z.object({
     path: ["confirmPassword"],
 });
 
+// While the form can require password/confirmPassword for registration,
+// they must NOT be stored in Firestore -- only used to create the Firebase Auth user
 export type RegistrationFormData = z.infer<typeof registrationSchema>;

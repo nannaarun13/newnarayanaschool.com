@@ -6,19 +6,13 @@ service cloud.firestore {
     
     // School configuration collection for real-time updates
     match /school/{docId} {
-      // Allow public read access for the website
       allow read: if true;
-      
-      // Allow write access only for approved admins
       allow write: if request.auth != null && isApprovedAdmin();
     }
-    
+
     // New collection for gallery images
     match /gallery/{imageId} {
-      // Public read access for the website
       allow read: if true;
-      
-      // Allow create, update, and delete for approved admins
       allow write: if request.auth != null && isApprovedAdmin();
     }
     
@@ -26,21 +20,27 @@ service cloud.firestore {
     match /admins/{adminId} {
       // Allow creation of pending admin requests without authentication
       allow create: if request.resource.data.status == 'pending' &&
-                      request.resource.data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'password', 'status', 'requestedAt']) &&
+                      request.resource.data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt']) &&
                       request.resource.data.firstName is string && request.resource.data.firstName.size() > 0 &&
                       request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 &&
                       request.resource.data.email is string && request.resource.data.email.size() > 0 &&
                       request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
-                      request.resource.data.password is string && request.resource.data.password.size() >= 8 &&
                       request.resource.data.requestedAt is string;
-      
       // Allow reading for authenticated users only
       allow read: if request.auth != null;
-      
       // Allow updates and deletions only by approved admins
       allow update, delete: if request.auth != null && isApprovedAdmin();
     }
     
+    // Admin login activity (security monitor) -- only for authenticated, approved admins
+    match /admin_login_activities/{loginId} {
+      allow read, write: if request.auth != null && isApprovedAdmin();
+    }
+    // Rate limiter collection -- only for authenticated, approved admins
+    match /rate_limits/{docId} {
+      allow read, write: if request.auth != null && isApprovedAdmin();
+    }
+
     // Helper function for checking approved admin status
     function isApprovedAdmin() {
       return exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&

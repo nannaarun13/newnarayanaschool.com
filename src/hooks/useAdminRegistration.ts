@@ -17,15 +17,13 @@ export const useAdminRegistration = ({ onSuccess }: UseAdminRegistrationProps) =
 
   const handleSubmit = async (values: RegistrationFormData) => {
     setLoading(true);
-    
     try {
-      // Create admin request (pending approval)
+      // Create admin request (pending approval) – passwords are NOT stored
       const adminData = {
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,
         phone: values.phone,
-        password: values.password, // Store temporarily for approval process
         status: 'pending' as const,
         requestedAt: new Date().toISOString()
       };
@@ -40,13 +38,11 @@ export const useAdminRegistration = ({ onSuccess }: UseAdminRegistrationProps) =
 
     } catch (error: any) {
       console.error("Registration error:", error);
-      
       const errorMessage = "Failed to submit registration. Please try again.";
-      
-      toast({ 
-        title: "Registration Failed", 
-        description: errorMessage, 
-        variant: "destructive" 
+      toast({
+        title: "Registration Failed",
+        description: errorMessage,
+        variant: "destructive"
       });
     } finally {
       setLoading(false);

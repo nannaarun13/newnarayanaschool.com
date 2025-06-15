@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { getAdminRequests, AdminUser } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 export const useAdminRequestManager = () => {
   const { toast } = useToast();
@@ -39,61 +38,17 @@ export const useAdminRequestManager = () => {
       const currentAdminEmail = currentUser?.email;
 
       if (approved) {
-        // Create Firebase account for approved admin
-        const tempAuth = auth; // Store current auth state
-        
-        try {
-          // Create user account
-          const userCredential = await createUserWithEmailAndPassword(
-            auth, 
-            request.email, 
-            (request as any).password
-          );
-          
-          const newUser = userCredential.user;
-          
-          // Create admin record with the new user's UID
-          await setDoc(doc(db, 'admins', newUser.uid), {
-            uid: newUser.uid,
-            firstName: request.firstName,
-            lastName: request.lastName,
-            email: request.email,
-            phone: request.phone,
-            status: 'approved',
-            requestedAt: request.requestedAt,
-            approvedAt: new Date().toISOString(),
-            approvedBy: currentAdminEmail || 'System',
-          });
+        // Do NOT create Firebase Auth user here. Instead, mark as approved and notify
+        await updateDoc(doc(db, 'admins', request.id), {
+          status: 'approved',
+          approvedAt: new Date().toISOString(),
+          approvedBy: currentAdminEmail || 'System',
+        });
 
-          // Delete the pending request
-          await deleteDoc(doc(db, 'admins', request.id));
-
-          // Sign back in as the current admin
-          await auth.signOut();
-          
-          toast({
-            title: "Request Approved",
-            description: "Admin account has been created successfully. Please sign back in.",
-          });
-
-          // Reload the page to force re-authentication
-          window.location.reload();
-
-        } catch (createError: any) {
-          console.error('Error creating admin account:', createError);
-          
-          // If account creation fails, just update status
-          await updateDoc(doc(db, 'admins', request.id), {
-            status: 'approved',
-            approvedAt: new Date().toISOString(),
-            approvedBy: currentAdminEmail || 'System',
-          });
-
-          toast({
-            title: "Request Approved",
-            description: "Admin access approved. User needs to create Firebase account manually.",
-          });
-        }
+        toast({
+          title: "Request Approved",
+          description: "Admin access approved. The user must now register themselves via the site.",
+        });
       } else {
         // Reject the request
         await updateDoc(doc(db, 'admins', request.id), {
@@ -101,14 +56,14 @@ export const useAdminRequestManager = () => {
           rejectedAt: new Date().toISOString(),
           rejectedBy: currentAdminEmail || 'System',
         });
-        
+
         toast({
           title: "Request Rejected",
           description: "Admin access request has been rejected.",
           variant: "destructive"
         });
       }
-      
+
       await loadRequests();
     } catch (error: any) {
       console.error('Error updating request:', error);
@@ -157,7 +112,7 @@ export const useAdminRequestManager = () => {
         title: "Access Revoked",
         description: "Admin access has been successfully revoked.",
       });
-      
+
       await loadRequests();
     } catch (error) {
       console.error('Error revoking access:', error);
