@@ -50,7 +50,7 @@ const AdminActionButtons = ({ request, actionLoading, onApprove, onRemoveAccess 
     );
   }
 
-  if (request.status === 'revoked') {
+  if (request.status === 'revoked' || request.status === 'rejected') {
     return (
       <Button
         variant="outline"

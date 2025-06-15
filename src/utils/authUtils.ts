@@ -137,27 +137,25 @@ export const subscribeToAdminRequests = (
   }
 };
 
-// Enhanced admin status update with comprehensive validation
+// Enhanced admin status update with comprehensive validation and state handling
 export const updateAdminRequestStatus = async (
   uid: string,
-  status: 'approved' | 'rejected' | 'revoked',
-  approvedByEmail?: string
+  newStatus: 'approved' | 'rejected' | 'revoked',
+  actingUserEmail?: string,
+  previousStatus?: 'pending' | 'approved' | 'rejected' | 'revoked'
 ): Promise<void> => {
   try {
-    // Enhanced input validation
     if (!uid || typeof uid !== 'string' || uid.length > 100) {
       throw new Error('Invalid UID provided');
     }
     
-    if (!['approved', 'rejected', 'revoked'].includes(status)) {
+    if (!['approved', 'rejected', 'revoked'].includes(newStatus)) {
       throw new Error('Invalid status provided');
     }
 
-    if (approvedByEmail) {
-      const sanitizedApproverEmail = sanitizeEmail(approvedByEmail);
-      if (!sanitizedApproverEmail) {
-        throw new Error('Invalid approver email provided');
-      }
+    const sanitizedEmail = actingUserEmail ? sanitizeEmail(actingUserEmail) : 'System';
+    if (!sanitizedEmail) {
+      throw new Error('Invalid approver email provided');
     }
 
     const adminDocRef = doc(db, 'admins', uid);
@@ -167,40 +165,31 @@ export const updateAdminRequestStatus = async (
       throw new Error('Admin record not found');
     }
 
-    const currentData = currentDoc.data();
-    if (!validateAdminData(currentData)) {
-      throw new Error('Invalid admin record data');
-    }
-
-    const updateData: any = { status };
+    const updateData: any = { status: newStatus };
     const currentTime = new Date().toISOString();
     
-    if (status === 'approved') {
-      updateData.approvedAt = currentTime;
-      if (approvedByEmail) {
-        updateData.approvedBy = sanitizeEmail(approvedByEmail);
+    if (newStatus === 'approved') {
+      if (previousStatus === 'pending') {
+        updateData.approvedAt = currentTime;
+        updateData.approvedBy = sanitizedEmail;
+      } else if (previousStatus === 'revoked' || previousStatus === 'rejected') {
+        updateData.reapprovedAt = currentTime;
+        updateData.reapprovedBy = sanitizedEmail;
+        updateData.revokedAt = null;
+        updateData.revokedBy = null;
+        updateData.rejectedAt = null;
+        updateData.rejectedBy = null;
       }
-      // Clear any previous rejection/revocation data
-      updateData.rejectedAt = null;
-      updateData.rejectedBy = null;
-      updateData.revokedAt = null;
-      updateData.revokedBy = null;
-      updateData.reapprovedAt = null;
-      updateData.reapprovedBy = null;
-    } else if (status === 'rejected') {
+    } else if (newStatus === 'rejected') {
       updateData.rejectedAt = currentTime;
-      if (approvedByEmail) {
-        updateData.rejectedBy = sanitizeEmail(approvedByEmail);
-      }
-    } else if (status === 'revoked') {
+      updateData.rejectedBy = sanitizedEmail;
+    } else if (newStatus === 'revoked') {
       updateData.revokedAt = currentTime;
-      if (approvedByEmail) {
-        updateData.revokedBy = sanitizeEmail(approvedByEmail);
-      }
+      updateData.revokedBy = sanitizedEmail;
     }
     
     await updateDoc(adminDocRef, updateData);
-    console.log('Admin request status updated for UID:', uid, 'to:', status);
+    console.log('Admin request status updated for UID:', uid, 'to:', newStatus);
   } catch (error) {
     console.error('Error updating admin request status:', error);
     throw error;

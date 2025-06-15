@@ -1,11 +1,9 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Loader2 } from 'lucide-react';
-import { AdminUser } from '@/utils/authUtils';
-import { auth, db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { AdminUser, updateAdminRequestStatus } from '@/utils/authUtils';
+import { auth } from '@/lib/firebase';
 import { 
   Table,
   TableBody,
@@ -30,37 +28,23 @@ const AdminRequestsTable = ({ requests, isLoading }: AdminRequestsTableProps) =>
     try {
       const currentUser = auth.currentUser;
       const currentAdminEmail = currentUser?.email;
+      const newStatus = approved ? 'approved' : 'rejected';
+
+      await updateAdminRequestStatus(request.id, newStatus, currentAdminEmail, request.status);
 
       if (approved) {
         if (request.status === 'pending') {
-          await updateDoc(doc(db, 'admins', request.id), {
-            status: 'approved',
-            approvedAt: new Date().toISOString(),
-            approvedBy: currentAdminEmail || 'System',
-          });
           toast({
             title: "Request Approved",
-            description: "Admin access has been granted. User must create their Firebase account separately.",
+            description: "Admin access has been granted.",
           });
-        } else if (request.status === 'revoked') {
-          await updateDoc(doc(db, 'admins', request.id), {
-            status: 'approved',
-            reapprovedAt: new Date().toISOString(),
-            reapprovedBy: currentAdminEmail || 'System',
-            revokedAt: null,
-            revokedBy: null,
-          });
+        } else {
           toast({
             title: "Access Re-approved",
             description: "Admin access has been restored successfully.",
           });
         }
       } else {
-        await updateDoc(doc(db, 'admins', request.id), {
-          status: 'rejected',
-          rejectedAt: new Date().toISOString(),
-          rejectedBy: currentAdminEmail || 'System',
-        });
         toast({
           title: "Request Rejected",
           description: "Admin access request has been rejected.",
@@ -84,16 +68,13 @@ const AdminRequestsTable = ({ requests, isLoading }: AdminRequestsTableProps) =>
       const currentUser = auth.currentUser;
       const currentAdminEmail = currentUser?.email;
 
-      await updateDoc(doc(db, 'admins', request.id), {
-        status: 'revoked',
-        revokedAt: new Date().toISOString(),
-        revokedBy: currentAdminEmail || 'System',
-      });
+      await updateAdminRequestStatus(request.id, 'revoked', currentAdminEmail, request.status);
+
       toast({
         title: "Access Revoked",
         description: "Admin access has been successfully revoked.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error revoking access:', error);
       toast({
         title: "Error",
