@@ -1,4 +1,3 @@
-
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { SchoolData, GalleryImage } from '@/types';
@@ -25,7 +24,20 @@ export const updateSchoolData = async (data: Partial<SchoolData>): Promise<void>
 // Gallery-specific functions with improved error handling
 export const addGalleryImage = async (image: GalleryImage): Promise<void> => {
   try {
-    console.log('Adding gallery image to Firestore:', image);
+    // New validation for missing fields
+    if (
+      !image ||
+      !image.id ||
+      !image.url ||
+      typeof image.caption === "undefined" ||
+      typeof image.category === "undefined" ||
+      typeof image.date === "undefined"
+    ) {
+      console.error("addGalleryImage: missing required fields or bad image object", image);
+      throw new Error("Invalid image data. Cannot save gallery image: " + JSON.stringify(image));
+    }
+    console.log('[addGalleryImage] Called with image:', image);
+
     const docSnap = await getDoc(schoolConfigRef());
     
     if (docSnap.exists()) {
@@ -35,7 +47,7 @@ export const addGalleryImage = async (image: GalleryImage): Promise<void> => {
       // Ensure we don't add duplicates
       const existingImage = currentGalleryImages.find((img: GalleryImage) => img.id === image.id);
       if (existingImage) {
-        console.log('Image already exists, skipping add operation');
+        console.log('[addGalleryImage] Image already exists, skipping add operation');
         return;
       }
       
@@ -45,17 +57,17 @@ export const addGalleryImage = async (image: GalleryImage): Promise<void> => {
         galleryImages: updatedGalleryImages
       });
       
-      console.log('Gallery image successfully added to Firestore');
+      console.log('[addGalleryImage] Gallery image successfully added to Firestore');
     } else {
       // Create the document with the new image
       await setDoc(schoolConfigRef(), {
         ...defaultSchoolData,
         galleryImages: [image]
       });
-      console.log('Created new school config with gallery image');
+      console.log('[addGalleryImage] Created new school config with gallery image');
     }
   } catch (error) {
-    console.error('Error adding gallery image to Firestore:', error);
+    console.error('[addGalleryImage] Error adding gallery image to Firestore:', error);
     throw error;
   }
 };

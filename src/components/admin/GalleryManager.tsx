@@ -31,6 +31,15 @@ const GalleryManager = () => {
       });
       return;
     }
+    // Prevent probable DB errors: ensure all fields set
+    if (newImage.caption.length < 2 || newImage.category.length < 2) {
+      toast({
+        title: "Invalid Data",
+        description: "Caption and category must be filled out.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -42,7 +51,9 @@ const GalleryManager = () => {
         category: newImage.category,
         date: new Date().toISOString(),
       };
-      
+      // Extra runtime check for dev
+      console.log("[GalleryManager] Dispatching ADD_GALLERY_IMAGE with", imageData);
+
       dispatch({ type: 'ADD_GALLERY_IMAGE', payload: imageData });
       
       toast({
@@ -50,11 +61,11 @@ const GalleryManager = () => {
         description: "New image has been added to the gallery.",
       });
       setNewImage({ url: '', caption: '', category: '' });
-    } catch (error) {
-      console.error("Failed to save gallery image:", error);
+    } catch (error: any) {
+      console.error("[GalleryManager] Failed to save gallery image:", error);
       toast({
         title: "Error Saving Image",
-        description: "There was a problem saving the image.",
+        description: error?.message ?? "There was a problem saving the image.",
         variant: "destructive",
       });
     } finally {
