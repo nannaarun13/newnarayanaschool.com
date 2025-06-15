@@ -46,12 +46,7 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
     unsubscribeSchoolDataRef.current = subscribeToSchoolData(
       (data) => {
         console.log('Real-time data update received:', data);
-        console.log('Gallery images in received data:', data.galleryImages);
         dispatch({ type: 'SET_SCHOOL_DATA', payload: data });
-        // Explicitly sync gallery images to ensure they're updated
-        if (data.galleryImages) {
-          dispatch({ type: 'SET_GALLERY_IMAGES', payload: data.galleryImages });
-        }
       },
       (error) => {
         console.error("Real-time subscription error:", error);
