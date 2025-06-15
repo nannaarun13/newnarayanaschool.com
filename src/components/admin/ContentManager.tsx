@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,6 @@ import { Save, Loader2 } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 import LatestUpdatesManager from './LatestUpdatesManager';
 import FoundersManager from './FoundersManager';
-import { updateSchoolData } from '@/utils/schoolDataUtils';
 
 const ContentManager = () => {
   const { state, dispatch } = useSchool();
@@ -36,43 +36,20 @@ const ContentManager = () => {
 
   const handleSave = async () => {
     setIsSaving(true);
-    console.log('Attempting to save content changes...');
+    console.log('Saving content changes...');
     
     try {
-      // Always update local state first for immediate feedback
+      // Dispatch update - context now handles Firestore sync automatically
       dispatch({
         type: 'UPDATE_SCHOOL_DATA',
         payload: generalContent
       });
-      console.log('Local state updated successfully');
+      console.log('Content updated successfully');
 
-      // Try to save to Firestore
-      try {
-        await updateSchoolData(generalContent);
-        console.log('Successfully saved to Firestore');
-        
-        toast({
-          title: "Content Updated",
-          description: "School content has been saved successfully.",
-        });
-      } catch (firestoreError: any) {
-        console.error("Firestore save error:", firestoreError);
-        
-        // If it's a permission error, inform the user but keep local changes
-        if (firestoreError.code === 'permission-denied') {
-          toast({
-            title: "Changes Saved Locally",
-            description: "Content updated locally. Note: Database permissions need to be configured for persistent storage.",
-            variant: "default",
-          });
-        } else {
-          toast({
-            title: "Partial Save",
-            description: "Content updated locally but couldn't sync to database. Changes will persist during this session.",
-            variant: "default",
-          });
-        }
-      }
+      toast({
+        title: "Content Updated",
+        description: "School content has been saved and synchronized across all devices.",
+      });
     } catch (error) {
       console.error("Failed to save content:", error);
       toast({

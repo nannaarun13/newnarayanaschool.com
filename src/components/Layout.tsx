@@ -5,6 +5,7 @@ import Header from './Header';
 import Navigation from './Navigation';
 import Footer from './Footer';
 import { useSchool } from '@/contexts/SchoolContext';
+import SecurityHeadersEnhanced from './security/SecurityHeadersEnhanced';
 
 const Layout = () => {
   const location = useLocation();
@@ -24,21 +25,27 @@ const Layout = () => {
   // For login and admin pages, render without layout
   if (isAdminPage || isLoginPage) {
     return (
-      <div className="min-h-screen">
-        <Outlet />
-      </div>
+      <>
+        <SecurityHeadersEnhanced />
+        <div className="min-h-screen">
+          <Outlet />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <Header />
-      <Navigation />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <Footer />
-    </div>
+    <>
+      <SecurityHeadersEnhanced />
+      <div className="min-h-screen bg-white flex flex-col">
+        <Header />
+        <Navigation />
+        <main className="flex-1">
+          <Outlet />
+        </main>
+        <Footer />
+      </div>
+    </>
   );
 };
 

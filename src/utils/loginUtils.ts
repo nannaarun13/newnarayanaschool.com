@@ -4,168 +4,87 @@ import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { logAdminLogin, logFailedAdminLogin } from './loginActivityUtils';
 import { ensureDefaultAdmin, DEFAULT_ADMIN } from './adminUtils';
+import { persistentRateLimiter } from './persistentRateLimiter';
+import { advancedSecurityMonitor } from './advancedSecurityMonitor';
+import { sanitizeInput, sanitizeEmail } from './security/inputSanitization';
+import { handleSecurityError, ValidationError, AuthenticationError, RateLimitError } from './security/errorHandling';
+import { csrfProtection } from './security/csrfProtection';
 import * as z from "zod";
 
-// Enhanced validation schemas
+// Enhanced validation schemas with stronger security
 export const loginSchema = z.object({
   email: z.string()
     .email({ message: "Invalid email address." })
     .max(100, { message: "Email too long." })
-    .transform(email => email.toLowerCase().trim()),
+    .refine(
+      email => {
+        const sanitized = sanitizeEmail(email);
+        return sanitized.length > 0;
+      },
+      { message: "Invalid email format." }
+    )
+    .transform(email => sanitizeEmail(email)),
   password: z.string()
     .min(8, { message: "Password must be at least 8 characters." })
-    .max(100, { message: "Password too long." }),
+    .max(100, { message: "Password too long." })
+    .refine(
+      password => {
+        const hasUpper = /[A-Z]/.test(password);
+        const hasLower = /[a-z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+        
+        return hasUpper && hasLower && hasNumber && hasSpecial;
+      },
+      { message: "Password must contain uppercase, lowercase, number, and special character." }
+    ),
 });
 
 export const forgotPasswordSchema = z.object({
   email: z.string()
     .email({ message: "Invalid email address." })
     .max(100, { message: "Email too long." })
-    .transform(email => email.toLowerCase().trim()),
+    .refine(
+      email => {
+        const sanitized = sanitizeEmail(email);
+        return sanitized.length >= 5;
+      },
+      { message: "Invalid email format." }
+    )
+    .transform(email => sanitizeEmail(email)),
 });
 
-// Enhanced rate limiting with persistent storage
-class RateLimiter {
-  private attempts = new Map<string, { count: number; firstAttempt: number; lastAttempt: number }>();
-  private readonly MAX_ATTEMPTS = 5;
-  private readonly WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-  private readonly ESCALATION_ATTEMPTS = 10;
-  private readonly ESCALATION_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-
-  isRateLimited(identifier: string): { isLimited: boolean; timeRemaining?: number; reason?: string } {
-    const now = Date.now();
-    const attempts = this.attempts.get(identifier);
-    
-    if (!attempts) {
-      return { isLimited: false };
-    }
-
-    // Check if window has expired
-    if (now - attempts.firstAttempt > this.WINDOW_MS) {
-      this.attempts.delete(identifier);
-      return { isLimited: false };
-    }
-
-    // Check for escalated blocking (too many attempts in longer window)
-    if (attempts.count >= this.ESCALATION_ATTEMPTS && 
-        now - attempts.firstAttempt < this.ESCALATION_WINDOW_MS) {
-      const timeRemaining = this.ESCALATION_WINDOW_MS - (now - attempts.firstAttempt);
-      return { 
-        isLimited: true, 
-        timeRemaining,
-        reason: 'Extended lockout due to excessive attempts' 
-      };
-    }
-
-    // Check for regular rate limiting
-    if (attempts.count >= this.MAX_ATTEMPTS) {
-      const timeRemaining = this.WINDOW_MS - (now - attempts.lastAttempt);
-      return { 
-        isLimited: true, 
-        timeRemaining,
-        reason: 'Too many failed attempts' 
-      };
-    }
-
-    return { isLimited: false };
-  }
-
-  recordFailedAttempt(identifier: string): void {
-    const now = Date.now();
-    const attempts = this.attempts.get(identifier);
-    
-    if (!attempts || now - attempts.firstAttempt > this.WINDOW_MS) {
-      this.attempts.set(identifier, {
-        count: 1,
-        firstAttempt: now,
-        lastAttempt: now
-      });
-    } else {
-      attempts.count += 1;
-      attempts.lastAttempt = now;
-      this.attempts.set(identifier, attempts);
-    }
-  }
-
-  clearAttempts(identifier: string): void {
-    this.attempts.delete(identifier);
-  }
-
-  getAttemptInfo(identifier: string): { count: number; timeUntilReset?: number } {
-    const attempts = this.attempts.get(identifier);
-    if (!attempts) {
-      return { count: 0 };
-    }
-    
-    const timeUntilReset = this.WINDOW_MS - (Date.now() - attempts.firstAttempt);
-    return { 
-      count: attempts.count, 
-      timeUntilReset: timeUntilReset > 0 ? timeUntilReset : 0 
-    };
-  }
-}
-
-const rateLimiter = new RateLimiter();
-
-// Enhanced input validation
-const validateAndSanitizeEmail = (email: string): string => {
-  if (!email || typeof email !== 'string') {
-    throw new Error('Invalid email format');
-  }
-  
-  const sanitized = email.toLowerCase().trim();
-  
-  // Enhanced email validation
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitized)) {
-    throw new Error('Invalid email format');
-  }
-  
-  if (sanitized.length > 100) {
-    throw new Error('Email too long');
-  }
-  
-  return sanitized;
-};
-
-const validatePassword = (password: string): void => {
-  if (!password || typeof password !== 'string') {
-    throw new Error('Invalid password');
-  }
-  
-  if (password.length < 8 || password.length > 100) {
-    throw new Error('Password must be between 8 and 100 characters');
-  }
-};
-
-// Enhanced login handler with comprehensive security
+// Enhanced login handler with improved security
 export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
   console.log('Login attempt for:', values.email);
   
   try {
-    // Enhanced input validation
-    const sanitizedEmail = validateAndSanitizeEmail(values.email);
-    validatePassword(values.password);
+    // Enhanced input validation with sanitization
+    const sanitizedEmail = values.email; // Already sanitized by schema transform
+    const sanitizedPassword = sanitizeInput(values.password, { maxLength: 100, stripTags: true });
     
-    // Multi-factor rate limiting (by email and IP if available)
-    const emailLimitCheck = rateLimiter.isRateLimited(`email:${sanitizedEmail}`);
+    if (!sanitizedEmail || !sanitizedPassword) {
+      throw new ValidationError('Invalid credentials provided');
+    }
+    
+    // Enhanced rate limiting check
+    const emailLimitCheck = await persistentRateLimiter.isRateLimited(`email:${sanitizedEmail}`);
     
     if (emailLimitCheck.isLimited) {
       const minutes = Math.ceil((emailLimitCheck.timeRemaining || 0) / 60000);
       await logFailedAdminLogin(sanitizedEmail, `Rate limited: ${emailLimitCheck.reason}`);
-      throw new Error(`${emailLimitCheck.reason}. Please try again in ${minutes} minutes.`);
+      throw new RateLimitError(emailLimitCheck.reason, emailLimitCheck.timeRemaining);
     }
 
-    // Attempt Firebase authentication with enhanced error handling
+    // Attempt Firebase authentication
     console.log('Attempting Firebase authentication');
     let userCredential;
     
     try {
-      userCredential = await signInWithEmailAndPassword(auth, sanitizedEmail, values.password);
+      userCredential = await signInWithEmailAndPassword(auth, sanitizedEmail, sanitizedPassword);
     } catch (authError: any) {
-      // Record failed attempt before throwing
-      rateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
       
-      // Enhanced error handling
       const errorCode = authError.code;
       let errorMessage = 'Authentication failed';
       
@@ -173,26 +92,21 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
         case 'auth/invalid-credential':
         case 'auth/user-not-found':
         case 'auth/wrong-password':
-          errorMessage = 'Invalid email or password';
           await logFailedAdminLogin(sanitizedEmail, 'Invalid credentials');
-          break;
+          throw new AuthenticationError('Invalid email or password');
         case 'auth/too-many-requests':
-          errorMessage = 'Account temporarily disabled due to many failed login attempts. Try again later or reset your password.';
           await logFailedAdminLogin(sanitizedEmail, 'Firebase rate limited');
-          break;
+          throw new RateLimitError('Account temporarily disabled due to many failed login attempts');
         case 'auth/user-disabled':
-          errorMessage = 'This account has been disabled';
           await logFailedAdminLogin(sanitizedEmail, 'Account disabled');
-          break;
+          throw new AuthenticationError('This account has been disabled');
         case 'auth/network-request-failed':
-          errorMessage = 'Network error. Please check your connection and try again.';
           await logFailedAdminLogin(sanitizedEmail, 'Network error');
-          break;
+          throw new Error('Network error. Please check your connection and try again.');
         default:
           await logFailedAdminLogin(sanitizedEmail, `Firebase error: ${errorCode}`);
+          throw new AuthenticationError();
       }
-      
-      throw new Error(errorMessage);
     }
     
     const user = userCredential.user;
@@ -200,9 +114,9 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     // Verify email is verified for additional security
     if (!user.emailVerified && sanitizedEmail !== DEFAULT_ADMIN.email.toLowerCase()) {
       await auth.signOut();
-      rateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
       await logFailedAdminLogin(sanitizedEmail, 'Email not verified');
-      throw new Error('Please verify your email address before logging in.');
+      throw new AuthenticationError('Please verify your email address before logging in.');
     }
     
     // For default admin, ensure admin record exists
@@ -227,9 +141,9 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
       if (querySnapshot.empty) {
         console.log('No approved admin record found');
         await auth.signOut();
-        rateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+        await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
         await logFailedAdminLogin(sanitizedEmail, 'Email not registered as admin or access pending approval');
-        throw new Error('This email is not registered as an admin or your access is pending approval.');
+        throw new AuthenticationError('This email is not registered as an admin or your access is pending approval.');
       }
       
       adminDoc = querySnapshot.docs[0];
@@ -238,18 +152,27 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     const adminData = adminDoc.data();
     
     // Enhanced admin data validation
-    if (!adminData || !adminData.status) {
+    if (!adminData || !adminData.status || !adminData.email) {
       console.log('Invalid admin data');
       await auth.signOut();
-      rateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
       await logFailedAdminLogin(sanitizedEmail, 'Invalid admin data');
-      throw new Error('Invalid admin record. Please contact support.');
+      throw new AuthenticationError('Invalid admin record. Please contact support.');
+    }
+    
+    // Verify email matches (prevent account takeover)
+    if (adminData.email.toLowerCase() !== sanitizedEmail) {
+      console.log('Email mismatch in admin record');
+      await auth.signOut();
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await logFailedAdminLogin(sanitizedEmail, 'Email mismatch');
+      throw new AuthenticationError('Security error. Please contact support.');
     }
     
     if (adminData.status !== 'approved') {
       console.log('Admin not approved, status:', adminData.status);
       await auth.signOut();
-      rateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
       await logFailedAdminLogin(sanitizedEmail, `Admin access ${adminData.status}`);
       
       const statusMessage = {
@@ -258,46 +181,39 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
         'revoked': 'Your admin access has been revoked.'
       };
       
-      throw new Error(statusMessage[adminData.status as keyof typeof statusMessage] || 'Admin access denied.');
+      throw new AuthenticationError(statusMessage[adminData.status as keyof typeof statusMessage] || 'Admin access denied.');
     }
     
     // Success - clear any failed attempts
-    rateLimiter.clearAttempts(`email:${sanitizedEmail}`);
+    await persistentRateLimiter.clearAttempts(`email:${sanitizedEmail}`);
     
-    // Log successful login with enhanced details
+    // Advanced security analysis for successful login
+    await advancedSecurityMonitor.analyzeLoginAttempt(sanitizedEmail, true);
+    
+    // Log successful login
     await logAdminLogin(user.uid, sanitizedEmail);
     console.log('Admin login successful');
     
   } catch (error: any) {
-    console.error('Login error details:', error);
-    
-    // If it's not already handled, record as failed attempt
-    if (!error.message.includes('Rate limited') && 
-        !error.message.includes('Invalid email') && 
-        !error.message.includes('pending approval')) {
-      rateLimiter.recordFailedAttempt(`email:${values.email}`);
-    }
-    
-    throw error;
+    const securityError = handleSecurityError(error, 'login');
+    console.error('Login error details:', securityError);
+    throw securityError;
   }
 };
 
-// Enhanced password reset with additional validation
+// Enhanced password reset with additional security
 export const handleForgotPassword = async (values: z.infer<typeof forgotPasswordSchema>) => {
   try {
-    const sanitizedEmail = validateAndSanitizeEmail(values.email);
+    const sanitizedEmail = values.email; // Already sanitized by schema transform
     
     // Check rate limiting for password reset requests
-    const resetLimitCheck = rateLimiter.isRateLimited(`reset:${sanitizedEmail}`);
+    const resetLimitCheck = await persistentRateLimiter.isRateLimited(`reset:${sanitizedEmail}`);
     if (resetLimitCheck.isLimited) {
-      // Don't reveal rate limiting for password reset to prevent enumeration
       console.log('Password reset rate limited for:', sanitizedEmail);
-      return;
+      return; // Don't reveal rate limiting to prevent enumeration
     }
     
     await sendPasswordResetEmail(auth, sanitizedEmail);
-    
-    // Record password reset attempt (but don't increment failure counter)
     console.log('Password reset email sent to:', sanitizedEmail);
     
   } catch (error: any) {
@@ -307,10 +223,13 @@ export const handleForgotPassword = async (values: z.infer<typeof forgotPassword
 };
 
 // Export rate limiter info for monitoring
-export const getRateLimitInfo = (email: string) => {
+export const getRateLimitInfo = async (email: string) => {
   try {
-    const sanitizedEmail = validateAndSanitizeEmail(email);
-    return rateLimiter.getAttemptInfo(`email:${sanitizedEmail}`);
+    const sanitizedEmail = sanitizeEmail(email);
+    if (!sanitizedEmail) {
+      return { count: 0 };
+    }
+    return await persistentRateLimiter.getAttemptInfo(`email:${sanitizedEmail}`);
   } catch {
     return { count: 0 };
   }
