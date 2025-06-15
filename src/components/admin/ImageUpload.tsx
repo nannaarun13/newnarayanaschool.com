@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { Progress } from '@/components/ui/progress';
 
 // Helper function to resize and compress image
 async function resizeAndCompressImage(file: File, options = { maxWidth: 1200, quality: 0.8 }) : Promise<Blob> {
@@ -63,6 +63,7 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
   const [dragActive, setDragActive] = useState(false);
   const [preview, setPreview] = useState<string>(currentImage || '');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   // Sync internal preview state with the currentImage prop
   useEffect(() => {
@@ -80,6 +81,7 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
     }
 
     setIsUploading(true);
+    setUploadProgress(0);
     onUploading?.(true);
 
     try {
@@ -95,32 +97,41 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
       const compressedBlob = await resizeAndCompressImage(file, { maxWidth: 1200, quality: 0.8 });
       const uploadFile = new File([compressedBlob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: "image/jpeg" });
 
-      // 3. Now upload to Firebase
+      // 3. Now upload to Firebase using resumable upload for progress
       const storageRef = ref(storage, `gallery/${Date.now()}_${uploadFile.name}`);
-      uploadBytes(storageRef, uploadFile)
-        .then((snapshot) => getDownloadURL(snapshot.ref))
-        .then((downloadURL) => {
-          onImageUpload(downloadURL); // Pass the public storage URL to the parent
-          toast({
-            title: "Image Uploaded to Storage",
-            description: "Image is now ready to be saved to the gallery.",
-          });
-        })
-        .catch((error) => {
+      const uploadTask = uploadBytesResumable(storageRef, uploadFile);
+
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(percent);
+        },
+        (error) => {
           console.error("Upload failed", error);
           toast({
             title: "Upload Failed",
             description: "There was a problem uploading your image. Please try again.",
             variant: "destructive",
           });
-          // Clear preview on failure to prevent saving a broken link
           setPreview('');
-          onImageUpload('');
-        })
-        .finally(() => {
           setIsUploading(false);
+          setUploadProgress(0);
           onUploading?.(false);
-        });
+          onImageUpload('');
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          onImageUpload(downloadURL);
+          toast({
+            title: "Image Uploaded to Storage",
+            description: "Image is now ready to be saved to the gallery.",
+          });
+          setIsUploading(false);
+          setUploadProgress(0);
+          onUploading?.(false);
+        }
+      );
     } catch (error) {
       console.error("Image processing failed", error);
       toast({
@@ -129,6 +140,7 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
         variant: "destructive"
       });
       setIsUploading(false);
+      setUploadProgress(0);
       onUploading?.(false);
       setPreview('');
       onImageUpload('');
@@ -183,9 +195,17 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
             className="w-32 h-32 object-cover rounded-lg border"
           />
           {isUploading ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
-              <Loader2 className="h-8 w-8 text-white animate-spin" />
-            </div>
+            <>
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                <Loader2 className="h-8 w-8 text-white animate-spin" />
+              </div>
+              <div className="absolute bottom-0 left-0 w-full px-1 pb-1">
+                <Progress value={uploadProgress} />
+                <span className="text-xs text-white absolute right-2 bottom-2">
+                  {Math.round(uploadProgress)}%
+                </span>
+              </div>
+            </>
           ) : (
             <Button
               type="button"
