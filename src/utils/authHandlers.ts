@@ -1,4 +1,3 @@
-
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, query, collection, where, getDocs, updateDoc } from 'firebase/firestore';
@@ -72,96 +71,106 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     // Email verification check removed as per request for a smoother admin onboarding experience.
     // Admins are already manually vetted and approved.
     
-    // For default admin, ensure admin record exists
-    if (sanitizedEmail === DEFAULT_ADMIN.email.toLowerCase()) {
-      await ensureDefaultAdmin(user.uid);
-    }
-    
-    // Enhanced admin status verification with security checks
-    console.log('Checking admin status for user:', user.uid);
-    
-    let adminDoc;
-    // First, try to find admin by UID
-    const adminQuery = query(collection(db, 'admins'), where('uid', '==', user.uid));
-    const adminSnapshot = await getDocs(adminQuery);
-
-    if (!adminSnapshot.empty) {
-      adminDoc = adminSnapshot.docs[0];
-      console.log('Found admin record by UID.');
-    } else {
-      // If not found by UID, try by email as a fallback.
-      // This handles legacy users or cases where the UID was not yet set.
-      console.log('Admin record not found by UID, searching by email.');
-      const emailQuery = query(
-        collection(db, 'admins'), 
-        where('email', '==', sanitizedEmail), 
-        where('status', '==', 'approved')
-      );
-      const emailSnapshot = await getDocs(emailQuery);
+    try {
+      // For default admin, ensure admin record exists
+      if (sanitizedEmail === DEFAULT_ADMIN.email.toLowerCase()) {
+        await ensureDefaultAdmin(user.uid);
+      }
       
-      if (!emailSnapshot.empty) {
-        adminDoc = emailSnapshot.docs[0];
-        console.log('Found admin record by email.');
-        // Update the record with the UID for future logins
-        try {
-          const adminDocRef = doc(db, 'admins', adminDoc.id);
-          await updateDoc(adminDocRef, { uid: user.uid });
-          console.log(`Updated admin record ${adminDoc.id} with UID ${user.uid}.`);
-        } catch (updateError) {
-          console.error('Failed to update admin record with UID:', updateError);
+      // Enhanced admin status verification with security checks
+      console.log('Checking admin status for user:', user.uid);
+      
+      let adminDoc;
+      // First, try to find admin by UID
+      const adminQuery = query(collection(db, 'admins'), where('uid', '==', user.uid));
+      const adminSnapshot = await getDocs(adminQuery);
+
+      if (!adminSnapshot.empty) {
+        adminDoc = adminSnapshot.docs[0];
+        console.log('Found admin record by UID.');
+      } else {
+        // If not found by UID, try by email as a fallback.
+        // This handles legacy users or cases where the UID was not yet set.
+        console.log('Admin record not found by UID, searching by email.');
+        const emailQuery = query(
+          collection(db, 'admins'), 
+          where('email', '==', sanitizedEmail), 
+          where('status', '==', 'approved')
+        );
+        const emailSnapshot = await getDocs(emailQuery);
+        
+        if (!emailSnapshot.empty) {
+          adminDoc = emailSnapshot.docs[0];
+          console.log('Found admin record by email.');
+          // Update the record with the UID for future logins
+          try {
+            const adminDocRef = doc(db, 'admins', adminDoc.id);
+            await updateDoc(adminDocRef, { uid: user.uid });
+            console.log(`Updated admin record ${adminDoc.id} with UID ${user.uid}.`);
+          } catch (updateError) {
+            console.error('Failed to update admin record with UID:', updateError);
+          }
         }
       }
-    }
-    
-    if (!adminDoc) {
-      console.log('No approved admin record found');
-      await auth.signOut();
-      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
-      await logFailedAdminLogin(sanitizedEmail, 'Email not registered as admin or access pending approval');
-      throw new Error('This email is not registered as an admin or your access is pending approval.');
-    }
-    
-    const adminData = adminDoc.data();
-    
-    // Enhanced admin data validation with security checks
-    if (!adminData || !adminData.status || !adminData.email) {
-      console.log('Invalid admin data');
-      await auth.signOut();
-      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
-      await logFailedAdminLogin(sanitizedEmail, 'Invalid admin data');
-      throw new Error('Invalid admin record. Please contact support.');
-    }
-    
-    // Verify email matches (prevent account takeover)
-    if (adminData.email.toLowerCase() !== sanitizedEmail) {
-      console.log('Email mismatch in admin record');
-      await auth.signOut();
-      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
-      await logFailedAdminLogin(sanitizedEmail, 'Email mismatch');
-      throw new Error('Security error. Please contact support.');
-    }
-    
-    if (adminData.status !== 'approved') {
-      console.log('Admin not approved, status:', adminData.status);
-      await auth.signOut();
-      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
-      await logFailedAdminLogin(sanitizedEmail, `Admin access ${adminData.status}`);
       
-      const statusMessage = {
-        'pending': 'Your admin access request is pending approval.',
-        'rejected': 'Your admin access request has been rejected.',
-        'revoked': 'Your admin access has been revoked.'
-      };
+      if (!adminDoc) {
+        console.log('No approved admin record found');
+        await auth.signOut();
+        await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+        await logFailedAdminLogin(sanitizedEmail, 'Email not registered as admin or access pending approval');
+        throw new Error('This email is not registered as an admin or your access is pending approval.');
+      }
       
-      throw new Error(statusMessage[adminData.status as keyof typeof statusMessage] || 'Admin access denied.');
+      const adminData = adminDoc.data();
+      
+      // Enhanced admin data validation with security checks
+      if (!adminData || !adminData.status || !adminData.email) {
+        console.log('Invalid admin data');
+        await auth.signOut();
+        await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+        await logFailedAdminLogin(sanitizedEmail, 'Invalid admin data');
+        throw new Error('Invalid admin record. Please contact support.');
+      }
+      
+      // Verify email matches (prevent account takeover)
+      if (adminData.email.toLowerCase() !== sanitizedEmail) {
+        console.log('Email mismatch in admin record');
+        await auth.signOut();
+        await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+        await logFailedAdminLogin(sanitizedEmail, 'Email mismatch');
+        throw new Error('Security error. Please contact support.');
+      }
+      
+      if (adminData.status !== 'approved') {
+        console.log('Admin not approved, status:', adminData.status);
+        await auth.signOut();
+        await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+        await logFailedAdminLogin(sanitizedEmail, `Admin access ${adminData.status}`);
+        
+        const statusMessage = {
+          'pending': 'Your admin access request is pending approval.',
+          'rejected': 'Your admin access request has been rejected.',
+          'revoked': 'Your admin access has been revoked.'
+        };
+        
+        throw new Error(statusMessage[adminData.status as keyof typeof statusMessage] || 'Admin access denied.');
+      }
+      
+      // Success - clear any failed attempts
+      await persistentRateLimiter.clearAttempts(`email:${sanitizedEmail}`);
+      
+      // Log successful login with enhanced security details
+      await logAdminLogin(user.uid, sanitizedEmail);
+      console.log('Admin login successful');
+    } catch (dbError: any) {
+        console.error('Error during admin verification:', dbError);
+        await auth.signOut();
+        if (dbError.code === 'permission-denied') {
+            await logFailedAdminLogin(sanitizedEmail, 'Firestore permission denied during admin check');
+            throw new Error('A security configuration error occurred. Please contact an administrator.');
+        }
+        throw dbError;
     }
-    
-    // Success - clear any failed attempts
-    await persistentRateLimiter.clearAttempts(`email:${sanitizedEmail}`);
-    
-    // Log successful login with enhanced security details
-    await logAdminLogin(user.uid, sanitizedEmail);
-    console.log('Admin login successful');
     
   } catch (error: any) {
     console.error('Login error details:', error);
@@ -170,7 +179,11 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     if (!error.message.includes('Rate limited') && 
         !error.message.includes('Invalid email') && 
         !error.message.includes('pending approval')) {
-      await persistentRateLimiter.recordFailedAttempt(`email:${values.email}`);
+      try {
+        await persistentRateLimiter.recordFailedAttempt(`email:${values.email}`);
+      } catch (recordError) {
+        console.error('Could not record failed attempt due to error:', recordError);
+      }
     }
     
     throw error;
