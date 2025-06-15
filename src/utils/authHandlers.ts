@@ -1,6 +1,6 @@
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, query, collection, where, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, query, collection, where, getDocs, updateDoc, runTransaction } from 'firebase/firestore';
 import { logAdminLogin, logFailedAdminLogin } from './loginActivityUtils';
 import { ensureDefaultAdmin, DEFAULT_ADMIN } from './adminUtils';
 import { persistentRateLimiter } from './persistentRateLimiter';
@@ -101,14 +101,31 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
         
         if (!emailSnapshot.empty) {
           adminDoc = emailSnapshot.docs[0];
-          console.log('Found admin record by email.');
-          // Update the record with the UID for future logins
+          console.log(`Found legacy admin record by email with ID: ${adminDoc.id}. Migrating it.`);
+          
+          const newAdminRef = doc(db, 'admins', user.uid);
+          const oldAdminRef = doc(db, 'admins', adminDoc.id);
+          const adminData = adminDoc.data();
+          adminData.uid = user.uid; // Ensure UID is set for the new doc
+
           try {
-            const adminDocRef = doc(db, 'admins', adminDoc.id);
-            await updateDoc(adminDocRef, { uid: user.uid });
-            console.log(`Updated admin record ${adminDoc.id} with UID ${user.uid}.`);
-          } catch (updateError) {
-            console.error('Failed to update admin record with UID:', updateError);
+            await runTransaction(db, async (transaction) => {
+              transaction.set(newAdminRef, adminData);
+              transaction.delete(oldAdminRef);
+            });
+            console.log(`Successfully migrated admin record from ${adminDoc.id} to ${user.uid}.`);
+            // Continue with the new migrated document
+            adminDoc = await getDoc(newAdminRef);
+          } catch (migrationError) {
+            console.error('Failed to migrate admin record:', migrationError);
+            // If migration fails, we can still try to work with the old document for this session
+            // by at least adding the UID to it, so some functionality might work.
+            try {
+              await updateDoc(oldAdminRef, { uid: user.uid });
+              console.log(`Migration failed, but updated old record ${adminDoc.id} with UID ${user.uid}.`);
+            } catch (updateError) {
+              console.error('Also failed to update admin record with UID after failed migration:', updateError);
+            }
           }
         }
       }

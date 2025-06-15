@@ -6,7 +6,8 @@ service cloud.firestore {
     // --- Admins Collection ---
     match /admins/{adminId} {
       allow create: if 
-        request.resource.data.status == 'pending' &&
+        // Allow new pending requests to be created
+        (request.resource.data.status == 'pending' &&
         request.resource.data.keys().hasOnly([
           'firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt'
         ]) &&
@@ -14,20 +15,26 @@ service cloud.firestore {
         request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 &&
         request.resource.data.email is string && request.resource.data.email.size() > 0 &&
         request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
-        request.resource.data.requestedAt is string;
+        request.resource.data.requestedAt is string) ||
+        // Allow a user to create their own migrated admin record
+        (request.auth.uid == adminId && request.auth.uid == request.resource.data.uid);
       
       allow read: if request.auth != null;
 
-      // This rule is updated to fix the login issue for users without a UID.
-      // It allows a user to update their own record as long as they don't change their status.
-      // NOTE: The isApprovedAdmin() part of this rule is still broken and will prevent
-      // admins from managing other admins until the root issue is fixed.
       allow update: if request.auth != null && (
+        // Allow an approved admin to manage other records
         isApprovedAdmin() ||
-        (request.auth.uid == request.resource.data.uid && resource.data.status == request.resource.data.status)
+        // Allow a user to update their own record if their email matches,
+        // but prevent them from changing their own status.
+        (resource.data.email == request.auth.email && resource.data.status == request.resource.data.status)
       );
       
-      allow delete: if request.auth != null && isApprovedAdmin();
+      allow delete: if request.auth != null && (
+        // Allow an approved admin to delete records
+        isApprovedAdmin() ||
+        // Allow a user to delete their own legacy record during migration
+        resource.data.email == request.auth.email
+      );
     }
 
     // --- School Collection ---
@@ -49,6 +56,7 @@ service cloud.firestore {
     // NOTE: This function is the root cause of the problem. It assumes the document ID 
     // for an admin is their authentication UID, but the application uses Firestore's 
     // auto-generated IDs. This function will almost always return false.
+    // The migration logic being added to the app will fix this for users as they log in.
     function isApprovedAdmin() {
       return request.auth != null &&
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
