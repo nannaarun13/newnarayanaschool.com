@@ -4,63 +4,50 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ----------------------
-    // School data collections
-    // ----------------------
+    // School configuration collection for real-time updates
     match /school/{docId} {
       allow read: if true;
       allow write: if request.auth != null && isApprovedAdmin();
     }
 
+    // New collection for gallery images
     match /gallery/{imageId} {
       allow read: if true;
       allow write: if request.auth != null && isApprovedAdmin();
     }
-
-    // -------------------------------
-    // Admin Collection: Registration
-    // -------------------------------
+    
+    // Admin collection rules
     match /admins/{adminId} {
-
-      // Allow unauthenticated registration requests as "pending", data must be strict
-      allow create: if 
-        // Give access ONLY to requests with status=pending.
-        request.resource.data.status == 'pending'
-        // All required fields present, and NO extra fields.
-        && request.resource.data.keys().hasOnly(['firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt'])
-        // String validations
-        && request.resource.data.firstName is string
-        && request.resource.data.firstName.size() > 0
-        && request.resource.data.lastName is string
-        && request.resource.data.lastName.size() > 0
-        && request.resource.data.email is string
-        && request.resource.data.email.size() > 0
-        && request.resource.data.phone is string
-        && request.resource.data.phone.size() > 0
-        && request.resource.data.requestedAt is string;
-
-      // Only authenticated users can read admin collection.
+      // Allow creation of pending admin requests without authentication
+      allow create: if request.resource.data.status == 'pending' &&
+                      request.resource.data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt']) &&
+                      request.resource.data.firstName is string && request.resource.data.firstName.size() > 0 &&
+                      request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 &&
+                      request.resource.data.email is string && request.resource.data.email.size() > 0 &&
+                      request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
+                      request.resource.data.requestedAt is string;
+      // Allow reading for authenticated users only
       allow read: if request.auth != null;
-
-      // Only approved admins can update/delete requests or accounts.
+      // Allow updates and deletions only by approved admins
       allow update, delete: if request.auth != null && isApprovedAdmin();
     }
-
-    // Only authenticated, approved admins may access activities or rate limits.
+    
+    // Admin login activity (security monitor) -- only for authenticated, approved admins
     match /admin_login_activities/{loginId} {
       allow read, write: if request.auth != null && isApprovedAdmin();
     }
+    // Rate limiter collection -- only for authenticated, approved admins
     match /rate_limits/{docId} {
       allow read, write: if request.auth != null && isApprovedAdmin();
     }
 
-    // Helper: Checks if current authenticated user is an approved admin.
+    // Helper function for checking approved admin status
     function isApprovedAdmin() {
       return exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'approved';
     }
-
-    // Default deny rule for ALL OTHER access.
+    
+    // Default deny rule for all other collections
     match /{document=**} {
       allow read, write: if false;
     }
