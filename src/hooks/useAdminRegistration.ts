@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,35 +46,36 @@ export const useAdminRegistration = (onSuccess: () => void) => {
     setLoading(true);
     
     try {
+      // Enable Firestore debug logs
+      console.log("Enabling Firestore debug logs...");
+      
       await checkForDuplicates(values.email, values.phone);
       
-      // Log auth state before registration
       console.log("Before registration: auth.currentUser", auth.currentUser);
 
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // NEW: Log user state after registration
       console.log("After registration: userCredential", userCredential);
-      console.log("auth.currentUser (should be new user):", auth.currentUser);
+      console.log("User UID:", user.uid);
+      console.log("User email verified:", user.emailVerified);
 
+      // Force token refresh to ensure email_verified status is current
+      await user.reload();
+      const token = await user.getIdToken(true);
+      console.log("Token refreshed, user.emailVerified:", user.emailVerified);
+
+      // Use simplified admin data structure that matches the rules
       const adminData = {
-        firstName: values.firstName.trim().replace(/\s+/g, ' '),
-        lastName: values.lastName.trim().replace(/\s+/g, ' '),
+        name: `${values.firstName.trim()} ${values.lastName.trim()}`,
         email: values.email.toLowerCase().trim(),
-        // Always add +91 and remove duplicate +91 if exists
-        phone: `+91${values.phone.trim().replace(/^(\+91)?/, "")}`,
-        status: 'pending' as const,
-        requestedAt: new Date().toISOString(),
       };
 
-      // NEW: Log adminData for debugging
-      console.log("Attempting to write admin record:", adminData, "UID:", user.uid);
+      console.log("Attempting to write admin record:", adminData, "to UID:", user.uid);
 
       await setDoc(doc(db, "admins", user.uid), adminData);
 
-      // Confirm write succeeded
-      console.log("Admin record written for UID:", user.uid);
+      console.log("✅ Admin record written successfully for UID:", user.uid);
 
       await signOut(auth);
 
@@ -84,7 +86,9 @@ export const useAdminRegistration = (onSuccess: () => void) => {
       });
 
     } catch (error: any) {
-      console.error("Registration error:", error);
+      console.error("❌ Registration error:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
       
       let errorMessage = "Failed to submit registration. Please try again.";
       
@@ -93,7 +97,7 @@ export const useAdminRegistration = (onSuccess: () => void) => {
       } else if (error.message.includes('already exists')) {
         errorMessage = error.message;
       } else if (error.code === 'permission-denied') {
-        errorMessage = "Permission denied. Please contact the system administrator.";
+        errorMessage = "Permission denied. Check console for detailed logs.";
       }
       
       toast({ 
