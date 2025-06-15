@@ -271,45 +271,57 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
       updateSchoolData(action.payload).catch(console.error);
       return { ...state, data: updatedData };
     case 'ADD_GALLERY_IMAGE':
-      const newGalleryData = { ...state.data, galleryImages: [...state.data.galleryImages, action.payload] };
-      updateSchoolData({ galleryImages: newGalleryData.galleryImages }).catch(console.error);
-      return { ...state, data: newGalleryData };
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          galleryImages: [...state.data.galleryImages, action.payload] 
+        } 
+      };
     case 'UPDATE_GALLERY_IMAGE':
-      const updatedGalleryData = {
-        ...state.data,
-        galleryImages: state.data.galleryImages.map(image =>
-          image.id === action.payload.id ? action.payload : image
-        ),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          galleryImages: state.data.galleryImages.map(image =>
+            image.id === action.payload.id ? action.payload : image
+          ),
+        }
       };
-      updateSchoolData({ galleryImages: updatedGalleryData.galleryImages }).catch(console.error);
-      return { ...state, data: updatedGalleryData };
     case 'DELETE_GALLERY_IMAGE':
-      const filteredGalleryData = {
-        ...state.data,
-        galleryImages: state.data.galleryImages.filter(image => image.id !== action.payload),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          galleryImages: state.data.galleryImages.filter(image => image.id !== action.payload),
+        }
       };
-      updateSchoolData({ galleryImages: filteredGalleryData.galleryImages }).catch(console.error);
-      return { ...state, data: filteredGalleryData };
     case 'ADD_NOTICE':
-      const newNoticesData = { ...state.data, notices: [...state.data.notices, action.payload] };
-      updateSchoolData({ notices: newNoticesData.notices }).catch(console.error);
-      return { ...state, data: newNoticesData };
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          notices: [...state.data.notices, action.payload] 
+        } 
+      };
     case 'UPDATE_NOTICE':
-      const updatedNoticesData = {
-        ...state.data,
-        notices: state.data.notices.map(notice =>
-          notice.id === action.payload.id ? { ...notice, title: action.payload.title, content: action.payload.content } : notice
-        ),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          notices: state.data.notices.map(notice =>
+            notice.id === action.payload.id ? { ...notice, title: action.payload.title, content: action.payload.content } : notice
+          ),
+        }
       };
-      updateSchoolData({ notices: updatedNoticesData.notices }).catch(console.error);
-      return { ...state, data: updatedNoticesData };
     case 'DELETE_NOTICE':
-      const filteredNoticesData = {
-        ...state.data,
-        notices: state.data.notices.filter(notice => notice.id !== action.payload),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          notices: state.data.notices.filter(notice => notice.id !== action.payload),
+        }
       };
-      updateSchoolData({ notices: filteredNoticesData.notices }).catch(console.error);
-      return { ...state, data: filteredNoticesData };
     case 'ADD_ADMISSION_INQUIRY':
       return { ...state, admissionInquiries: [...state.admissionInquiries, action.payload] };
     case 'ADD_CONTACT_MESSAGE':
@@ -317,33 +329,37 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
     case 'INCREMENT_VISITORS':
       return { ...state, siteVisitors: state.siteVisitors + 1 };
     case 'ADD_LATEST_UPDATE':
-      const newUpdatesData = { 
-        ...state.data, 
-        latestUpdates: [...state.data.latestUpdates, action.payload] 
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          latestUpdates: [...state.data.latestUpdates, action.payload] 
+        } 
       };
-      updateSchoolData({ latestUpdates: newUpdatesData.latestUpdates }).catch(console.error);
-      return { ...state, data: newUpdatesData };
     case 'DELETE_LATEST_UPDATE':
-      const filteredUpdatesData = {
-        ...state.data,
-        latestUpdates: state.data.latestUpdates.filter(update => update.id !== action.payload),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          latestUpdates: state.data.latestUpdates.filter(update => update.id !== action.payload),
+        }
       };
-      updateSchoolData({ latestUpdates: filteredUpdatesData.latestUpdates }).catch(console.error);
-      return { ...state, data: filteredUpdatesData };
     case 'ADD_FOUNDER':
-      const newFoundersData = { 
-        ...state.data, 
-        founders: [...state.data.founders, action.payload] 
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          founders: [...state.data.founders, action.payload] 
+        } 
       };
-      updateSchoolData({ founders: newFoundersData.founders }).catch(console.error);
-      return { ...state, data: newFoundersData };
     case 'DELETE_FOUNDER':
-      const filteredFoundersData = {
-        ...state.data,
-        founders: state.data.founders.filter(founder => founder.id !== action.payload),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          founders: state.data.founders.filter(founder => founder.id !== action.payload),
+        }
       };
-      updateSchoolData({ founders: filteredFoundersData.founders }).catch(console.error);
-      return { ...state, data: filteredFoundersData };
     default:
       return state;
   }

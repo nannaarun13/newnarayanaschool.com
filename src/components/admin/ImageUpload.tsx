@@ -4,20 +4,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void;
+  onUploading?: (isUploading: boolean) => void;
   currentImage?: string;
   label: string;
   accept?: string;
 }
 
-const ImageUpload = ({ onImageUpload, currentImage, label, accept = "image/*" }: ImageUploadProps) => {
+const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept = "image/*" }: ImageUploadProps) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [preview, setPreview] = useState<string>(currentImage || '');
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleFile = (file: File) => {
     if (file && file.type.startsWith('image/')) {
@@ -25,13 +29,41 @@ const ImageUpload = ({ onImageUpload, currentImage, label, accept = "image/*" }:
       reader.onload = (e) => {
         const result = e.target?.result as string;
         setPreview(result);
-        onImageUpload(result);
-        toast({
-          title: "Image Uploaded",
-          description: "Image has been uploaded successfully.",
-        });
       };
       reader.readAsDataURL(file);
+      
+      setIsUploading(true);
+      onUploading?.(true);
+
+      const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          // Optional: handle progress.
+        },
+        (error) => {
+          console.error("Upload failed:", error);
+          toast({
+            title: "Upload Failed",
+            description: "There was a problem uploading your image. Please try again.",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          onUploading?.(false);
+        },
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            onImageUpload(downloadURL);
+            toast({
+              title: "Image Ready",
+              description: "Image has been uploaded. You can now add details and save.",
+            });
+            setIsUploading(false);
+            onUploading?.(false);
+          });
+        }
+      );
     } else {
       toast({
         title: "Invalid File",
@@ -88,15 +120,21 @@ const ImageUpload = ({ onImageUpload, currentImage, label, accept = "image/*" }:
             alt="Preview"
             className="w-32 h-32 object-cover rounded-lg border"
           />
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon"
-            className="absolute -top-2 -right-2 h-6 w-6"
-            onClick={removeImage}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          {isUploading ? (
+             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                <Loader2 className="h-8 w-8 text-white animate-spin" />
+             </div>
+          ) : (
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              className="absolute -top-2 -right-2 h-6 w-6"
+              onClick={removeImage}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ) : (
         <div
@@ -109,14 +147,14 @@ const ImageUpload = ({ onImageUpload, currentImage, label, accept = "image/*" }:
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => !isUploading && fileInputRef.current?.click()}
         >
           <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600">
             Drag and drop an image here, or click to select
           </p>
-          <Button type="button" variant="outline" className="mt-2">
-            Choose File
+          <Button type="button" variant="outline" className="mt-2" disabled={isUploading}>
+            {isUploading ? 'Uploading...' : 'Choose File'}
           </Button>
         </div>
       )}
@@ -127,6 +165,7 @@ const ImageUpload = ({ onImageUpload, currentImage, label, accept = "image/*" }:
         accept={accept}
         onChange={handleFileInput}
         className="hidden"
+        disabled={isUploading}
       />
     </div>
   );

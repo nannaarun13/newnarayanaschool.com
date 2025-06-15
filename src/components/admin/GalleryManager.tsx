@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Loader2 } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 import { updateSchoolData } from '@/utils/schoolDataUtils';
 
@@ -15,6 +15,7 @@ const GalleryManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
   const [newImage, setNewImage] = useState({ url: '', caption: '', category: '' });
+  const [isUploading, setIsUploading] = useState(false);
 
   const categories = ['General', 'Event', 'Festivals', 'Activities'];
 
@@ -62,10 +63,14 @@ const GalleryManager = () => {
         description: "There was a problem saving the image to the database.",
         variant: "destructive",
       });
+      // Revert optimistic update
+      dispatch({ type: 'DELETE_GALLERY_IMAGE', payload: imageData.id });
     });
   };
 
   const handleDeleteImage = (id: string) => {
+    // Note: This doesn't delete the image from Firebase Storage.
+    // A more robust solution would involve a backend function to handle deletions.
     const updatedImages = state.data.galleryImages.filter(image => image.id !== id);
     dispatch({
       type: 'DELETE_GALLERY_IMAGE',
@@ -103,6 +108,7 @@ const GalleryManager = () => {
             label="Upload Gallery Image"
             currentImage={newImage.url}
             onImageUpload={handleImageUpload}
+            onUploading={setIsUploading}
           />
           
           <div>
@@ -131,9 +137,17 @@ const GalleryManager = () => {
             </Select>
           </div>
           
-          <Button onClick={handleAddImage} className="bg-school-blue hover:bg-school-blue/90">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Image
+          <Button 
+            onClick={handleAddImage} 
+            className="bg-school-blue hover:bg-school-blue/90"
+            disabled={isUploading || !newImage.url}
+          >
+            {isUploading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4 mr-2" />
+            )}
+            {isUploading ? 'Uploading...' : 'Add Image'}
           </Button>
         </CardContent>
       </Card>
@@ -144,31 +158,35 @@ const GalleryManager = () => {
           <CardTitle>Current Gallery Images</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {state.data.galleryImages.map((image) => (
-              <div key={image.id} className="border rounded-lg overflow-hidden">
-                <img
-                  src={image.url}
-                  alt={image.caption}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="p-4">
-                  <p className="font-medium">{image.caption}</p>
-                  <p className="text-sm text-gray-600 mt-1">{image.category}</p>
-                  <p className="text-sm text-gray-600">{image.date}</p>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => handleDeleteImage(image.id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
+          {state.data.galleryImages.length === 0 ? (
+            <p className="text-gray-500">No images in the gallery yet.</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {state.data.galleryImages.map((image) => (
+                <div key={image.id} className="border rounded-lg overflow-hidden">
+                  <img
+                    src={image.url}
+                    alt={image.altText || image.caption}
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="p-4">
+                    <p className="font-medium">{image.caption}</p>
+                    <p className="text-sm text-gray-600 mt-1">{image.category}</p>
+                    <p className="text-sm text-gray-600">{image.date}</p>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => handleDeleteImage(image.id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
