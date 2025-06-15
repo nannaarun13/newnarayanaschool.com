@@ -14,21 +14,12 @@ export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolS
         loading: false 
       };
     case 'ADD_GALLERY_IMAGE':
-      console.log('Dispatching ADD_GALLERY_IMAGE. Persisting to Firestore...');
-      // Only trigger the Firestore update. The state will be updated by the real-time listener.
-      addGalleryImage(action.payload).catch((error) => {
-        console.error('Failed to save gallery image to Firestore:', error);
-        // In a real app, you might dispatch an error action here to notify the user.
-      });
-      // Do not update state optimistically. Return the current state.
+      console.log('ADD_GALLERY_IMAGE action dispatched, but the async logic is now handled directly in the component for better UX. State will be updated by the listener.');
+      // The async logic has been moved to the component. State is updated by the real-time listener.
       return state;
     case 'REMOVE_GALLERY_IMAGE':
-      console.log('Dispatching REMOVE_GALLERY_IMAGE. Persisting to Firestore...');
-      // Only trigger the Firestore update. The state will be updated by the real-time listener.
-      removeGalleryImage(action.payload).catch((error) => {
-        console.error('Failed to remove gallery image from Firestore:', error);
-      });
-      // Do not update state optimistically. Return the current state.
+      console.log('REMOVE_GALLERY_IMAGE action dispatched, but the async logic is now handled directly in the component for better UX. State will be updated by the listener.');
+      // The async logic has been moved to the component. State is updated by the real-time listener.
       return state;
     case 'UPDATE_SCHOOL_DATA':
       const updatedData = { ...state.data, ...action.payload };

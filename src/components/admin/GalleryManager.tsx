@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,9 +9,11 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Plus, Loader2 } from 'lucide-react';
 import ImageUpload from './ImageUpload';
+import { addGalleryImage, removeGalleryImage } from '@/utils/schoolDataUtils';
+import { GalleryImage } from '@/types';
 
 const GalleryManager = () => {
-  const { state, dispatch } = useSchool();
+  const { state } = useSchool();
   const { toast } = useToast();
   const [newImage, setNewImage] = useState({ url: '', caption: '', category: '' });
   const [isUploading, setIsUploading] = useState(false);
@@ -31,7 +34,6 @@ const GalleryManager = () => {
       });
       return;
     }
-    // Prevent probable DB errors: ensure all fields set
     if (newImage.caption.length < 2 || newImage.category.length < 2) {
       toast({
         title: "Invalid Data",
@@ -43,7 +45,7 @@ const GalleryManager = () => {
 
     setIsSaving(true);
     try {
-      const imageData = {
+      const imageData: GalleryImage = {
         id: Date.now().toString(),
         url: newImage.url,
         altText: newImage.caption,
@@ -51,10 +53,9 @@ const GalleryManager = () => {
         category: newImage.category,
         date: new Date().toISOString(),
       };
-      // Extra runtime check for dev
-      console.log("[GalleryManager] Dispatching ADD_GALLERY_IMAGE with", imageData);
-
-      dispatch({ type: 'ADD_GALLERY_IMAGE', payload: imageData });
+      
+      console.log("[GalleryManager] Adding image to Firestore:", imageData);
+      await addGalleryImage(imageData);
       
       toast({
         title: "Image Added",
@@ -75,7 +76,7 @@ const GalleryManager = () => {
 
   const handleDeleteImage = async (id: string) => {
     try {
-      dispatch({ type: 'REMOVE_GALLERY_IMAGE', payload: id });
+      await removeGalleryImage(id);
       toast({
         title: "Image Deleted",
         description: "Image has been removed from the gallery.",
