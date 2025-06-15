@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -5,11 +6,11 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { storage } from '@/lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Progress } from '@/components/ui/progress';
 
 // Helper function to resize and compress image
-async function resizeAndCompressImage(file: File, options = { maxWidth: 1200, quality: 0.8 }) : Promise<Blob> {
+async function resizeAndCompressImage(file: File, options = { maxWidth: 1200, quality: 0.8 }): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
 
@@ -80,12 +81,13 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
       return;
     }
 
+    console.log('[ImageUpload] Starting upload for file:', file.name);
     setIsUploading(true);
     setUploadProgress(0);
     onUploading?.(true);
 
     try {
-      // 1. Show local preview ASAP (original, before resize for snappier UI)
+      // 1. Show local preview immediately
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
@@ -93,57 +95,49 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
       };
       reader.readAsDataURL(file);
 
-      // 2. Resize and compress the image before uploading
+      // 2. Resize and compress the image
+      console.log('[ImageUpload] Compressing image...');
+      setUploadProgress(20);
       const compressedBlob = await resizeAndCompressImage(file, { maxWidth: 1200, quality: 0.8 });
       const uploadFile = new File([compressedBlob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: "image/jpeg" });
+      
+      console.log('[ImageUpload] Image compressed, starting Firebase upload...');
+      setUploadProgress(40);
 
-      // 3. Now upload to Firebase using resumable upload for progress
-      const storageRef = ref(storage, `gallery/${Date.now()}_${uploadFile.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, uploadFile);
-
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(percent);
-        },
-        (error) => {
-          console.error("Upload failed", error);
-          toast({
-            title: "Upload Failed",
-            description: "There was a problem uploading your image. Please try again.",
-            variant: "destructive",
-          });
-          setPreview('');
-          setIsUploading(false);
-          setUploadProgress(0);
-          onUploading?.(false);
-          onImageUpload('');
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          onImageUpload(downloadURL);
-          toast({
-            title: "Image Uploaded to Storage",
-            description: "Image is now ready to be saved to the gallery.",
-          });
-          setIsUploading(false);
-          setUploadProgress(0);
-          onUploading?.(false);
-        }
-      );
-    } catch (error) {
-      console.error("Image processing failed", error);
+      // 3. Upload to Firebase Storage using simple upload
+      const fileName = `gallery/${Date.now()}_${uploadFile.name}`;
+      const storageRef = ref(storage, fileName);
+      
+      console.log('[ImageUpload] Uploading to Firebase Storage:', fileName);
+      setUploadProgress(70);
+      
+      const snapshot = await uploadBytes(storageRef, uploadFile);
+      console.log('[ImageUpload] Upload completed, getting download URL...');
+      setUploadProgress(90);
+      
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      console.log('[ImageUpload] Download URL obtained:', downloadURL);
+      setUploadProgress(100);
+      
+      onImageUpload(downloadURL);
       toast({
-        title: "Image Processing Failed",
-        description: "Could not process the image for upload.",
-        variant: "destructive"
+        title: "Image Uploaded Successfully",
+        description: "Image is ready to be saved to the gallery.",
       });
+      
+    } catch (error) {
+      console.error("[ImageUpload] Upload failed:", error);
+      toast({
+        title: "Upload Failed",
+        description: "There was a problem uploading your image. Please try again.",
+        variant: "destructive",
+      });
+      setPreview('');
+      onImageUpload('');
+    } finally {
       setIsUploading(false);
       setUploadProgress(0);
       onUploading?.(false);
-      setPreview('');
-      onImageUpload('');
     }
   };
 
@@ -200,7 +194,7 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
                 <Loader2 className="h-8 w-8 text-white animate-spin" />
               </div>
               <div className="absolute bottom-0 left-0 w-full px-1 pb-1">
-                <Progress value={uploadProgress} />
+                <Progress value={uploadProgress} className="h-2" />
                 <span className="text-xs text-white absolute right-2 bottom-2">
                   {Math.round(uploadProgress)}%
                 </span>
