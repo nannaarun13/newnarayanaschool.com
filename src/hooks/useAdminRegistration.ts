@@ -20,13 +20,25 @@ export const useAdminRegistration = ({ onSuccess }: UseAdminRegistrationProps) =
     try {
       // Create admin request (pending approval) – passwords are NOT stored
       const adminData = {
-        firstName: values.firstName,
-        lastName: values.lastName,
-        email: values.email,
-        phone: values.phone,
+        firstName: values.firstName?.trim() || "",
+        lastName: values.lastName?.trim() || "",
+        email: values.email?.toLowerCase().trim() || "",
+        phone: values.phone?.trim() || "",
         status: 'pending' as const,
         requestedAt: new Date().toISOString()
       };
+
+      console.log("Attempting to submit adminData:", adminData);
+      // Double check that all fields are strings and not empty
+      if (
+        !adminData.firstName ||
+        !adminData.lastName ||
+        !adminData.email ||
+        !adminData.phone ||
+        !adminData.requestedAt
+      ) {
+        throw new Error("One or more fields are empty or invalid.");
+      }
 
       await addDoc(collection(db, "admins"), adminData);
 
@@ -37,8 +49,11 @@ export const useAdminRegistration = ({ onSuccess }: UseAdminRegistrationProps) =
       });
 
     } catch (error: any) {
-      console.error("Registration error:", error);
-      const errorMessage = "Failed to submit registration. Please try again.";
+      console.error("Registration error:", error, "Submitted adminData:", values);
+      const errorMessage =
+        error?.message === "One or more fields are empty or invalid."
+          ? "Fill out all fields with valid data."
+          : "Failed to submit registration. Please try again.";
       toast({
         title: "Registration Failed",
         description: errorMessage,
