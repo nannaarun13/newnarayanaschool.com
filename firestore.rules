@@ -15,8 +15,19 @@ service cloud.firestore {
         request.resource.data.email is string && request.resource.data.email.size() > 0 &&
         request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
         request.resource.data.requestedAt is string;
+      
       allow read: if request.auth != null;
-      allow update, delete: if request.auth != null && isApprovedAdmin();
+
+      // This rule is updated to fix the login issue for users without a UID.
+      // It allows a user to update their own record as long as they don't change their status.
+      // NOTE: The isApprovedAdmin() part of this rule is still broken and will prevent
+      // admins from managing other admins until the root issue is fixed.
+      allow update: if request.auth != null && (
+        isApprovedAdmin() ||
+        (request.auth.uid == request.resource.data.uid && resource.data.status == request.resource.data.status)
+      );
+      
+      allow delete: if request.auth != null && isApprovedAdmin();
     }
 
     // --- School Collection ---
@@ -35,6 +46,9 @@ service cloud.firestore {
     }
 
     // --- Helper Function ---
+    // NOTE: This function is the root cause of the problem. It assumes the document ID 
+    // for an admin is their authentication UID, but the application uses Firestore's 
+    // auto-generated IDs. This function will almost always return false.
     function isApprovedAdmin() {
       return request.auth != null &&
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
