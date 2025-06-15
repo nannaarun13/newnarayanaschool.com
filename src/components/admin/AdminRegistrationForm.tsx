@@ -1,28 +1,22 @@
 
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Shield, Eye, EyeOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Loader2, Shield } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { registrationSchema, type RegistrationFormData } from '@/utils/adminRegistrationSchema';
+import { useAdminRegistration } from '@/hooks/useAdminRegistration';
+import PasswordField from './PasswordField';
+import PasswordRequirements from './PasswordRequirements';
 
 interface AdminRegistrationFormProps {
   onSuccess: () => void;
 }
 
 const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { loading, handleSubmit, navigate } = useAdminRegistration({ onSuccess });
   
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
@@ -35,69 +29,6 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
       confirmPassword: ''
     }
   });
-
-  const checkForDuplicates = async (email: string, phone: string): Promise<void> => {
-    const emailQuery = query(collection(db, "admins"), where("email", "==", email));
-    const phoneQuery = query(collection(db, "admins"), where("phone", "==", phone));
-    
-    const [emailSnapshot, phoneSnapshot] = await Promise.all([
-      getDocs(emailQuery),
-      getDocs(phoneQuery)
-    ]);
-    
-    if (!emailSnapshot.empty) {
-      throw new Error('An admin request with this email already exists.');
-    }
-    
-    if (!phoneSnapshot.empty) {
-      throw new Error('An admin request with this phone number already exists.');
-    }
-  };
-
-  const handleSubmit = async (values: RegistrationFormData) => {
-    setLoading(true);
-    
-    try {
-      // Check for duplicates
-      await checkForDuplicates(values.email, values.phone);
-      
-      // Create admin request (pending approval)
-      const adminData = {
-        firstName: values.firstName,
-        lastName: values.lastName,
-        email: values.email,
-        phone: values.phone,
-        password: values.password, // Store temporarily for approval process
-        status: 'pending' as const,
-        requestedAt: new Date().toISOString()
-      };
-
-      await addDoc(collection(db, "admins"), adminData);
-
-      onSuccess();
-      toast({
-        title: "Registration Submitted Successfully",
-        description: "Your admin access request has been submitted and is pending approval.",
-      });
-
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      
-      let errorMessage = "Failed to submit registration. Please try again.";
-      
-      if (error.message.includes('already exists')) {
-        errorMessage = error.message;
-      }
-      
-      toast({ 
-        title: "Registration Failed", 
-        description: errorMessage, 
-        variant: "destructive" 
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <Card className="shadow-lg">
@@ -186,77 +117,24 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
             )} />
             
             <FormField control={form.control} name="password" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password *</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input 
-                      type={showPassword ? "text" : "password"} 
-                      placeholder="Password" 
-                      {...field} 
-                      disabled={loading}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={loading}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+              <PasswordField 
+                field={field} 
+                label="Password" 
+                placeholder="Password" 
+                loading={loading} 
+              />
             )} />
             
             <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm Password *</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input 
-                      type={showConfirmPassword ? "text" : "password"} 
-                      placeholder="Confirm Password" 
-                      {...field} 
-                      disabled={loading}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      disabled={loading}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+              <PasswordField 
+                field={field} 
+                label="Confirm Password" 
+                placeholder="Confirm Password" 
+                loading={loading} 
+              />
             )} />
             
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-              <h4 className="font-semibold text-blue-800 mb-2">Password Requirements</h4>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li>• At least 8 characters long</li>
-                <li>• Contains uppercase letter (A-Z)</li>
-                <li>• Contains lowercase letter (a-z)</li>
-                <li>• Contains number (0-9)</li>
-                <li>• Contains special character (!@#$%^&*)</li>
-              </ul>
-            </div>
+            <PasswordRequirements />
             
             <Button type="submit" disabled={loading} className="w-full bg-school-blue hover:bg-school-blue/90">
               {loading ? (
