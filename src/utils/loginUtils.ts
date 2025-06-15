@@ -1,4 +1,3 @@
-
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
@@ -162,13 +161,8 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     
     const user = userCredential.user;
     
-    // Verify email is verified for additional security
-    if (!user.emailVerified && sanitizedEmail !== DEFAULT_ADMIN.email.toLowerCase()) {
-      await auth.signOut();
-      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
-      await logFailedAdminLogin(sanitizedEmail, 'Email not verified');
-      throw new Error('Please verify your email address before logging in.');
-    }
+    // Email verification check removed as per request for a smoother admin onboarding experience.
+    // Admins are already manually vetted and approved.
     
     // For default admin, ensure admin record exists
     if (sanitizedEmail === DEFAULT_ADMIN.email.toLowerCase()) {
