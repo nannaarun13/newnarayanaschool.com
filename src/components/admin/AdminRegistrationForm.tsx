@@ -11,6 +11,13 @@ import { useAdminRegistration } from '@/hooks/useAdminRegistration';
 import PasswordField from './PasswordField';
 import PasswordRequirements from './PasswordRequirements';
 
+function formatPhone(phone: string) {
+  // Always returns "+91 98765 43210" (with a space after country code)
+  const n = phone.replace(/\D/g, '').slice(-10);
+  if (n.length === 10) return `+91 ${n.slice(0,5)} ${n.slice(5)}`;
+  return '';
+}
+
 interface AdminRegistrationFormProps {
   onSuccess: () => void;
 }
@@ -45,7 +52,7 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit((v) => handleSubmit({ ...v, phone: formatPhone(v.phone) }))} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="firstName" render={({ field }) => (
                 <FormItem>
@@ -100,19 +107,25 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
                     </span>
                     <Input 
                       type="tel" 
-                      placeholder="9876543210" 
+                      placeholder="98765 43210" 
                       maxLength={10}
                       className="rounded-l-none"
                       {...field} 
                       disabled={loading}
                       onInput={(e) => {
                         const target = e.target as HTMLInputElement;
-                        target.value = target.value.replace(/[^0-9]/g, '');
+                        let v = target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                        target.value = v;
+                        form.setValue('phone', v);
                       }}
+                      value={form.watch('phone')}
                     />
                   </div>
                 </FormControl>
                 <FormMessage />
+                <div className="text-xs text-gray-500 mt-1">
+                  Enter your 10 digit Indian mobile number. It will be stored as "+91 XXXXX YYYYY".
+                </div>
               </FormItem>
             )} />
             

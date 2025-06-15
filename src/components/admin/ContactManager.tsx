@@ -10,6 +10,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Save, Plus, Trash2 } from 'lucide-react';
 import { updateSchoolData } from '@/utils/schoolDataUtils';
 
+const formatPhoneForDisplay = (digits: string) => {
+  // Accepts only digits, outputs "+91 98765 43210"
+  const onlyNumbers = digits.replace(/\D/g, '').slice(-10); // last 10 digits
+  if (onlyNumbers.length === 10) {
+    return `+91 ${onlyNumbers.slice(0,5)} ${onlyNumbers.slice(5)}`;
+  }
+  return "+91 ";
+};
+
 const ContactManager = () => {
   const { state, dispatch } = useSchool();
   const { toast } = useToast();
@@ -32,33 +41,32 @@ const ContactManager = () => {
   };
 
   const addContactNumber = () => {
-    if (newContactNumber.trim() && contactData.contactNumbers.length < 5) {
-      let formattedNumber = newContactNumber.trim();
-      
-      // Add +91 prefix if not present and it's a 10-digit number
-      if (!formattedNumber.startsWith('+') && formattedNumber.length === 10) {
-        formattedNumber = `+91 ${formattedNumber}`;
-      } else if (!formattedNumber.startsWith('+91') && formattedNumber.length === 10) {
-        formattedNumber = `+91 ${formattedNumber}`;
-      }
-      
+    const formatted = formatPhoneForDisplay(newContactNumber.trim());
+    if (
+      newContactNumber.trim().length === 10 &&
+      /^\d{10}$/.test(newContactNumber.trim()) &&
+      contactData.contactNumbers.length < 5
+    ) {
       const contactNumber = {
         id: Date.now().toString(),
         label: `Phone ${contactData.contactNumbers.length + 1}`,
-        number: formattedNumber
+        number: formatted
       };
-      
       const updatedContactData = {
         ...contactData,
         contactNumbers: [...contactData.contactNumbers, contactNumber]
       };
-      
       setContactData(updatedContactData);
       setNewContactNumber('');
-      
       toast({
         title: "Phone Number Added",
         description: "New phone number has been added.",
+      });
+    } else {
+      toast({
+        title: "Invalid Number",
+        description: "Please enter exactly 10 digits for an Indian mobile number.",
+        variant: "destructive"
       });
     }
   };
@@ -69,7 +77,6 @@ const ContactManager = () => {
       contactNumbers: contactData.contactNumbers.filter(contact => contact.id !== id)
     };
     setContactData(updatedContactData);
-    
     toast({
       title: "Phone Number Deleted",
       description: "Phone number has been removed.",
@@ -77,26 +84,28 @@ const ContactManager = () => {
   };
 
   const handleSave = async () => {
-    console.log('Saving contact information...');
-    
-    // Update local state first
+    // Save phone numbers always in "+91 98765 43210" format.
+    const cleanedContactNumbers = contactData.contactNumbers.map(contact => ({
+      ...contact,
+      number: formatPhoneForDisplay(contact.number)
+    }));
+    const dataToSave = {
+      ...contactData,
+      contactNumbers: cleanedContactNumbers
+    };
+
     dispatch({
       type: 'UPDATE_SCHOOL_DATA',
-      payload: { contactInfo: contactData }
+      payload: { contactInfo: dataToSave }
     });
-    
-    // Try to save to Firestore
+
     try {
-      await updateSchoolData({ contactInfo: contactData });
-      console.log('Contact info saved to Firestore successfully');
-      
+      await updateSchoolData({ contactInfo: dataToSave });
       toast({
         title: "Contact Information Updated",
         description: "Contact details have been updated successfully.",
       });
     } catch (error: any) {
-      console.error('Failed to save contact info to Firestore:', error);
-      
       if (error.code === 'permission-denied') {
         toast({
           title: "Contact Updated Locally",
@@ -175,11 +184,18 @@ const ContactManager = () => {
             {contactData.contactNumbers.length < 5 && (
               <div className="mt-4">
                 <div className="flex gap-2">
+                  <span className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md">
+                    +91
+                  </span>
                   <Input
-                    placeholder="Enter phone number"
+                    placeholder="98765 43210"
                     value={newContactNumber}
-                    onChange={(e) => setNewContactNumber(e.target.value)}
-                    className="flex-1"
+                    onChange={(e) => {
+                      let v = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setNewContactNumber(v);
+                    }}
+                    className="flex-1 rounded-l-none"
+                    maxLength={10}
                   />
                   <Button 
                     onClick={addContactNumber} 
@@ -189,7 +205,7 @@ const ContactManager = () => {
                     Add Phone
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">You can add up to 5 phone numbers</p>
+                <p className="text-xs text-gray-500 mt-1">Enter 10 digit Indian mobile number. The number will be saved as "+91 XXXXX YYYYY".</p>
               </div>
             )}
           </div>

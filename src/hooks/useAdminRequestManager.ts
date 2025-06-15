@@ -5,6 +5,8 @@ import { getAdminRequests, AdminUser } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
+const SUPER_ADMIN_EMAIL = "arunnanna3@gmail.com";
+
 export const useAdminRequestManager = () => {
   const { toast } = useToast();
   const [adminRequests, setAdminRequests] = useState<AdminUser[]>([]);
@@ -37,8 +39,17 @@ export const useAdminRequestManager = () => {
       const currentUser = auth.currentUser;
       const currentAdminEmail = currentUser?.email;
 
+      if (request.email === SUPER_ADMIN_EMAIL) {
+        toast({
+          title: "Protected Admin",
+          description: "You cannot approve/reject the super-admin.",
+          variant: "destructive"
+        });
+        setActionLoading(false);
+        return;
+      }
+
       if (approved) {
-        // Only update status (never create/set Auth password here)
         await updateDoc(doc(db, 'admins', request.id), {
           status: 'approved',
           approvedAt: new Date().toISOString(),
@@ -50,7 +61,6 @@ export const useAdminRequestManager = () => {
           description: "Admin access approved. The user must now register themselves via the site.",
         });
       } else {
-        // Reject the request
         await updateDoc(doc(db, 'admins', request.id), {
           status: 'rejected',
           rejectedAt: new Date().toISOString(),
@@ -78,6 +88,15 @@ export const useAdminRequestManager = () => {
 
   const handleDeleteRequest = async (request: AdminUser) => {
     setActionLoading(true);
+    if (request.email === SUPER_ADMIN_EMAIL) {
+      toast({
+        title: "Protected Admin",
+        description: "You cannot delete the super-admin.",
+        variant: "destructive"
+      });
+      setActionLoading(false);
+      return;
+    }
     try {
       await deleteDoc(doc(db, 'admins', request.id));
       toast({
@@ -98,6 +117,15 @@ export const useAdminRequestManager = () => {
 
   const handleRemoveAccess = async (request: AdminUser) => {
     setActionLoading(true);
+    if (request.email === SUPER_ADMIN_EMAIL) {
+      toast({
+        title: "Protected Admin",
+        description: "You cannot remove access from the super-admin.",
+        variant: "destructive"
+      });
+      setActionLoading(false);
+      return;
+    }
     try {
       const currentUser = auth.currentUser;
       const currentAdminEmail = currentUser?.email;
