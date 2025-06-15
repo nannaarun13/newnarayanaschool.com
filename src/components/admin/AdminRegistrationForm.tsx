@@ -20,9 +20,10 @@ function formatPhone(phone: string) {
 
 interface AdminRegistrationFormProps {
   onSuccess: () => void;
+  prefilledEmail?: string;
 }
 
-const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
+const AdminRegistrationForm = ({ onSuccess, prefilledEmail }: AdminRegistrationFormProps) => {
   const { loading, handleSubmit, navigate } = useAdminRegistration({ onSuccess });
   
   const form = useForm<RegistrationFormData>({
@@ -30,7 +31,7 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
     defaultValues: {
       firstName: '',
       lastName: '',
-      email: '',
+      email: prefilledEmail || '',
       phone: '',
       password: '',
       confirmPassword: ''
@@ -90,7 +91,7 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
                     type="email" 
                     placeholder="your.email@domain.com" 
                     {...field} 
-                    disabled={loading}
+                    disabled={loading || !!prefilledEmail}
                   />
                 </FormControl>
                 <FormMessage />
