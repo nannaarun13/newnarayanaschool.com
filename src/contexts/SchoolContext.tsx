@@ -47,10 +47,6 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
       (data) => {
         console.log('Real-time data update received:', data);
         dispatch({ type: 'SET_SCHOOL_DATA', payload: data });
-        // Ensure gallery images are synced with the main data
-        if (data.galleryImages) {
-          dispatch({ type: 'SET_GALLERY_IMAGES', payload: data.galleryImages });
-        }
       },
       (error) => {
         console.error("Real-time subscription error:", error);
