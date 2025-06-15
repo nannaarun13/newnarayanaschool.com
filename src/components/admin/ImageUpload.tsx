@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Progress } from '@/components/ui/progress';
 
 // Helper function to resize and compress image
@@ -81,7 +80,7 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
       return;
     }
 
-    console.log('[ImageUpload] Starting upload for file:', file.name);
+    console.log('[ImageUpload] Starting upload for file:', file.name, 'Size:', file.size);
     setIsUploading(true);
     setUploadProgress(0);
     onUploading?.(true);
@@ -92,38 +91,56 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
       reader.onload = (e) => {
         const result = e.target?.result as string;
         setPreview(result);
+        console.log('[ImageUpload] Preview set successfully');
       };
       reader.readAsDataURL(file);
 
       // 2. Resize and compress the image
-      console.log('[ImageUpload] Compressing image...');
-      setUploadProgress(20);
+      console.log('[ImageUpload] Starting image compression...');
       const compressedBlob = await resizeAndCompressImage(file, { maxWidth: 1200, quality: 0.8 });
       const uploadFile = new File([compressedBlob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: "image/jpeg" });
       
-      console.log('[ImageUpload] Image compressed, starting Firebase upload...');
-      setUploadProgress(40);
+      console.log('[ImageUpload] Image compressed successfully. Original size:', file.size, 'Compressed size:', uploadFile.size);
 
-      // 3. Upload to Firebase Storage using simple upload
+      // 3. Upload to Firebase Storage with real-time progress
       const fileName = `gallery/${Date.now()}_${uploadFile.name}`;
       const storageRef = ref(storage, fileName);
       
-      console.log('[ImageUpload] Uploading to Firebase Storage:', fileName);
-      setUploadProgress(70);
+      console.log('[ImageUpload] Starting Firebase upload to:', fileName);
       
-      const snapshot = await uploadBytes(storageRef, uploadFile);
-      console.log('[ImageUpload] Upload completed, getting download URL...');
-      setUploadProgress(90);
+      // Use uploadBytesResumable for real progress tracking
+      const uploadTask = uploadBytesResumable(storageRef, uploadFile);
       
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      console.log('[ImageUpload] Download URL obtained:', downloadURL);
-      setUploadProgress(100);
-      
-      onImageUpload(downloadURL);
-      toast({
-        title: "Image Uploaded Successfully",
-        description: "Image is ready to be saved to the gallery.",
-      });
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          // Real-time progress updates
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log('[ImageUpload] Upload progress:', Math.round(progress) + '%');
+          setUploadProgress(progress);
+        },
+        (error) => {
+          // Handle unsuccessful uploads
+          console.error('[ImageUpload] Upload failed:', error);
+          throw error;
+        },
+        async () => {
+          // Handle successful uploads
+          try {
+            console.log('[ImageUpload] Upload completed, getting download URL...');
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            console.log('[ImageUpload] Download URL obtained:', downloadURL);
+            
+            onImageUpload(downloadURL);
+            toast({
+              title: "Image Uploaded Successfully",
+              description: "Image is ready to be saved to the gallery.",
+            });
+          } catch (urlError) {
+            console.error('[ImageUpload] Failed to get download URL:', urlError);
+            throw urlError;
+          }
+        }
+      );
       
     } catch (error) {
       console.error("[ImageUpload] Upload failed:", error);
