@@ -121,6 +121,8 @@ export interface SchoolState {
 export type SchoolAction =
   | { type: 'SET_SCHOOL_DATA'; payload: SchoolData }
   | { type: 'SET_GALLERY_IMAGES'; payload: GalleryImage[] }
+  | { type: 'ADD_GALLERY_IMAGE'; payload: GalleryImage }
+  | { type: 'REMOVE_GALLERY_IMAGE'; payload: string }
   | { type: 'UPDATE_SCHOOL_DATA'; payload: Partial<SchoolData> }
   | { type: 'ADD_NOTICE'; payload: Notice }
   | { type: 'UPDATE_NOTICE'; payload: { id: string; title: string; content: string } }

@@ -9,6 +9,10 @@ export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolS
       return { ...state, data: action.payload, loading: false };
     case 'SET_GALLERY_IMAGES':
       return { ...state, galleryImages: action.payload };
+    case 'ADD_GALLERY_IMAGE':
+      return { ...state, galleryImages: [...state.galleryImages, action.payload] };
+    case 'REMOVE_GALLERY_IMAGE':
+      return { ...state, galleryImages: state.galleryImages.filter(img => img.id !== action.payload) };
     case 'UPDATE_SCHOOL_DATA':
       const updatedData = { ...state.data, ...action.payload };
       // This is now deprecated for galleryImages, but kept for other partial updates

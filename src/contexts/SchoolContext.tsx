@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { Unsubscribe } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
@@ -6,7 +5,6 @@ import { SchoolState, SchoolAction } from '@/types';
 import { defaultSchoolData } from '@/data/defaults';
 import { schoolReducer } from '@/reducers/schoolReducer';
 import { subscribeToSchoolData } from '@/utils/schoolDataUtils';
-import { subscribeToGalleryImages } from '@/utils/galleryUtils';
 
 const initialState: SchoolState = {
   data: defaultSchoolData,
@@ -39,7 +37,6 @@ export const useSchool = () => {
 export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(schoolReducer, initialState);
   const unsubscribeSchoolDataRef = useRef<Unsubscribe | null>(null);
-  const unsubscribeGalleryRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
     console.log('Setting up real-time listener for school data...');
@@ -56,28 +53,11 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     );
 
-    // Set up real-time listener for gallery images
-    console.log('Setting up real-time listener for gallery...');
-    unsubscribeGalleryRef.current = subscribeToGalleryImages(
-      (images) => {
-        console.log('Real-time gallery update received:', images);
-        dispatch({ type: 'SET_GALLERY_IMAGES', payload: images });
-      },
-      (error) => {
-        console.error("Gallery subscription error:", error);
-        dispatch({ type: 'SET_GALLERY_IMAGES', payload: [] });
-      }
-    );
-
     // Cleanup function
     return () => {
       if (unsubscribeSchoolDataRef.current) {
         console.log('Cleaning up real-time listener for school data...');
         unsubscribeSchoolDataRef.current();
-      }
-      if (unsubscribeGalleryRef.current) {
-        console.log('Cleaning up gallery listener...');
-        unsubscribeGalleryRef.current();
       }
     };
   }, []);
