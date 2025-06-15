@@ -7,11 +7,10 @@ import { useNavigate } from 'react-router-dom';
 const Index = () => {
   const { state } = useSchool();
   const navigate = useNavigate();
-  const { data, galleryImages } = state;
-  const { welcomeMessage, schoolLogo } = data;
+  const { welcomeMessage, schoolLogo, galleryImages } = state.data;
   // Safely access properties that might be undefined with defaults
-  const welcomeImage = data.welcomeImage || "https://via.placeholder.com/1200x600";
-  const latestUpdates = data.latestUpdates || [];
+  const welcomeImage = state.data.welcomeImage || "https://via.placeholder.com/1200x600";
+  const latestUpdates = state.data.latestUpdates || [];
 
   return (
     <div className="min-h-screen bg-white">

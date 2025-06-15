@@ -1,10 +1,12 @@
 
-import { useRef } from 'react';
+import { useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useImageUpload } from '@/hooks/useImageUpload';
-import ImageDropZone from './ImageDropZone';
-import ImagePreview from './ImagePreview';
+import { useToast } from '@/hooks/use-toast';
+import { Upload, X, Loader2 } from 'lucide-react';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void;
@@ -12,28 +14,85 @@ interface ImageUploadProps {
   currentImage?: string;
   label: string;
   accept?: string;
-  autoSaveToDatabase?: boolean;
 }
 
-const ImageUpload = ({ 
-  onImageUpload, 
-  onUploading, 
-  currentImage, 
-  label, 
-  accept = "image/*",
-  autoSaveToDatabase = false 
-}: ImageUploadProps) => {
+const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept = "image/*" }: ImageUploadProps) => {
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { preview, setPreview, isUploading, handleFile, removeImage } = useImageUpload({
-    onImageUpload,
-    onUploading,
-    autoSaveToDatabase
-  });
+  const [dragActive, setDragActive] = useState(false);
+  const [preview, setPreview] = useState<string>(currentImage || '');
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Set initial preview from currentImage prop
-  if (currentImage && !preview) {
-    setPreview(currentImage);
-  }
+  const handleFile = (file: File) => {
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setPreview(result);
+      };
+      reader.readAsDataURL(file);
+      
+      setIsUploading(true);
+      onUploading?.(true);
+
+      const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          // Optional: handle progress.
+        },
+        (error) => {
+          console.error("Upload failed:", error);
+          toast({
+            title: "Upload Failed",
+            description: "There was a problem uploading your image. Please try again.",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          onUploading?.(false);
+        },
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            onImageUpload(downloadURL);
+            toast({
+              title: "Image Ready",
+              description: "Image has been uploaded. You can now add details and save.",
+            });
+            setIsUploading(false);
+            onUploading?.(false);
+          });
+        }
+      );
+    } else {
+      toast({
+        title: "Invalid File",
+        description: "Please upload a valid image file.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files[0]) {
+      handleFile(files[0]);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -42,12 +101,12 @@ const ImageUpload = ({
     }
   };
 
-  const handleRemoveImage = () => {
-    removeImage(onImageUpload, fileInputRef);
-  };
-
-  const handleFileSelect = () => {
-    fileInputRef.current?.click();
+  const removeImage = () => {
+    setPreview('');
+    onImageUpload('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -55,17 +114,49 @@ const ImageUpload = ({
       <Label>{label}</Label>
       
       {preview ? (
-        <ImagePreview 
-          preview={preview}
-          isUploading={isUploading}
-          onRemove={handleRemoveImage}
-        />
+        <div className="relative inline-block">
+          <img
+            src={preview}
+            alt="Preview"
+            className="w-32 h-32 object-cover rounded-lg border"
+          />
+          {isUploading ? (
+             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                <Loader2 className="h-8 w-8 text-white animate-spin" />
+             </div>
+          ) : (
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              className="absolute -top-2 -right-2 h-6 w-6"
+              onClick={removeImage}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       ) : (
-        <ImageDropZone 
-          onFileDrop={handleFile}
-          onFileSelect={handleFileSelect}
-          isUploading={isUploading}
-        />
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            dragActive 
+              ? 'border-school-blue bg-school-blue-light' 
+              : 'border-gray-300 hover:border-school-blue'
+          }`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          onClick={() => !isUploading && fileInputRef.current?.click()}
+        >
+          <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">
+            Drag and drop an image here, or click to select
+          </p>
+          <Button type="button" variant="outline" className="mt-2" disabled={isUploading}>
+            {isUploading ? 'Uploading...' : 'Choose File'}
+          </Button>
+        </div>
       )}
       
       <Input

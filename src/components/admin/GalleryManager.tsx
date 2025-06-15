@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -88,29 +87,10 @@ const GalleryManager = () => {
         <h2 className="text-2xl font-bold text-gray-800">Gallery Management</h2>
       </div>
 
-      {/* Quick Upload - Auto-save to Database */}
+      {/* Add New Image */}
       <Card>
         <CardHeader>
-          <CardTitle>Quick Upload (Auto-Save)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <ImageUpload
-            label="Upload Gallery Image (Auto-saves to database)"
-            currentImage=""
-            onImageUpload={() => {}} // Not needed for auto-save mode
-            onUploading={setIsUploading}
-            autoSaveToDatabase={true}
-          />
-          <p className="text-sm text-gray-600">
-            Images uploaded here will be automatically saved to the gallery with a default caption that you can edit later.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Manual Upload with Custom Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Manual Upload with Custom Details</CardTitle>
+          <CardTitle>Add New Image</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <ImageUpload
@@ -118,7 +98,6 @@ const GalleryManager = () => {
             currentImage={newImage.url}
             onImageUpload={handleImageUpload}
             onUploading={setIsUploading}
-            autoSaveToDatabase={false}
           />
           
           <div>
