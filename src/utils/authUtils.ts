@@ -1,10 +1,9 @@
-
 import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export interface AdminUser {
-  uid: string; // Firebase Auth UID
-  id: string; // Firestore Document ID
+  uid: string; // Firebase Auth UID, which is also the Firestore Document ID
+  id: string; // Firestore Document ID, same as uid
   firstName: string;
   lastName: string;
   email: string;
@@ -94,7 +93,7 @@ export const getAdminRequests = async (): Promise<AdminUser[]> => {
         
         if (sanitizedFirstName && sanitizedLastName && sanitizedEmail && sanitizedPhone) {
           requests.push({ 
-            uid: data.uid || doc.id, 
+            uid: doc.id, 
             id: doc.id, 
             firstName: sanitizedFirstName,
             lastName: sanitizedLastName,
@@ -196,22 +195,15 @@ export const isUserAdmin = async (uid: string): Promise<boolean> => {
     if (!uid || typeof uid !== 'string' || uid.length > 100) {
       return false;
     }
+    const adminDocRef = doc(db, 'admins', uid);
+    const adminDoc = await getDoc(adminDocRef);
 
-    const user = await getDoc(doc(db, 'admins', uid));
-    if (!user.exists()) {
-      // Try to find by Firebase UID with enhanced validation
-      const q = query(collection(db, 'admins'), where('uid', '==', uid));
-      const querySnapshot = await getDocs(q);
-      if (querySnapshot.empty) {
-        return false;
-      }
-      
-      const userData = querySnapshot.docs[0].data();
-      return validateAdminData(userData) && userData.status === 'approved';
+    if (!adminDoc.exists()) {
+      return false;
     }
     
-    const userData = user.data();
-    return validateAdminData(userData) && userData.status === 'approved';
+    const adminData = adminDoc.data();
+    return validateAdminData(adminData) && adminData.status === 'approved';
   } catch (error) {
     console.error('Error checking admin status:', error);
     return false;
@@ -244,7 +236,7 @@ export const getAdminByEmail = async (email: string): Promise<AdminUser | null> 
     
     return { 
       id: adminDoc.id, 
-      uid: data.uid || adminDoc.id, 
+      uid: adminDoc.id, 
       firstName: sanitizeString(data.firstName),
       lastName: sanitizeString(data.lastName),
       email: sanitizedEmail,

@@ -4,46 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Shield } from 'lucide-react';
+import { Loader2, Shield, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
-import * as z from "zod";
-
-// Enhanced validation schema with comprehensive security checks
-const secureRegistrationSchema = z.object({
-  firstName: z.string()
-    .min(1, "First name is required")
-    .max(50, "First name too long")
-    .regex(/^[a-zA-Z\s\-']+$/, "First name can only contain letters, spaces, hyphens, and apostrophes")
-    .transform(name => name.trim().replace(/\s+/g, ' ')),
-  lastName: z.string()
-    .min(1, "Last name is required")
-    .max(50, "Last name too long")
-    .regex(/^[a-zA-Z\s\-']+$/, "Last name can only contain letters, spaces, hyphens, and apostrophes")
-    .transform(name => name.trim().replace(/\s+/g, ' ')),
-  email: z.string()
-    .email("Invalid email address")
-    .max(100, "Email too long")
-    .transform(email => email.toLowerCase().trim())
-    .refine(email => {
-      // Additional email validation
-      const parts = email.split('@');
-      if (parts.length !== 2) return false;
-      const [local, domain] = parts;
-      return local.length > 0 && local.length <= 64 && 
-             domain.length > 0 && domain.length <= 255 &&
-             !domain.includes('..') && !local.includes('..');
-    }, "Invalid email format"),
-  phone: z.string()
-    .regex(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
-    .transform(phone => phone.trim()),
-});
-
-type SecureRegistrationFormData = z.infer<typeof secureRegistrationSchema>;
+import { db, auth } from '@/lib/firebase';
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { registrationSchema, RegistrationFormData } from '@/utils/adminRegistrationSchema';
 
 interface AdminRegistrationFormProps {
   onSuccess: () => void;
@@ -53,15 +22,20 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
-  const form = useForm<SecureRegistrationFormData>({
-    resolver: zodResolver(secureRegistrationSchema),
+  const form = useForm<RegistrationFormData>({
+    resolver: zodResolver(registrationSchema),
     defaultValues: {
-      firstName: '', lastName: '', email: '', phone: ''
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: ''
     }
   });
 
-  // Enhanced duplicate check
   const checkForDuplicates = async (email: string, phone: string): Promise<void> => {
     const emailQuery = query(collection(db, "admins"), where("email", "==", email));
     const phoneQuery = query(collection(db, "admins"), where("phone", "==", `+91${phone}`));
@@ -80,39 +54,27 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
     }
   };
 
-  const handleSubmit = async (values: SecureRegistrationFormData) => {
+  const handleSubmit = async (values: RegistrationFormData) => {
     setLoading(true);
     
     try {
-      // Enhanced validation and sanitization
-      const sanitizedData = {
-        firstName: values.firstName.toUpperCase(),
-        lastName: values.lastName.toUpperCase(),
-        email: values.email,
-        phone: values.phone
-      };
+      await checkForDuplicates(values.email, values.phone);
       
-      // Check for duplicates
-      await checkForDuplicates(sanitizedData.email, sanitizedData.phone);
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
       
-      // Generate a secure unique ID
-      const requestId = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Enhanced admin data with security timestamps
       const adminData = {
-        uid: requestId,
-        firstName: sanitizedData.firstName,
-        lastName: sanitizedData.lastName,
-        email: sanitizedData.email,
-        phone: `+91${sanitizedData.phone}`,
+        firstName: values.firstName.trim().replace(/\s+/g, ' '),
+        lastName: values.lastName.trim().replace(/\s+/g, ' '),
+        email: values.email.toLowerCase().trim(),
+        phone: `+91${values.phone.trim()}`,
         status: 'pending' as const,
         requestedAt: new Date().toISOString(),
-        securityVersion: '2.0', // Track security schema version
-        requestIP: 'client-provided', // In production, this should come from server
-        userAgent: navigator.userAgent.substring(0, 500) // Truncated for security
       };
 
-      await addDoc(collection(db, "admins"), adminData);
+      await setDoc(doc(db, "admins", user.uid), adminData);
+      
+      await signOut(auth);
 
       onSuccess();
       toast({
@@ -125,12 +87,12 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
       
       let errorMessage = "Failed to submit registration. Please try again.";
       
-      if (error.message.includes('already exists')) {
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email address is already in use by another account.";
+      } else if (error.message.includes('already exists')) {
         errorMessage = error.message;
       } else if (error.code === 'permission-denied') {
         errorMessage = "Permission denied. Please contact the system administrator.";
-      } else if (error.code === 'network-error') {
-        errorMessage = "Network error. Please check your connection and try again.";
       }
       
       toast({ 
@@ -164,13 +126,7 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
                   <FormItem>
                     <FormLabel>First Name *</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="First name" 
-                        {...field} 
-                        disabled={loading}
-                        maxLength={50}
-                        autoComplete="given-name"
-                      />
+                      <Input placeholder="First name" {...field} disabled={loading} autoComplete="given-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -179,13 +135,7 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
                   <FormItem>
                     <FormLabel>Last Name *</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Last name" 
-                        {...field} 
-                        disabled={loading}
-                        maxLength={50}
-                        autoComplete="family-name"
-                      />
+                      <Input placeholder="Last name" {...field} disabled={loading} autoComplete="family-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -195,14 +145,7 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
               <FormItem>
                 <FormLabel>Email Address *</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="email" 
-                    placeholder="your.email@domain.com" 
-                    {...field} 
-                    disabled={loading}
-                    maxLength={100}
-                    autoComplete="email"
-                  />
+                  <Input type="email" placeholder="your.email@domain.com" {...field} disabled={loading} autoComplete="email" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -215,20 +158,35 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
                     <span className="flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-gray-700 font-medium">
                       +91
                     </span>
-                    <Input 
-                      type="tel" 
-                      placeholder="9876543210" 
-                      maxLength={10}
-                      className="rounded-l-none"
-                      {...field} 
-                      disabled={loading}
-                      autoComplete="tel"
-                      onInput={(e) => {
-                        // Only allow digits
-                        const target = e.target as HTMLInputElement;
-                        target.value = target.value.replace(/[^0-9]/g, '');
-                      }}
-                    />
+                    <Input type="tel" placeholder="9876543210" maxLength={10} className="rounded-l-none" {...field} disabled={loading} autoComplete="tel" />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="password" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password *</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input type={showPassword ? "text" : "password"} placeholder="********" {...field} disabled={loading} autoComplete="new-password" />
+                    <Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 right-0 h-full px-3" onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirm Password *</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input type={showPassword ? "text" : "password"} placeholder="********" {...field} disabled={loading} autoComplete="new-password" />
+                    <Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 right-0 h-full px-3" onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -239,9 +197,8 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
               <h4 className="font-semibold text-blue-800 mb-2">Security Notice</h4>
               <ul className="text-sm text-blue-700 space-y-1">
                 <li>• Your request will be reviewed by existing administrators</li>
-                <li>• You'll receive notification once your request is processed</li>
-                <li>• After approval, create your Firebase account using the same email</li>
-                <li>• All registration attempts are logged for security purposes</li>
+                <li>• After approval, you can sign in with your credentials.</li>
+                <li>• All registration attempts are logged for security purposes.</li>
               </ul>
             </div>
             
@@ -260,17 +217,9 @@ const AdminRegistrationForm = ({ onSuccess }: AdminRegistrationFormProps) => {
         <div className="mt-6 text-center space-y-2">
           <p className="text-sm text-gray-600">
             Already have access?{' '}
-            <Button 
-              variant="link" 
-              className="text-school-blue p-0 h-auto" 
-              onClick={() => navigate('/login')}
-              disabled={loading}
-            >
+            <Button variant="link" className="text-school-blue p-0 h-auto" onClick={() => navigate('/login')} disabled={loading}>
               Sign In
             </Button>
-          </p>
-          <p className="text-xs text-gray-500">
-            By submitting this form, you agree to our terms of service and privacy policy.
           </p>
         </div>
       </CardContent>
