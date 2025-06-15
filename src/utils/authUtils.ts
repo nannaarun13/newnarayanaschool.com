@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, updateDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export interface AdminUser {
@@ -16,6 +16,8 @@ export interface AdminUser {
   rejectedBy?: string; // email of the rejecting admin
   revokedAt?: string;
   revokedBy?: string; // email of the revoking admin
+  reapprovedAt?: string;
+  reapprovedBy?: string;
 }
 
 // Enhanced input sanitization with comprehensive validation
@@ -74,50 +76,64 @@ const validateAdminData = (data: any): boolean => {
     isValidISODate(data.requestedAt);
 };
 
-// Fetches all admin requests with enhanced validation
-export const getAdminRequests = async (): Promise<AdminUser[]> => {
+// Fetches all admin requests with enhanced validation - This has been replaced by a real-time subscription
+// export const getAdminRequests = async (): Promise<AdminUser[]> => { ... };
+
+// New function to subscribe to admin requests in real-time
+export const subscribeToAdminRequests = (
+  onUpdate: (requests: AdminUser[]) => void,
+  onError: (error: Error) => void
+): Unsubscribe => {
   try {
     const q = query(collection(db, 'admins'));
-    const querySnapshot = await getDocs(q);
-    const requests: AdminUser[] = [];
     
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      
-      // Enhanced validation with sanitization
-      if (validateAdminData(data)) {
-        const sanitizedFirstName = sanitizeString(data.firstName);
-        const sanitizedLastName = sanitizeString(data.lastName);
-        const sanitizedEmail = sanitizeEmail(data.email);
-        const sanitizedPhone = sanitizePhone(data.phone);
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const requests: AdminUser[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
         
-        if (sanitizedFirstName && sanitizedLastName && sanitizedEmail && sanitizedPhone) {
-          requests.push({ 
-            uid: doc.id, 
-            id: doc.id, 
-            firstName: sanitizedFirstName,
-            lastName: sanitizedLastName,
-            email: sanitizedEmail,
-            phone: sanitizedPhone,
-            status: data.status,
-            requestedAt: data.requestedAt,
-            approvedAt: data.approvedAt,
-            approvedBy: data.approvedBy ? sanitizeEmail(data.approvedBy) : undefined,
-            rejectedAt: data.rejectedAt,
-            rejectedBy: data.rejectedBy ? sanitizeEmail(data.rejectedBy) : undefined,
-            revokedAt: data.revokedAt,
-            revokedBy: data.revokedBy ? sanitizeEmail(data.revokedBy) : undefined
-          } as AdminUser);
+        // Enhanced validation with sanitization
+        if (validateAdminData(data)) {
+          const sanitizedFirstName = sanitizeString(data.firstName);
+          const sanitizedLastName = sanitizeString(data.lastName);
+          const sanitizedEmail = sanitizeEmail(data.email);
+          const sanitizedPhone = sanitizePhone(data.phone);
+          
+          if (sanitizedFirstName && sanitizedLastName && sanitizedEmail && sanitizedPhone) {
+            requests.push({ 
+              uid: doc.id, 
+              id: doc.id, 
+              firstName: sanitizedFirstName,
+              lastName: sanitizedLastName,
+              email: sanitizedEmail,
+              phone: sanitizedPhone,
+              status: data.status,
+              requestedAt: data.requestedAt,
+              approvedAt: data.approvedAt,
+              approvedBy: data.approvedBy ? sanitizeEmail(data.approvedBy) : undefined,
+              rejectedAt: data.rejectedAt,
+              rejectedBy: data.rejectedBy ? sanitizeEmail(data.rejectedBy) : undefined,
+              revokedAt: data.revokedAt,
+              revokedBy: data.revokedBy ? sanitizeEmail(data.revokedBy) : undefined,
+              reapprovedAt: data.reapprovedAt,
+              reapprovedBy: data.reapprovedBy ? sanitizeEmail(data.reapprovedBy) : undefined
+            } as AdminUser);
+          }
+        } else {
+          console.warn('Skipping admin record with invalid/missing data:', doc.id);
         }
-      } else {
-        console.warn('Skipping admin record with invalid/missing data:', doc.id);
-      }
+      });
+      onUpdate(requests);
+    }, (error) => {
+      console.error('Error in admin requests subscription:', error);
+      onError(error);
     });
     
-    return requests;
+    return unsubscribe;
   } catch (error) {
-    console.error('Error getting admin requests:', error);
-    return [];
+    console.error('Error setting up admin requests subscription:', error);
+    onError(error as Error);
+    return () => {}; // Return a no-op unsubscribe function on initial error
   }
 };
 
@@ -169,6 +185,8 @@ export const updateAdminRequestStatus = async (
       updateData.rejectedBy = null;
       updateData.revokedAt = null;
       updateData.revokedBy = null;
+      updateData.reapprovedAt = null;
+      updateData.reapprovedBy = null;
     } else if (status === 'rejected') {
       updateData.rejectedAt = currentTime;
       if (approvedByEmail) {
@@ -248,7 +266,9 @@ export const getAdminByEmail = async (email: string): Promise<AdminUser | null> 
       rejectedAt: data.rejectedAt,
       rejectedBy: data.rejectedBy ? sanitizeEmail(data.rejectedBy) : undefined,
       revokedAt: data.revokedAt,
-      revokedBy: data.revokedBy ? sanitizeEmail(data.revokedBy) : undefined
+      revokedBy: data.revokedBy ? sanitizeEmail(data.revokedBy) : undefined,
+      reapprovedAt: data.reapprovedAt,
+      reapprovedBy: data.reapprovedBy ? sanitizeEmail(data.reapprovedBy) : undefined
     } as AdminUser;
   } catch (error) {
     console.error("Error getting admin by email:", error);

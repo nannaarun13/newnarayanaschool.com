@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Check, X, Loader2, UserX, UserCheck } from 'lucide-react';
-import { getAdminRequests, AdminUser } from '@/utils/authUtils';
+import { subscribeToAdminRequests, AdminUser } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { 
@@ -21,26 +21,27 @@ const AdminRequestManager = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [listLoading, setListLoading] = useState(true);
 
-  const loadRequests = async () => {
+  useEffect(() => {
     setListLoading(true);
-    try {
-        const requests = await getAdminRequests();
-        console.log('Loaded admin requests:', requests);
+    const unsubscribe = subscribeToAdminRequests(
+      (requests) => {
+        console.log('Loaded admin requests via subscription:', requests);
         setAdminRequests(requests);
-    } catch (error) {
-        console.error("Failed to load admin requests:", error);
+        setListLoading(false);
+      },
+      (error) => {
+        console.error("Failed to subscribe to admin requests:", error);
         toast({
             title: "Error loading requests",
-            description: "Could not fetch the list of admin requests.",
+            description: "Could not fetch the list of admin requests in real-time.",
             variant: "destructive"
         });
-    }
-    setListLoading(false);
-  };
-
-  useEffect(() => {
-    loadRequests();
-  }, []);
+        setListLoading(false);
+      }
+    );
+    
+    return () => unsubscribe();
+  }, [toast]);
 
   const handleApproval = async (request: AdminUser, approved: boolean) => {
     setActionLoading(true);
@@ -93,7 +94,6 @@ const AdminRequestManager = () => {
         });
       }
       
-      await loadRequests(); // Reload to show updated status
     } catch (error: any) {
       console.error('Error updating request:', error);
       toast({
@@ -123,7 +123,6 @@ const AdminRequestManager = () => {
         description: "Admin access has been successfully revoked.",
       });
       
-      await loadRequests(); // Reload to show updated status
     } catch (error) {
       console.error('Error revoking access:', error);
       toast({
@@ -260,10 +259,10 @@ const AdminRequestManager = () => {
                           {request.approvedAt && new Date(request.approvedAt).toLocaleDateString()}
                           {request.rejectedAt && new Date(request.rejectedAt).toLocaleDateString()}
                           {request.revokedAt && new Date(request.revokedAt).toLocaleDateString()}
-                          {(request as any).reapprovedAt && new Date((request as any).reapprovedAt).toLocaleDateString()}
+                          {request.reapprovedAt && new Date(request.reapprovedAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          {request.approvedBy || request.rejectedBy || request.revokedBy || (request as any).reapprovedBy || '-'}
+                          {request.approvedBy || request.rejectedBy || request.revokedBy || request.reapprovedBy || '-'}
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
