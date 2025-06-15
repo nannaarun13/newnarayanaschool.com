@@ -6,7 +6,6 @@ import { auth } from '@/lib/firebase';
 import { isUserAdmin } from '@/utils/authUtils';
 import { useToast } from '@/hooks/use-toast';
 import { Shield } from 'lucide-react';
-import SessionTimeoutWarning from '@/components/security/SessionTimeoutWarning';
 
 const RouteProtection = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
@@ -80,12 +79,7 @@ const RouteProtection = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  return (
-    <>
-      {children}
-      <SessionTimeoutWarning />
-    </>
-  );
+  return <>{children}</>;
 };
 
 export default RouteProtection;
