@@ -5,36 +5,23 @@ import { updateSchoolData, addGalleryImage, removeGalleryImage } from '@/utils/s
 export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState => {
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
-      console.log('Setting school data with gallery images:', action.payload.galleryImages);
       return { 
         ...state, 
-        data: action.payload, 
-        galleryImages: action.payload.galleryImages || [],
-        loading: false 
-      };
-    case 'SET_GALLERY_IMAGES':
-      console.log('Setting gallery images:', action.payload);
-      return { 
-        ...state, 
-        galleryImages: action.payload,
         data: {
-          ...state.data,
-          galleryImages: action.payload
-        }
+          ...action.payload,
+          galleryImages: action.payload.galleryImages || [],
+        },
+        loading: false 
       };
     case 'ADD_GALLERY_IMAGE':
       console.log('Adding gallery image:', action.payload);
-      // Save to Firestore immediately
-      addGalleryImage(action.payload).then(() => {
-        console.log('Gallery image saved to Firestore successfully');
-      }).catch((error) => {
+      addGalleryImage(action.payload).catch((error) => {
         console.error('Failed to save gallery image to Firestore:', error);
       });
       
-      const newGalleryImages = [...state.galleryImages, action.payload];
+      const newGalleryImages = [...(state.data.galleryImages || []), action.payload];
       return { 
         ...state, 
-        galleryImages: newGalleryImages,
         data: {
           ...state.data,
           galleryImages: newGalleryImages
@@ -42,17 +29,13 @@ export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolS
       };
     case 'REMOVE_GALLERY_IMAGE':
       console.log('Removing gallery image:', action.payload);
-      // Remove from Firestore immediately
-      removeGalleryImage(action.payload).then(() => {
-        console.log('Gallery image removed from Firestore successfully');
-      }).catch((error) => {
+      removeGalleryImage(action.payload).catch((error) => {
         console.error('Failed to remove gallery image from Firestore:', error);
       });
       
-      const filteredImages = state.galleryImages.filter(img => img.id !== action.payload);
+      const filteredImages = (state.data.galleryImages || []).filter(img => img.id !== action.payload);
       return { 
         ...state, 
-        galleryImages: filteredImages,
         data: {
           ...state.data,
           galleryImages: filteredImages

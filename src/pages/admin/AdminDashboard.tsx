@@ -65,7 +65,7 @@ const AdminDashboard = () => {
     },
     { 
       title: "Gallery Images", 
-      value: (state.galleryImages?.length || 0).toString(), 
+      value: (state.data.galleryImages?.length || 0).toString(), 
       icon: Image, 
       color: "text-school-orange" 
     },

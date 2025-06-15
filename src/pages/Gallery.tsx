@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useSchool } from '@/contexts/SchoolContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +7,7 @@ import { X } from 'lucide-react';
 
 const Gallery = () => {
   const { state } = useSchool();
-  const { galleryImages } = state;
+  const { galleryImages = [] } = state.data;
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
 

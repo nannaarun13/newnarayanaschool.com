@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +43,6 @@ const GalleryManager = () => {
         date: new Date().toISOString(),
       };
       
-      // Add to local state instead of database
       dispatch({ type: 'ADD_GALLERY_IMAGE', payload: imageData });
       
       toast({
@@ -81,7 +79,7 @@ const GalleryManager = () => {
     }
   };
   
-  const { galleryImages } = state;
+  const { galleryImages = [] } = state.data;
 
   return (
     <div className="space-y-6">

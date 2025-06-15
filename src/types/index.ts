@@ -104,13 +104,12 @@ export interface SchoolData {
   founders: Founder[];
   schoolHistory: string;
   founderDetails: string;
-  galleryImages?: GalleryImage[];
+  galleryImages: GalleryImage[];
 }
 
 // Define the state structure for the school context
 export interface SchoolState {
   data: SchoolData;
-  galleryImages: GalleryImage[];
   admissionInquiries: AdmissionInquiry[];
   contactMessages: ContactMessage[];
   siteVisitors: number;
@@ -120,7 +119,6 @@ export interface SchoolState {
 // Define the actions that can be dispatched to update the state
 export type SchoolAction =
   | { type: 'SET_SCHOOL_DATA'; payload: SchoolData }
-  | { type: 'SET_GALLERY_IMAGES'; payload: GalleryImage[] }
   | { type: 'ADD_GALLERY_IMAGE'; payload: GalleryImage }
   | { type: 'REMOVE_GALLERY_IMAGE'; payload: string }
   | { type: 'UPDATE_SCHOOL_DATA'; payload: Partial<SchoolData> }

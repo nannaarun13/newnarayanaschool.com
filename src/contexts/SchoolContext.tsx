@@ -1,15 +1,13 @@
-
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { Unsubscribe } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
-import { SchoolState, SchoolAction } from '@/types';
+import { SchoolState, SchoolAction, SchoolData } from '@/types';
 import { defaultSchoolData } from '@/data/defaults';
 import { schoolReducer } from '@/reducers/schoolReducer';
 import { subscribeToSchoolData } from '@/utils/schoolDataUtils';
 
 const initialState: SchoolState = {
   data: defaultSchoolData,
-  galleryImages: defaultSchoolData.galleryImages || [],
   admissionInquiries: [],
   contactMessages: [],
   siteVisitors: 0,
@@ -42,23 +40,11 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     console.log('Setting up real-time listener for school data...');
     
-    // Set up real-time listener for main school data (including gallery)
     unsubscribeSchoolDataRef.current = subscribeToSchoolData(
-      (data) => {
-        console.log('Real-time data update received:', data);
-        console.log('Gallery images in received data:', data.galleryImages);
-        
-        // Update the state with the received data
+      (data: SchoolData) => {
+        console.log('Real-time data update received, gallery count:', (data.galleryImages || []).length);
+        // This is now the single source of truth for updates from Firestore.
         dispatch({ type: 'SET_SCHOOL_DATA', payload: data });
-        
-        // Ensure gallery images are properly synchronized
-        if (data.galleryImages && Array.isArray(data.galleryImages)) {
-          console.log('Syncing gallery images from Firestore:', data.galleryImages.length, 'images');
-          dispatch({ type: 'SET_GALLERY_IMAGES', payload: data.galleryImages });
-        } else {
-          console.log('No gallery images found in Firestore data');
-          dispatch({ type: 'SET_GALLERY_IMAGES', payload: [] });
-        }
       },
       (error) => {
         console.error("Real-time subscription error:", error);

@@ -11,7 +11,7 @@ const Index = () => {
   // Safely access properties that might be undefined with defaults
   const welcomeImage = state.data.welcomeImage || "https://via.placeholder.com/1200x600";
   const latestUpdates = state.data.latestUpdates || [];
-  const galleryImages = state.galleryImages || [];
+  const galleryImages = state.data.galleryImages || [];
 
   return (
     <div className="min-h-screen bg-white">
