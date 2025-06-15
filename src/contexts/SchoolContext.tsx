@@ -1,8 +1,9 @@
-
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { subscribeToSchoolData, updateSchoolData } from '@/utils/schoolDataUtils';
 import { Loader2 } from 'lucide-react';
 import { Unsubscribe } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 // Define the data structure for a navigation item
 export interface NavigationItem {
@@ -261,7 +262,7 @@ const initialState: SchoolState = {
   loading: true,
 };
 
-// Enhanced reducer with optimistic updates and better persistence
+// Enhanced reducer with better error handling for authentication issues
 const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState => {
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
@@ -271,7 +272,10 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
       // Immediate local update (optimistic)
       updateSchoolData(action.payload).catch(error => {
         console.error('Failed to sync to database:', error);
-        // Data remains updated locally even if sync fails
+        // Show user-friendly error messages
+        if (error.message.includes('permission') || error.message.includes('admin')) {
+          console.warn('Update failed due to permissions:', error.message);
+        }
       });
       return { ...state, data: updatedData };
     case 'ADD_GALLERY_IMAGE':
@@ -357,9 +361,11 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
 const SchoolContext = createContext<{
   state: SchoolState;
   dispatch: React.Dispatch<SchoolAction>;
+  isAuthenticated: boolean;
 }>({
   state: initialState,
   dispatch: () => null,
+  isAuthenticated: false,
 });
 
 export const useSchool = () => {
@@ -374,10 +380,17 @@ export const useSchool = () => {
 
 export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(schoolReducer, initialState);
+  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
   const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
-    console.log('Setting up real-time listener for school data...');
+    console.log('Setting up authentication and real-time listener...');
+    
+    // Monitor authentication state
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user);
+      console.log('Authentication state changed:', user ? `Logged in as ${user.email}` : 'Not logged in');
+    });
     
     // Set up real-time listener that works for ALL pages
     unsubscribeRef.current = subscribeToSchoolData(
@@ -387,6 +400,12 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
       },
       (error) => {
         console.error("Real-time subscription error:", error);
+        
+        // Handle permission errors gracefully
+        if (error.message.includes('permission-denied')) {
+          console.log('Using cached data due to permission restrictions');
+        }
+        
         // Still set loading to false and use cached data
         const cachedData = localStorage.getItem('schoolData');
         if (cachedData) {
@@ -409,6 +428,7 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log('Cleaning up real-time listener...');
         unsubscribeRef.current();
       }
+      unsubscribeAuth();
     };
   }, []);
 
@@ -443,7 +463,7 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   return (
-    <SchoolContext.Provider value={{ state, dispatch }}>
+    <SchoolContext.Provider value={{ state, dispatch, isAuthenticated }}>
       {children}
     </SchoolContext.Provider>
   );

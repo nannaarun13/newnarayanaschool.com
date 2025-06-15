@@ -4,13 +4,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // School configuration collection for real-time updates
+    // ENHANCED: School configuration collection with initialization support
     match /school/{docId} {
       // Allow public read access for the website
       allow read: if true;
       
-      // Allow write access only for approved admins
-      allow write: if request.auth != null && isApprovedAdmin();
+      // Allow creation of config document if it doesn't exist (for initialization)
+      allow create: if docId == 'config' && 
+                       isValidSchoolConfigData(request.resource.data);
+      
+      // Allow write access only for approved admins for updates
+      allow update: if request.auth != null && 
+                       isApprovedAdmin() &&
+                       isValidSchoolConfigData(request.resource.data);
+      
+      // Prevent deletion of school config
+      allow delete: if false;
     }
     
     // Enhanced admin collection rules with proper validation
@@ -53,6 +62,15 @@ service cloud.firestore {
     }
     
     // Helper functions for validation
+    function isValidSchoolConfigData(data) {
+      // Basic validation for school configuration data
+      return data != null &&
+             data.keys().hasAny(['schoolName', 'email', 'phone', 'address']) &&
+             (!data.keys().hasAll(['schoolName']) || (data.schoolName is string && data.schoolName.size() > 0)) &&
+             (!data.keys().hasAll(['email']) || (data.email is string && isValidEmail(data.email))) &&
+             (!data.keys().hasAll(['phone']) || (data.phone is string && data.phone.size() > 0));
+    }
+    
     function isValidAdminData(data) {
       return data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'status', 'requestedAt']) &&
              data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 50 &&
