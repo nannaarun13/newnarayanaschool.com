@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { storage, auth } from '@/lib/firebase';
+import { storage } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { resizeAndCompressImage } from '@/utils/imageUtils';
 
@@ -31,19 +31,6 @@ export const useImageUpload = ({ onImageUpload, onUploading, currentImage }: Use
       return;
     }
 
-    // Check authentication first
-    const currentUser = auth.currentUser;
-    console.log('[useImageUpload] Current user:', currentUser?.email || 'Not authenticated');
-    
-    if (!currentUser) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in as an admin to upload images.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     console.log('[useImageUpload] Starting upload for file:', file.name, 'Size:', file.size);
     setIsUploading(true);
     setUploadProgress(0);
@@ -62,35 +49,29 @@ export const useImageUpload = ({ onImageUpload, onUploading, currentImage }: Use
       const fileName = `gallery/${Date.now()}_${uploadFile.name}`;
       const storageRef = ref(storage, fileName);
       console.log('[useImageUpload] Starting Firebase upload to:', fileName);
-      console.log('[useImageUpload] Storage bucket:', storage.app.options.storageBucket);
       
       const uploadTask = uploadBytesResumable(storageRef, uploadFile);
       
       uploadTask.on('state_changed', 
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log('[useImageUpload] Upload progress:', Math.round(progress) + '%', 
-                     `${snapshot.bytesTransferred}/${snapshot.totalBytes} bytes`);
+          console.log('[useImageUpload] Upload progress:', Math.round(progress) + '%');
           setUploadProgress(progress);
         },
         (error) => {
-          console.error('[useImageUpload] Upload failed with error:', error);
-          console.error('[useImageUpload] Error code:', error.code);
-          console.error('[useImageUpload] Error message:', error.message);
+          console.error('[useImageUpload] Upload failed:', error);
           
           // Enhanced error handling for storage permission issues
           let errorMessage = "There was a problem uploading your image. Please try again.";
           
           if (error.code === 'storage/unauthorized') {
-            errorMessage = "Upload failed: Storage permissions not configured. Please apply the Firebase Storage rules in your Firebase Console.";
+            errorMessage = "Upload failed: Storage permissions not configured. Please check Firebase Storage rules.";
           } else if (error.code === 'storage/unauthenticated') {
             errorMessage = "Upload failed: Authentication required. Please log in as an admin.";
           } else if (error.code === 'storage/quota-exceeded') {
             errorMessage = "Upload failed: Storage quota exceeded.";
           } else if (error.code === 'storage/invalid-format') {
             errorMessage = "Upload failed: Invalid file format.";
-          } else if (error.code === 'storage/unknown') {
-            errorMessage = "Upload failed: Please check if Firebase Storage rules are properly configured.";
           }
           
           toast({
@@ -99,11 +80,7 @@ export const useImageUpload = ({ onImageUpload, onUploading, currentImage }: Use
             variant: "destructive",
           });
           
-          setIsUploading(false);
-          setUploadProgress(0);
-          onUploading?.(false);
-          setPreview('');
-          onImageUpload('');
+          throw error;
         },
         async () => {
           try {
@@ -123,6 +100,7 @@ export const useImageUpload = ({ onImageUpload, onUploading, currentImage }: Use
               description: "Failed to get image URL. Please try again.",
               variant: "destructive",
             });
+            throw urlError;
           } finally {
             setIsUploading(false);
             onUploading?.(false);
@@ -136,12 +114,6 @@ export const useImageUpload = ({ onImageUpload, onUploading, currentImage }: Use
       setIsUploading(false);
       setUploadProgress(0);
       onUploading?.(false);
-      
-      toast({
-        title: "Upload Failed",
-        description: "There was a problem preparing your image for upload.",
-        variant: "destructive",
-      });
     }
   };
 
