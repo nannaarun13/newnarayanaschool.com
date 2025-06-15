@@ -9,7 +9,7 @@ import { subscribeToSchoolData } from '@/utils/schoolDataUtils';
 
 const initialState: SchoolState = {
   data: defaultSchoolData,
-  galleryImages: defaultSchoolData.galleryImages || [],
+  galleryImages: [],
   admissionInquiries: [],
   contactMessages: [],
   siteVisitors: 0,
@@ -46,6 +46,7 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
     unsubscribeSchoolDataRef.current = subscribeToSchoolData(
       (data) => {
         console.log('Real-time data update received:', data);
+        console.log('Gallery images from Firestore:', data.galleryImages);
         dispatch({ type: 'SET_SCHOOL_DATA', payload: data });
       },
       (error) => {
