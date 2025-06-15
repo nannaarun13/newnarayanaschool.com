@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,7 +66,7 @@ const AdminDashboard = () => {
     },
     { 
       title: "Gallery Images", 
-      value: state.data.galleryImages.length.toString(), 
+      value: state.galleryImages.length.toString(), 
       icon: Image, 
       color: "text-school-orange" 
     },
