@@ -1,13 +1,10 @@
-import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
+
+import { useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { Upload, X, Loader2 } from 'lucide-react';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import imageCompression from 'browser-image-compression';
-import { addGalleryImageToDb } from '@/utils/galleryUtils';
+import { useImageUpload } from '@/hooks/useImageUpload';
+import ImageDropZone from './ImageDropZone';
+import ImagePreview from './ImagePreview';
 
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void;
@@ -26,143 +23,17 @@ const ImageUpload = ({
   accept = "image/*",
   autoSaveToDatabase = false 
 }: ImageUploadProps) => {
-  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [preview, setPreview] = useState<string>(currentImage || '');
-  const [isUploading, setIsUploading] = useState(false);
+  const { preview, setPreview, isUploading, handleFile, removeImage } = useImageUpload({
+    onImageUpload,
+    onUploading,
+    autoSaveToDatabase
+  });
 
-  const handleFile = async (file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      console.log(`Original file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setPreview(result);
-      };
-      reader.readAsDataURL(file);
-      
-      setIsUploading(true);
-      onUploading?.(true);
-
-      const options = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-      };
-
-      try {
-        console.log('Starting image compression...');
-        const compressionStartTime = Date.now();
-        const compressedFile = await imageCompression(file, options);
-        const compressionEndTime = Date.now();
-        console.log(`Compressed file size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
-        console.log(`Image compression took ${compressionEndTime - compressionStartTime} ms.`);
-
-        const storageRef = ref(storage, `gallery/${Date.now()}_${compressedFile.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, compressedFile);
-
-        console.log('Starting upload to Firebase Storage...');
-        const uploadStartTime = Date.now();
-
-        uploadTask.on('state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log(`Upload is ${progress.toFixed(0)}% done`);
-          },
-          (error) => {
-            console.error("Upload failed:", error);
-            toast({
-              title: "Upload Failed",
-              description: "There was a problem uploading your image. Please try again.",
-              variant: "destructive",
-            });
-            setIsUploading(false);
-            onUploading?.(false);
-          },
-          async () => {
-            const uploadEndTime = Date.now();
-            console.log(`Upload to Firebase Storage took ${uploadEndTime - uploadStartTime} ms.`);
-            
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              onImageUpload(downloadURL);
-
-              // Auto-save to database if enabled
-              if (autoSaveToDatabase) {
-                console.log('Auto-saving image to database...');
-                const imageData = {
-                  url: downloadURL,
-                  altText: `Image uploaded on ${new Date().toLocaleDateString()}`,
-                  caption: `Image uploaded on ${new Date().toLocaleDateString()}`,
-                  category: 'General',
-                };
-                
-                await addGalleryImageToDb(imageData);
-                console.log('Image automatically saved to database');
-                
-                toast({
-                  title: "Image Saved",
-                  description: "Image has been uploaded and automatically saved to the gallery.",
-                });
-              } else {
-                toast({
-                  title: "Image Ready",
-                  description: "Image has been uploaded. You can now add details and save.",
-                });
-              }
-            } catch (error) {
-              console.error("Error getting download URL or saving to database:", error);
-              toast({
-                title: "Error",
-                description: "Image uploaded but there was an issue saving it.",
-                variant: "destructive",
-              });
-            }
-            
-            setIsUploading(false);
-            onUploading?.(false);
-          }
-        );
-      } catch (error) {
-        console.error("Image compression error:", error);
-        toast({
-          title: "Image Processing Failed",
-          description: "There was an issue processing your image. Please try again.",
-          variant: "destructive"
-        });
-        setIsUploading(false);
-        onUploading?.(false);
-      }
-    } else {
-      toast({
-        title: "Invalid File",
-        description: "Please upload a valid image file.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      handleFile(files[0]);
-    }
-  };
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
+  // Set initial preview from currentImage prop
+  if (currentImage && !preview) {
+    setPreview(currentImage);
+  }
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -171,12 +42,12 @@ const ImageUpload = ({
     }
   };
 
-  const removeImage = () => {
-    setPreview('');
-    onImageUpload('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const handleRemoveImage = () => {
+    removeImage(onImageUpload, fileInputRef);
+  };
+
+  const handleFileSelect = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -184,49 +55,17 @@ const ImageUpload = ({
       <Label>{label}</Label>
       
       {preview ? (
-        <div className="relative inline-block">
-          <img
-            src={preview}
-            alt="Preview"
-            className="w-32 h-32 object-cover rounded-lg border"
-          />
-          {isUploading ? (
-             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
-                <Loader2 className="h-8 w-8 text-white animate-spin" />
-             </div>
-          ) : (
-            <Button
-              type="button"
-              variant="destructive"
-              size="icon"
-              className="absolute -top-2 -right-2 h-6 w-6"
-              onClick={removeImage}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+        <ImagePreview 
+          preview={preview}
+          isUploading={isUploading}
+          onRemove={handleRemoveImage}
+        />
       ) : (
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-            dragActive 
-              ? 'border-school-blue bg-school-blue-light' 
-              : 'border-gray-300 hover:border-school-blue'
-          }`}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={() => !isUploading && fileInputRef.current?.click()}
-        >
-          <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">
-            Drag and drop an image here, or click to select
-          </p>
-          <Button type="button" variant="outline" className="mt-2" disabled={isUploading}>
-            {isUploading ? 'Uploading...' : 'Choose File'}
-          </Button>
-        </div>
+        <ImageDropZone 
+          onFileDrop={handleFile}
+          onFileSelect={handleFileSelect}
+          isUploading={isUploading}
+        />
       )}
       
       <Input
