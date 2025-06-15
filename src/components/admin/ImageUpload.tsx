@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import imageCompression from 'browser-image-compression';
 
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void;
@@ -23,7 +23,7 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
   const [preview, setPreview] = useState<string>(currentImage || '');
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -35,35 +35,54 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
       setIsUploading(true);
       onUploading?.(true);
 
-      const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
 
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          // Optional: handle progress.
-        },
-        (error) => {
-          console.error("Upload failed:", error);
-          toast({
-            title: "Upload Failed",
-            description: "There was a problem uploading your image. Please try again.",
-            variant: "destructive",
-          });
-          setIsUploading(false);
-          onUploading?.(false);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            onImageUpload(downloadURL);
+      try {
+        const compressedFile = await imageCompression(file, options);
+
+        const storageRef = ref(storage, `gallery/${Date.now()}_${compressedFile.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+
+        uploadTask.on('state_changed',
+          (snapshot) => {
+            // Optional: handle progress.
+          },
+          (error) => {
+            console.error("Upload failed:", error);
             toast({
-              title: "Image Ready",
-              description: "Image has been uploaded. You can now add details and save.",
+              title: "Upload Failed",
+              description: "There was a problem uploading your image. Please try again.",
+              variant: "destructive",
             });
             setIsUploading(false);
             onUploading?.(false);
-          });
-        }
-      );
+          },
+          () => {
+            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+              onImageUpload(downloadURL);
+              toast({
+                title: "Image Ready",
+                description: "Image has been uploaded. You can now add details and save.",
+              });
+              setIsUploading(false);
+              onUploading?.(false);
+            });
+          }
+        );
+      } catch (error) {
+        console.error("Image compression error:", error);
+        toast({
+          title: "Image Processing Failed",
+          description: "There was an issue processing your image. Please try again.",
+          variant: "destructive"
+        });
+        setIsUploading(false);
+        onUploading?.(false);
+      }
     } else {
       toast({
         title: "Invalid File",
