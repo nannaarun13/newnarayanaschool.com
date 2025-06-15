@@ -1,7 +1,7 @@
 import { SchoolState, SchoolAction } from '@/types';
 import { updateSchoolData, addGalleryImage, removeGalleryImage } from '@/utils/schoolDataUtils';
 
-// Enhanced reducer with optimistic updates
+// Reducer that relies on Firestore real-time updates for gallery changes
 export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState => {
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
@@ -14,33 +14,22 @@ export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolS
         loading: false 
       };
     case 'ADD_GALLERY_IMAGE':
-      console.log('Adding gallery image:', action.payload);
+      console.log('Dispatching ADD_GALLERY_IMAGE. Persisting to Firestore...');
+      // Only trigger the Firestore update. The state will be updated by the real-time listener.
       addGalleryImage(action.payload).catch((error) => {
         console.error('Failed to save gallery image to Firestore:', error);
+        // In a real app, you might dispatch an error action here to notify the user.
       });
-      
-      const newGalleryImages = [...(state.data.galleryImages || []), action.payload];
-      return { 
-        ...state, 
-        data: {
-          ...state.data,
-          galleryImages: newGalleryImages
-        }
-      };
+      // Do not update state optimistically. Return the current state.
+      return state;
     case 'REMOVE_GALLERY_IMAGE':
-      console.log('Removing gallery image:', action.payload);
+      console.log('Dispatching REMOVE_GALLERY_IMAGE. Persisting to Firestore...');
+      // Only trigger the Firestore update. The state will be updated by the real-time listener.
       removeGalleryImage(action.payload).catch((error) => {
         console.error('Failed to remove gallery image from Firestore:', error);
       });
-      
-      const filteredImages = (state.data.galleryImages || []).filter(img => img.id !== action.payload);
-      return { 
-        ...state, 
-        data: {
-          ...state.data,
-          galleryImages: filteredImages
-        }
-      };
+      // Do not update state optimistically. Return the current state.
+      return state;
     case 'UPDATE_SCHOOL_DATA':
       const updatedData = { ...state.data, ...action.payload };
       // This is now deprecated for galleryImages, but kept for other partial updates

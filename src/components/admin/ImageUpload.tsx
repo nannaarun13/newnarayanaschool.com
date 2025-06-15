@@ -1,5 +1,5 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,11 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
   const [dragActive, setDragActive] = useState(false);
   const [preview, setPreview] = useState<string>(currentImage || '');
   const [isUploading, setIsUploading] = useState(false);
+
+  // Sync internal preview state with the currentImage prop
+  useEffect(() => {
+    setPreview(currentImage || '');
+  }, [currentImage]);
 
   const handleFile = (file: File) => {
     if (file && file.type.startsWith('image/')) {
