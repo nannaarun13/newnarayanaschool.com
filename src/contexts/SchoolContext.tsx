@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
-import { subscribeToSchoolData, updateSchoolData } from '@/utils/schoolDataUtils';
+import { subscribeToSchoolData } from '@/utils/schoolDataUtils';
+import { subscribeToGalleryImages } from '@/utils/galleryUtils';
 import { Loader2 } from 'lucide-react';
 import { Unsubscribe } from 'firebase/firestore';
 
@@ -88,11 +89,11 @@ export interface SchoolData {
   schoolName: string;
   schoolLogo: string;
   schoolNameImage: string;
+
   email: string;
   phone: string;
   address: string;
   navigationItems: NavigationItem[];
-  galleryImages: GalleryImage[];
   notices: Notice[];
   welcomeMessage: string;
   welcomeImage: string;
@@ -115,6 +116,7 @@ export interface SchoolData {
 // Define the state structure for the school context
 export interface SchoolState {
   data: SchoolData;
+  galleryImages: GalleryImage[];
   admissionInquiries: AdmissionInquiry[];
   contactMessages: ContactMessage[];
   siteVisitors: number;
@@ -124,10 +126,8 @@ export interface SchoolState {
 // Define the actions that can be dispatched to update the state
 export type SchoolAction =
   | { type: 'SET_SCHOOL_DATA'; payload: SchoolData }
+  | { type: 'SET_GALLERY_IMAGES'; payload: GalleryImage[] }
   | { type: 'UPDATE_SCHOOL_DATA'; payload: Partial<SchoolData> }
-  | { type: 'ADD_GALLERY_IMAGE'; payload: GalleryImage }
-  | { type: 'UPDATE_GALLERY_IMAGE'; payload: GalleryImage }
-  | { type: 'DELETE_GALLERY_IMAGE'; payload: string }
   | { type: 'ADD_NOTICE'; payload: Notice }
   | { type: 'UPDATE_NOTICE'; payload: { id: string; title: string; content: string } }
   | { type: 'DELETE_NOTICE'; payload: string }
@@ -138,26 +138,6 @@ export type SchoolAction =
   | { type: 'DELETE_LATEST_UPDATE'; payload: string }
   | { type: 'ADD_FOUNDER'; payload: Founder }
   | { type: 'DELETE_FOUNDER'; payload: string };
-
-// Helper function to initialize gallery images with default data
-const initializeGalleryImages = (): GalleryImage[] => [
-  { 
-    id: '1', 
-    url: 'https://via.placeholder.com/300', 
-    altText: 'School Building', 
-    caption: 'School Building',
-    category: 'General',
-    date: new Date().toLocaleDateString() 
-  },
-  { 
-    id: '2', 
-    url: 'https://via.placeholder.com/300', 
-    altText: 'Classroom', 
-    caption: 'Modern Classroom',
-    category: 'Facilities',
-    date: new Date().toLocaleDateString()
-  },
-];
 
 // Helper function to initialize notices with default data
 const initializeNotices = (): Notice[] => [
@@ -232,7 +212,6 @@ export const defaultSchoolData: SchoolData = {
     { name: "Contact", path: "/contact", visible: true },
     { name: "Login", path: "/login", visible: true },
   ],
-  galleryImages: initializeGalleryImages(),
   notices: initializeNotices(),
   welcomeMessage: "Welcome to New Narayana School!",
   welcomeImage: "https://via.placeholder.com/1200x600",
@@ -254,6 +233,7 @@ export const defaultSchoolData: SchoolData = {
 
 const initialState: SchoolState = {
   data: defaultSchoolData,
+  galleryImages: [],
   admissionInquiries: [],
   contactMessages: [],
   siteVisitors: 0,
@@ -265,37 +245,13 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
       return { ...state, data: action.payload, loading: false };
+    case 'SET_GALLERY_IMAGES':
+      return { ...state, galleryImages: action.payload };
     case 'UPDATE_SCHOOL_DATA':
       const updatedData = { ...state.data, ...action.payload };
-      // Trigger Firestore update asynchronously
+      // This is now deprecated for galleryImages, but kept for other partial updates
       updateSchoolData(action.payload).catch(console.error);
       return { ...state, data: updatedData };
-    case 'ADD_GALLERY_IMAGE':
-      return { 
-        ...state, 
-        data: { 
-          ...state.data, 
-          galleryImages: [...state.data.galleryImages, action.payload] 
-        } 
-      };
-    case 'UPDATE_GALLERY_IMAGE':
-      return {
-        ...state,
-        data: {
-          ...state.data,
-          galleryImages: state.data.galleryImages.map(image =>
-            image.id === action.payload.id ? action.payload : image
-          ),
-        }
-      };
-    case 'DELETE_GALLERY_IMAGE':
-      return {
-        ...state,
-        data: {
-          ...state.data,
-          galleryImages: state.data.galleryImages.filter(image => image.id !== action.payload),
-        }
-      };
     case 'ADD_NOTICE':
       return { 
         ...state, 
@@ -386,13 +342,14 @@ export const useSchool = () => {
 
 export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(schoolReducer, initialState);
-  const unsubscribeRef = useRef<Unsubscribe | null>(null);
+  const unsubscribeSchoolDataRef = useRef<Unsubscribe | null>(null);
+  const unsubscribeGalleryRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
     console.log('Setting up real-time listener for school data...');
     
-    // Set up real-time listener
-    unsubscribeRef.current = subscribeToSchoolData(
+    // Set up real-time listener for main school data
+    unsubscribeSchoolDataRef.current = subscribeToSchoolData(
       (data) => {
         console.log('Real-time data update received:', data);
         dispatch({ type: 'SET_SCHOOL_DATA', payload: data });
@@ -403,11 +360,28 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     );
 
+    // Set up real-time listener for gallery images
+    console.log('Setting up real-time listener for gallery...');
+    unsubscribeGalleryRef.current = subscribeToGalleryImages(
+      (images) => {
+        console.log('Real-time gallery update received:', images);
+        dispatch({ type: 'SET_GALLERY_IMAGES', payload: images });
+      },
+      (error) => {
+        console.error("Gallery subscription error:", error);
+        dispatch({ type: 'SET_GALLERY_IMAGES', payload: [] });
+      }
+    );
+
     // Cleanup function
     return () => {
-      if (unsubscribeRef.current) {
-        console.log('Cleaning up real-time listener...');
-        unsubscribeRef.current();
+      if (unsubscribeSchoolDataRef.current) {
+        console.log('Cleaning up real-time listener for school data...');
+        unsubscribeSchoolDataRef.current();
+      }
+      if (unsubscribeGalleryRef.current) {
+        console.log('Cleaning up gallery listener...');
+        unsubscribeGalleryRef.current();
       }
     };
   }, []);

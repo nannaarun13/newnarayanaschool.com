@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,13 +8,14 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Plus, Loader2 } from 'lucide-react';
 import ImageUpload from './ImageUpload';
-import { updateSchoolData } from '@/utils/schoolDataUtils';
+import { addGalleryImageToDb, deleteGalleryImageFromDb } from '@/utils/galleryUtils';
 
 const GalleryManager = () => {
-  const { state, dispatch } = useSchool();
+  const { state } = useSchool();
   const { toast } = useToast();
   const [newImage, setNewImage] = useState({ url: '', caption: '', category: '' });
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const categories = ['General', 'Event', 'Festivals', 'Activities'];
 
@@ -23,7 +23,7 @@ const GalleryManager = () => {
     setNewImage(prev => ({ ...prev, url: imageUrl }));
   };
 
-  const handleAddImage = () => {
+  const handleAddImage = async () => {
     if (!newImage.url || !newImage.caption || !newImage.category) {
       toast({
         title: "Missing Information",
@@ -33,64 +33,53 @@ const GalleryManager = () => {
       return;
     }
 
-    const imageData = {
-      id: Date.now().toString(),
-      url: newImage.url,
-      altText: newImage.caption,
-      caption: newImage.caption,
-      category: newImage.category,
-      date: new Date().toISOString().split('T')[0]
-    };
-
-    const updatedImages = [...state.data.galleryImages, imageData];
-
-    dispatch({
-      type: 'ADD_GALLERY_IMAGE',
-      payload: imageData
-    });
-
-    setNewImage({ url: '', caption: '', category: '' });
-
-    updateSchoolData({ galleryImages: updatedImages }).then(() => {
+    setIsSaving(true);
+    try {
+      const imageData = {
+        url: newImage.url,
+        altText: newImage.caption,
+        caption: newImage.caption,
+        category: newImage.category,
+      };
+      await addGalleryImageToDb(imageData);
+      
       toast({
         title: "Image Added",
-        description: "New image has been added to the gallery and saved.",
+        description: "New image has been added to the gallery.",
       });
-    }).catch(error => {
-      console.error("Failed to save gallery changes:", error);
+      setNewImage({ url: '', caption: '', category: '' });
+    } catch (error) {
+      console.error("Failed to save gallery image:", error);
       toast({
         title: "Error Saving Image",
         description: "There was a problem saving the image to the database.",
         variant: "destructive",
       });
-      // Revert optimistic update
-      dispatch({ type: 'DELETE_GALLERY_IMAGE', payload: imageData.id });
-    });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteImage = (id: string) => {
+  const handleDeleteImage = async (id: string) => {
     // Note: This doesn't delete the image from Firebase Storage.
     // A more robust solution would involve a backend function to handle deletions.
-    const updatedImages = state.data.galleryImages.filter(image => image.id !== id);
-    dispatch({
-      type: 'DELETE_GALLERY_IMAGE',
-      payload: id
-    });
-    
-    updateSchoolData({ galleryImages: updatedImages }).then(() => {
+    try {
+      await deleteGalleryImageFromDb(id);
       toast({
         title: "Image Deleted",
-        description: "Image has been removed from the gallery and saved.",
+        description: "Image has been removed from the gallery.",
       });
-    }).catch(error => {
+    } catch (error) {
       console.error("Failed to delete image:", error);
       toast({
         title: "Error Deleting Image",
         description: "There was a problem deleting the image from the database.",
         variant: "destructive",
       });
-    });
+    }
   };
+  
+  const { galleryImages } = state;
 
   return (
     <div className="space-y-6">
@@ -140,14 +129,14 @@ const GalleryManager = () => {
           <Button 
             onClick={handleAddImage} 
             className="bg-school-blue hover:bg-school-blue/90"
-            disabled={isUploading || !newImage.url}
+            disabled={isUploading || isSaving || !newImage.url}
           >
-            {isUploading ? (
+            {isUploading || isSaving ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <Plus className="h-4 w-4 mr-2" />
             )}
-            {isUploading ? 'Uploading...' : 'Add Image'}
+            {isUploading ? 'Uploading...' : isSaving ? 'Saving...' : 'Add Image'}
           </Button>
         </CardContent>
       </Card>
@@ -158,11 +147,11 @@ const GalleryManager = () => {
           <CardTitle>Current Gallery Images</CardTitle>
         </CardHeader>
         <CardContent>
-          {state.data.galleryImages.length === 0 ? (
+          {galleryImages.length === 0 ? (
             <p className="text-gray-500">No images in the gallery yet.</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {state.data.galleryImages.map((image) => (
+              {galleryImages.map((image) => (
                 <div key={image.id} className="border rounded-lg overflow-hidden">
                   <img
                     src={image.url}
@@ -172,7 +161,7 @@ const GalleryManager = () => {
                   <div className="p-4">
                     <p className="font-medium">{image.caption}</p>
                     <p className="text-sm text-gray-600 mt-1">{image.category}</p>
-                    <p className="text-sm text-gray-600">{image.date}</p>
+                    <p className="text-sm text-gray-600">{new Date(image.date).toLocaleDateString()}</p>
                     <Button
                       variant="destructive"
                       size="sm"
