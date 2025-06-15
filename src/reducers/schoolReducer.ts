@@ -1,17 +1,26 @@
 
 import { SchoolState, SchoolAction } from '@/types';
-import { updateSchoolData } from '@/utils/schoolDataUtils';
+import { updateSchoolData, addGalleryImage, removeGalleryImage } from '@/utils/schoolDataUtils';
 
 // Enhanced reducer with optimistic updates
 export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState => {
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
-      return { ...state, data: action.payload, loading: false };
+      return { 
+        ...state, 
+        data: action.payload, 
+        galleryImages: action.payload.galleryImages || [],
+        loading: false 
+      };
     case 'SET_GALLERY_IMAGES':
       return { ...state, galleryImages: action.payload };
     case 'ADD_GALLERY_IMAGE':
+      // Optimistic update with database save
+      addGalleryImage(action.payload).catch(console.error);
       return { ...state, galleryImages: [...state.galleryImages, action.payload] };
     case 'REMOVE_GALLERY_IMAGE':
+      // Optimistic update with database save
+      removeGalleryImage(action.payload).catch(console.error);
       return { ...state, galleryImages: state.galleryImages.filter(img => img.id !== action.payload) };
     case 'UPDATE_SCHOOL_DATA':
       const updatedData = { ...state.data, ...action.payload };

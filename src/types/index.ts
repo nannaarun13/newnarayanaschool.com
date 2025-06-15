@@ -1,4 +1,3 @@
-
 // Define the data structure for a navigation item
 export interface NavigationItem {
   name: string;
@@ -105,6 +104,7 @@ export interface SchoolData {
   founders: Founder[];
   schoolHistory: string;
   founderDetails: string;
+  galleryImages?: GalleryImage[];
 }
 
 // Define the state structure for the school context

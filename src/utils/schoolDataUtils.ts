@@ -1,7 +1,7 @@
 
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { SchoolData } from '@/types';
+import { SchoolData, GalleryImage } from '@/types';
 import { defaultSchoolData } from '@/data/defaults';
 
 const schoolConfigRef = () => doc(db, 'school', 'config');
@@ -20,6 +20,29 @@ export const getSchoolData = async (): Promise<SchoolData> => {
 
 export const updateSchoolData = async (data: Partial<SchoolData>): Promise<void> => {
   await updateDoc(schoolConfigRef(), data);
+};
+
+// Gallery-specific functions
+export const addGalleryImage = async (image: GalleryImage): Promise<void> => {
+  const docSnap = await getDoc(schoolConfigRef());
+  if (docSnap.exists()) {
+    const currentData = docSnap.data();
+    const currentGalleryImages = currentData.galleryImages || [];
+    await updateDoc(schoolConfigRef(), {
+      galleryImages: [...currentGalleryImages, image]
+    });
+  }
+};
+
+export const removeGalleryImage = async (imageId: string): Promise<void> => {
+  const docSnap = await getDoc(schoolConfigRef());
+  if (docSnap.exists()) {
+    const currentData = docSnap.data();
+    const currentGalleryImages = currentData.galleryImages || [];
+    await updateDoc(schoolConfigRef(), {
+      galleryImages: currentGalleryImages.filter((img: GalleryImage) => img.id !== imageId)
+    });
+  }
 };
 
 // Real-time subscription function

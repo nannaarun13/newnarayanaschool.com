@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { Unsubscribe } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
@@ -8,7 +9,7 @@ import { subscribeToSchoolData } from '@/utils/schoolDataUtils';
 
 const initialState: SchoolState = {
   data: defaultSchoolData,
-  galleryImages: [],
+  galleryImages: defaultSchoolData.galleryImages || [],
   admissionInquiries: [],
   contactMessages: [],
   siteVisitors: 0,
@@ -41,7 +42,7 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     console.log('Setting up real-time listener for school data...');
     
-    // Set up real-time listener for main school data
+    // Set up real-time listener for main school data (including gallery)
     unsubscribeSchoolDataRef.current = subscribeToSchoolData(
       (data) => {
         console.log('Real-time data update received:', data);
