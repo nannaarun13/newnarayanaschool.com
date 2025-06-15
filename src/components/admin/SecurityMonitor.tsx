@@ -1,11 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, AlertTriangle, Activity, Clock } from 'lucide-react';
 import { getRecentLoginActivities, LoginActivity } from '@/utils/loginActivityUtils';
-import { getRateLimitInfo } from '@/utils/loginUtils';
 import { useToast } from '@/hooks/use-toast';
 
 const SecurityMonitor = () => {
