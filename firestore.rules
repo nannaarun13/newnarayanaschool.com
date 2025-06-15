@@ -16,7 +16,14 @@ service cloud.firestore {
     // Admin collection rules
     match /admins/{adminId} {
       // Allow creation of pending admin requests without authentication
-      allow create: if isValidPendingAdminData(request.resource.data);
+      allow create: if request.resource.data.status == 'pending' &&
+                      request.resource.data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'password', 'status', 'requestedAt']) &&
+                      request.resource.data.firstName is string && request.resource.data.firstName.size() > 0 &&
+                      request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 &&
+                      request.resource.data.email is string && request.resource.data.email.size() > 0 &&
+                      request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
+                      request.resource.data.password is string && request.resource.data.password.size() >= 8 &&
+                      request.resource.data.requestedAt is string;
       
       // Allow reading for authenticated users only
       allow read: if request.auth != null;
@@ -25,24 +32,7 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && isApprovedAdmin();
     }
     
-    // Helper functions for validation
-    function isValidPendingAdminData(data) {
-      return data.keys().hasAll(['firstName', 'lastName', 'email', 'phone', 'password', 'status', 'requestedAt']) &&
-             data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 50 &&
-             data.lastName is string && data.lastName.size() > 0 && data.lastName.size() <= 50 &&
-             data.email is string && isValidEmail(data.email) && data.email.size() <= 100 &&
-             data.phone is string && data.phone.size() > 0 && data.phone.size() <= 15 &&
-             data.password is string && data.password.size() >= 8 &&
-             data.status == 'pending' &&
-             data.requestedAt is string;
-    }
-    
-    function isValidEmail(email) {
-      return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$') &&
-             email.size() >= 5 &&
-             email.size() <= 100;
-    }
-    
+    // Helper function for checking approved admin status
     function isApprovedAdmin() {
       return exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'approved';
