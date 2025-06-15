@@ -1,3 +1,4 @@
+
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,7 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
 
   const handleFile = async (file: File) => {
     if (file && file.type.startsWith('image/')) {
+      console.log(`Original file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
@@ -42,14 +44,23 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
       };
 
       try {
+        console.log('Starting image compression...');
+        const compressionStartTime = Date.now();
         const compressedFile = await imageCompression(file, options);
+        const compressionEndTime = Date.now();
+        console.log(`Compressed file size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`Image compression took ${compressionEndTime - compressionStartTime} ms.`);
 
         const storageRef = ref(storage, `gallery/${Date.now()}_${compressedFile.name}`);
         const uploadTask = uploadBytesResumable(storageRef, compressedFile);
 
+        console.log('Starting upload to Firebase Storage...');
+        const uploadStartTime = Date.now();
+
         uploadTask.on('state_changed',
           (snapshot) => {
-            // Optional: handle progress.
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log(`Upload is ${progress.toFixed(0)}% done`);
           },
           (error) => {
             console.error("Upload failed:", error);
@@ -62,6 +73,8 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
             onUploading?.(false);
           },
           () => {
+            const uploadEndTime = Date.now();
+            console.log(`Upload to Firebase Storage took ${uploadEndTime - uploadStartTime} ms.`);
             getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
               onImageUpload(downloadURL);
               toast({
