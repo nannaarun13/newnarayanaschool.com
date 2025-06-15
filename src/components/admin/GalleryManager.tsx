@@ -22,13 +22,10 @@ const GalleryManager = () => {
   const categories = ['General', 'Event', 'Festivals', 'Activities'];
 
   const handleImageUpload = (imageUrl: string) => {
-    console.log('[GalleryManager] Image uploaded successfully:', imageUrl);
     setNewImage(prev => ({ ...prev, url: imageUrl }));
   };
 
   const handleAddImage = async () => {
-    console.log('[GalleryManager] Attempting to add image:', newImage);
-    
     if (!newImage.url || !newImage.caption || !newImage.category) {
       toast({
         title: "Missing Information",
@@ -60,7 +57,6 @@ const GalleryManager = () => {
       console.log("[GalleryManager] Adding image to Firestore:", imageData);
       await addGalleryImage(imageData);
       
-      console.log("[GalleryManager] Image successfully added to Firestore");
       toast({
         title: "Image Added",
         description: "New image has been added to the gallery.",
@@ -79,7 +75,6 @@ const GalleryManager = () => {
   };
 
   const handleDeleteImage = async (id: string) => {
-    console.log('[GalleryManager] Attempting to delete image:', id);
     try {
       await removeGalleryImage(id);
       toast({
@@ -97,7 +92,6 @@ const GalleryManager = () => {
   };
   
   const { galleryImages = [] } = state.data;
-  console.log('[GalleryManager] Current gallery images count:', galleryImages.length);
 
   return (
     <div className="space-y-6">
