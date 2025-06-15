@@ -13,40 +13,15 @@ export const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolS
         loading: false 
       };
     case 'SET_GALLERY_IMAGES':
-      return { 
-        ...state, 
-        galleryImages: action.payload,
-        data: {
-          ...state.data,
-          galleryImages: action.payload
-        }
-      };
+      return { ...state, galleryImages: action.payload };
     case 'ADD_GALLERY_IMAGE':
-      // Add to both local state and sync with Firestore
-      const newGalleryImages = [...state.galleryImages, action.payload];
-      // Save to Firestore immediately
+      // Optimistic update with database save
       addGalleryImage(action.payload).catch(console.error);
-      return { 
-        ...state, 
-        galleryImages: newGalleryImages,
-        data: {
-          ...state.data,
-          galleryImages: newGalleryImages
-        }
-      };
+      return { ...state, galleryImages: [...state.galleryImages, action.payload] };
     case 'REMOVE_GALLERY_IMAGE':
-      // Remove from both local state and sync with Firestore
-      const filteredImages = state.galleryImages.filter(img => img.id !== action.payload);
-      // Remove from Firestore immediately
+      // Optimistic update with database save
       removeGalleryImage(action.payload).catch(console.error);
-      return { 
-        ...state, 
-        galleryImages: filteredImages,
-        data: {
-          ...state.data,
-          galleryImages: filteredImages
-        }
-      };
+      return { ...state, galleryImages: state.galleryImages.filter(img => img.id !== action.payload) };
     case 'UPDATE_SCHOOL_DATA':
       const updatedData = { ...state.data, ...action.payload };
       // This is now deprecated for galleryImages, but kept for other partial updates
