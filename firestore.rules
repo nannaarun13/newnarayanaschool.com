@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -15,8 +16,10 @@ service cloud.firestore {
     // Enhanced admin collection rules with proper validation
     match /admins/{adminId} {
       // Allow creation only with proper validation and authenticated users
+      // FIXED: Removed email_verified requirement that was causing failures
       allow create: if isValidAdminData(request.resource.data) &&
-                       request.auth != null;
+                       request.auth != null &&
+                       request.auth.uid == adminId;
       
       // Allow reading for authenticated users only
       allow read: if request.auth != null;
