@@ -1,3 +1,4 @@
+
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, query, collection, where, getDocs, updateDoc } from 'firebase/firestore';
@@ -5,89 +6,8 @@ import { logAdminLogin, logFailedAdminLogin } from './loginActivityUtils';
 import { ensureDefaultAdmin, DEFAULT_ADMIN } from './adminUtils';
 import { persistentRateLimiter } from './persistentRateLimiter';
 import * as z from "zod";
-
-// Enhanced validation schemas with stronger security
-export const loginSchema = z.object({
-  email: z.string()
-    .email({ message: "Invalid email address." })
-    .max(100, { message: "Email too long." })
-    .refine(
-      email => {
-        // Enhanced email validation
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        const hasConsecutiveDots = /\.\./.test(email);
-        const startsWithDot = email.startsWith('.');
-        const endsWithDot = email.endsWith('.');
-        
-        return emailRegex.test(email) && !hasConsecutiveDots && !startsWithDot && !endsWithDot;
-      },
-      { message: "Invalid email format." }
-    )
-    .transform(email => email.toLowerCase().trim()),
-  password: z.string()
-    .min(1, { message: "Password is required." })
-    .max(100, { message: "Password too long." }),
-});
-
-export const forgotPasswordSchema = z.object({
-  email: z.string()
-    .email({ message: "Invalid email address." })
-    .max(100, { message: "Email too long." })
-    .refine(
-      email => {
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        return emailRegex.test(email) && email.length >= 5;
-      },
-      { message: "Invalid email format." }
-    )
-    .transform(email => email.toLowerCase().trim()),
-});
-
-// Enhanced input validation with stricter security
-const validateAndSanitizeEmail = (email: string): string => {
-  if (!email || typeof email !== 'string') {
-    throw new Error('Invalid email format');
-  }
-  
-  const sanitized = email.toLowerCase().trim();
-  
-  // Enhanced email validation with security checks
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  if (!emailRegex.test(sanitized)) {
-    throw new Error('Invalid email format');
-  }
-  
-  // Check for suspicious patterns
-  if (sanitized.includes('..') || sanitized.startsWith('.') || sanitized.endsWith('.')) {
-    throw new Error('Invalid email format');
-  }
-  
-  if (sanitized.length < 5 || sanitized.length > 100) {
-    throw new Error('Email length must be between 5 and 100 characters');
-  }
-  
-  return sanitized;
-};
-
-const validatePassword = (password: string): void => {
-  if (!password || typeof password !== 'string') {
-    throw new Error('Invalid password');
-  }
-  
-  if (password.length < 8 || password.length > 100) {
-    throw new Error('Password must be between 8 and 100 characters');
-  }
-  
-  // Enhanced password strength validation
-  const hasUpper = /[A-Z]/.test(password);
-  const hasLower = /[a-z]/.test(password);
-  const hasNumber = /\d/.test(password);
-  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
-  
-  if (!(hasUpper && hasLower && hasNumber && hasSpecial)) {
-    throw new Error('Password must contain uppercase, lowercase, number, and special character');
-  }
-};
+import { loginSchema, forgotPasswordSchema } from './authSchemas';
+import { validateAndSanitizeEmail } from './authValidation';
 
 // Enhanced login handler with persistent rate limiting
 export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
@@ -96,7 +16,7 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
   try {
     // Enhanced input validation
     const sanitizedEmail = validateAndSanitizeEmail(values.email);
-    validatePassword(values.password);
+    // Password complexity is enforced at registration, not on login.
     
     // Enhanced rate limiting with persistent storage
     const emailLimitCheck = await persistentRateLimiter.isRateLimited(`email:${sanitizedEmail}`);

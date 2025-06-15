@@ -7,7 +7,8 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { loginSchema, handleLogin } from '@/utils/loginUtils';
+import { loginSchema } from '@/utils/authSchemas';
+import { handleLogin } from '@/utils/authHandlers';
 import * as z from "zod";
 
 interface LoginFormProps {

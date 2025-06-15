@@ -6,7 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { forgotPasswordSchema, handleForgotPassword } from '@/utils/loginUtils';
+import { forgotPasswordSchema } from '@/utils/authSchemas';
+import { handleForgotPassword } from '@/utils/authHandlers';
 import * as z from "zod";
 
 interface ForgotPasswordFormProps {
