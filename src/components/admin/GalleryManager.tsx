@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,10 +9,9 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Plus, Loader2 } from 'lucide-react';
 import ImageUpload from './ImageUpload';
-import { addGalleryImageToDb, deleteGalleryImageFromDb } from '@/utils/galleryUtils';
 
 const GalleryManager = () => {
-  const { state } = useSchool();
+  const { state, dispatch } = useSchool();
   const { toast } = useToast();
   const [newImage, setNewImage] = useState({ url: '', caption: '', category: '' });
   const [isUploading, setIsUploading] = useState(false);
@@ -36,12 +36,16 @@ const GalleryManager = () => {
     setIsSaving(true);
     try {
       const imageData = {
+        id: Date.now().toString(),
         url: newImage.url,
         altText: newImage.caption,
         caption: newImage.caption,
         category: newImage.category,
+        date: new Date().toISOString(),
       };
-      await addGalleryImageToDb(imageData);
+      
+      // Add to local state instead of database
+      dispatch({ type: 'ADD_GALLERY_IMAGE', payload: imageData });
       
       toast({
         title: "Image Added",
@@ -52,7 +56,7 @@ const GalleryManager = () => {
       console.error("Failed to save gallery image:", error);
       toast({
         title: "Error Saving Image",
-        description: "There was a problem saving the image to the database.",
+        description: "There was a problem saving the image.",
         variant: "destructive",
       });
     } finally {
@@ -61,10 +65,8 @@ const GalleryManager = () => {
   };
 
   const handleDeleteImage = async (id: string) => {
-    // Note: This doesn't delete the image from Firebase Storage.
-    // A more robust solution would involve a backend function to handle deletions.
     try {
-      await deleteGalleryImageFromDb(id);
+      dispatch({ type: 'REMOVE_GALLERY_IMAGE', payload: id });
       toast({
         title: "Image Deleted",
         description: "Image has been removed from the gallery.",
@@ -73,7 +75,7 @@ const GalleryManager = () => {
       console.error("Failed to delete image:", error);
       toast({
         title: "Error Deleting Image",
-        description: "There was a problem deleting the image from the database.",
+        description: "There was a problem deleting the image.",
         variant: "destructive",
       });
     }

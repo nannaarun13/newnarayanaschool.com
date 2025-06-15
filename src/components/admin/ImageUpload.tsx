@@ -5,8 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, X, Loader2 } from 'lucide-react';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void;
@@ -29,41 +27,18 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
       reader.onload = (e) => {
         const result = e.target?.result as string;
         setPreview(result);
+        setIsUploading(false);
+        onUploading?.(false);
+        onImageUpload(result); // Return the base64 data URL directly
+        toast({
+          title: "Image Uploaded",
+          description: "Image has been uploaded successfully.",
+        });
       };
-      reader.readAsDataURL(file);
       
       setIsUploading(true);
       onUploading?.(true);
-
-      const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          // Optional: handle progress.
-        },
-        (error) => {
-          console.error("Upload failed:", error);
-          toast({
-            title: "Upload Failed",
-            description: "There was a problem uploading your image. Please try again.",
-            variant: "destructive",
-          });
-          setIsUploading(false);
-          onUploading?.(false);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            onImageUpload(downloadURL);
-            toast({
-              title: "Image Ready",
-              description: "Image has been uploaded. You can now add details and save.",
-            });
-            setIsUploading(false);
-            onUploading?.(false);
-          });
-        }
-      );
+      reader.readAsDataURL(file);
     } else {
       toast({
         title: "Invalid File",
