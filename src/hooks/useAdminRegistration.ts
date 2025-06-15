@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,20 +47,34 @@ export const useAdminRegistration = (onSuccess: () => void) => {
     try {
       await checkForDuplicates(values.email, values.phone);
       
+      // Log auth state before registration
+      console.log("Before registration: auth.currentUser", auth.currentUser);
+
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
-      
+
+      // NEW: Log user state after registration
+      console.log("After registration: userCredential", userCredential);
+      console.log("auth.currentUser (should be new user):", auth.currentUser);
+
       const adminData = {
         firstName: values.firstName.trim().replace(/\s+/g, ' '),
         lastName: values.lastName.trim().replace(/\s+/g, ' '),
         email: values.email.toLowerCase().trim(),
-        phone: `+91${values.phone.trim()}`,
+        // Always add +91 and remove duplicate +91 if exists
+        phone: `+91${values.phone.trim().replace(/^(\+91)?/, "")}`,
         status: 'pending' as const,
         requestedAt: new Date().toISOString(),
       };
 
+      // NEW: Log adminData for debugging
+      console.log("Attempting to write admin record:", adminData, "UID:", user.uid);
+
       await setDoc(doc(db, "admins", user.uid), adminData);
-      
+
+      // Confirm write succeeded
+      console.log("Admin record written for UID:", user.uid);
+
       await signOut(auth);
 
       onSuccess();
