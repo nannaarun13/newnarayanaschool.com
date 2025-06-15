@@ -3,11 +3,11 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus, Check, X, Loader2, UserX, UserCheck, Trash2 } from 'lucide-react';
+import { UserPlus, Check, X, Loader2, UserX, UserCheck } from 'lucide-react';
 import { getAdminRequests, AdminUser } from '@/utils/authUtils';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { 
   Table,
   TableBody,
@@ -44,29 +44,6 @@ const AdminRequestManager = () => {
     loadRequests();
   }, []);
 
-  const handleDeleteRequest = async (request: AdminUser) => {
-    setActionLoading(true);
-    try {
-      // Delete the admin record from Firestore
-      await deleteDoc(doc(db, 'admins', request.id));
-
-      toast({
-        title: "Request Deleted",
-        description: `Admin request for ${request.email} has been permanently deleted.`,
-      });
-      
-      await loadRequests(); // Reload to show updated list
-    } catch (error) {
-      console.error('Error deleting request:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete admin request.",
-        variant: "destructive"
-      });
-    }
-    setActionLoading(false);
-  };
-
   const handleApproval = async (request: AdminUser, approved: boolean) => {
     setActionLoading(true);
     try {
@@ -74,41 +51,133 @@ const AdminRequestManager = () => {
       const currentAdminEmail = currentUser?.email;
 
       if (approved) {
-        // Security fix: Remove password-based approval
-        // Admin must create their own Firebase account separately
-        console.log('Approving admin access for:', request.email);
+        // For both pending and revoked requests, we need to ensure Firebase account exists
+        const requestPassword = (request as any).password;
         
-        if (request.status === 'pending') {
-          await updateDoc(doc(db, 'admins', request.id), {
-            status: 'approved',
-            approvedAt: new Date().toISOString(),
-            approvedBy: currentAdminEmail || 'System',
-          });
+        console.log('Creating/Re-approving Firebase account for user:', request.email);
+        
+        try {
+          // Try to create Firebase account first
+          if (request.status === 'pending' && requestPassword) {
+            const userCredential = await createUserWithEmailAndPassword(
+              auth, 
+              request.email, 
+              requestPassword
+            );
 
-          toast({
-            title: "Request Approved",
-            description: "Admin access has been granted. User must create their Firebase account separately.",
-          });
-        } else if (request.status === 'revoked') {
-          await updateDoc(doc(db, 'admins', request.id), {
-            status: 'approved',
-            reapprovedAt: new Date().toISOString(),
-            reapprovedBy: currentAdminEmail || 'System',
-            revokedAt: null,
-            revokedBy: null,
-          });
+            console.log('Firebase account created with UID:', userCredential.user.uid);
 
-          toast({
-            title: "Access Re-approved",
-            description: "Admin access has been restored successfully.",
-          });
+            // Update the admin record with Firebase UID and approval info
+            await updateDoc(doc(db, 'admins', request.id), {
+              uid: userCredential.user.uid,
+              status: 'approved',
+              approvedAt: new Date().toISOString(),
+              approvedBy: currentAdminEmail || 'System',
+              password: null, // Remove the password for security
+            });
+
+            // Sign out the newly created user so the current admin can continue
+            await signOut(auth);
+
+            toast({
+              title: "Request Approved",
+              description: "Admin access has been granted. The user can now login with their original password.",
+            });
+          } else if (request.status === 'revoked') {
+            // For revoked requests, try to create account if it doesn't exist
+            // We'll use a default password that the user will need to reset
+            try {
+              if (requestPassword) {
+                // If we have the original password, use it
+                const userCredential = await createUserWithEmailAndPassword(
+                  auth, 
+                  request.email, 
+                  requestPassword
+                );
+                console.log('Firebase account recreated for revoked user with UID:', userCredential.user.uid);
+                
+                await updateDoc(doc(db, 'admins', request.id), {
+                  uid: userCredential.user.uid,
+                  status: 'approved',
+                  reapprovedAt: new Date().toISOString(),
+                  reapprovedBy: currentAdminEmail || 'System',
+                  revokedAt: null,
+                  revokedBy: null,
+                  password: null, // Remove the password for security
+                });
+
+                // Sign out the newly created user
+                await signOut(auth);
+              } else {
+                // If no password available, just update the status
+                await updateDoc(doc(db, 'admins', request.id), {
+                  status: 'approved',
+                  reapprovedAt: new Date().toISOString(),
+                  reapprovedBy: currentAdminEmail || 'System',
+                  revokedAt: null,
+                  revokedBy: null,
+                });
+              }
+
+              toast({
+                title: "Access Re-approved",
+                description: requestPassword ? 
+                  "Admin access has been restored. User can login with their original password." :
+                  "Admin access has been restored. User may need to reset their password.",
+              });
+            } catch (createError: any) {
+              if (createError.code === 'auth/email-already-in-use') {
+                // Account exists, just update status
+                await updateDoc(doc(db, 'admins', request.id), {
+                  status: 'approved',
+                  reapprovedAt: new Date().toISOString(),
+                  reapprovedBy: currentAdminEmail || 'System',
+                  revokedAt: null,
+                  revokedBy: null,
+                });
+                
+                toast({
+                  title: "Access Re-approved",
+                  description: "Admin access has been restored successfully.",
+                });
+              } else {
+                throw createError;
+              }
+            }
+          }
+
+        } catch (createError: any) {
+          console.error('Error creating Firebase account:', createError);
+          
+          if (createError.code === 'auth/email-already-in-use') {
+            // Email already exists in Firebase Auth, just update the status
+            console.log('Email already exists in Firebase Auth, updating status only');
+            await updateDoc(doc(db, 'admins', request.id), {
+              status: 'approved',
+              approvedAt: request.status === 'pending' ? new Date().toISOString() : request.approvedAt,
+              reapprovedAt: request.status === 'revoked' ? new Date().toISOString() : undefined,
+              approvedBy: request.status === 'pending' ? (currentAdminEmail || 'System') : request.approvedBy,
+              reapprovedBy: request.status === 'revoked' ? (currentAdminEmail || 'System') : undefined,
+              password: null, // Remove the password for security
+              revokedAt: null,
+              revokedBy: null,
+            });
+            
+            toast({
+              title: request.status === 'pending' ? "Request Approved" : "Access Re-approved",
+              description: request.status === 'pending' ? "Admin access granted (user account already existed)." : "Admin access has been restored successfully.",
+            });
+          } else {
+            throw createError;
+          }
         }
       } else {
-        // Update the request status to rejected
+        // Update the request status to rejected instead of deleting
         await updateDoc(doc(db, 'admins', request.id), {
           status: 'rejected',
           rejectedAt: new Date().toISOString(),
           rejectedBy: currentAdminEmail || 'System',
+          password: null, // Remove the password for security
         });
         
         toast({
@@ -121,9 +190,11 @@ const AdminRequestManager = () => {
       await loadRequests(); // Reload to show updated status
     } catch (error: any) {
       console.error('Error updating request:', error);
+      let errorMessage = "Failed to update request status.";
+      
       toast({
         title: "Error",
-        description: "Failed to update request status.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -160,6 +231,7 @@ const AdminRequestManager = () => {
     setActionLoading(false);
   };
 
+  // Filter requests with proper null/undefined checks
   const validRequests = adminRequests.filter(r => r && r.status);
   const pendingRequests = validRequests.filter(r => r.status === 'pending');
   const approvedRequests = validRequests.filter(r => r.status === 'approved');
@@ -337,16 +409,6 @@ const AdminRequestManager = () => {
                                 Re-approve
                               </Button>
                             )}
-                            {/* Delete button for all requests */}
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              disabled={actionLoading}
-                              onClick={() => handleDeleteRequest(request)}
-                              className="border-red-600 text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>

@@ -1,9 +1,6 @@
-import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
-import { subscribeToSchoolData, updateSchoolData } from '@/utils/schoolDataUtils';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { getSchoolData, updateSchoolData } from '@/utils/schoolDataUtils';
 import { Loader2 } from 'lucide-react';
-import { Unsubscribe } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 
 // Define the data structure for a navigation item
 export interface NavigationItem {
@@ -262,62 +259,53 @@ const initialState: SchoolState = {
   loading: true,
 };
 
-// Enhanced reducer with better error handling for authentication issues
+// Reducer function to handle state updates
 const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState => {
   switch (action.type) {
     case 'SET_SCHOOL_DATA':
       return { ...state, data: action.payload, loading: false };
     case 'UPDATE_SCHOOL_DATA':
-      const updatedData = { ...state.data, ...action.payload };
-      // Immediate local update (optimistic)
-      updateSchoolData(action.payload).catch(error => {
-        console.error('Failed to sync to database:', error);
-        // Show user-friendly error messages
-        if (error.message.includes('permission') || error.message.includes('admin')) {
-          console.warn('Update failed due to permissions:', error.message);
-        }
-      });
-      return { ...state, data: updatedData };
+      return { ...state, data: { ...state.data, ...action.payload } };
     case 'ADD_GALLERY_IMAGE':
-      const newGalleryData = { ...state.data, galleryImages: [...state.data.galleryImages, action.payload] };
-      updateSchoolData({ galleryImages: newGalleryData.galleryImages }).catch(console.error);
-      return { ...state, data: newGalleryData };
+      return { ...state, data: { ...state.data, galleryImages: [...state.data.galleryImages, action.payload] } };
     case 'UPDATE_GALLERY_IMAGE':
-      const updatedGalleryData = {
-        ...state.data,
-        galleryImages: state.data.galleryImages.map(image =>
-          image.id === action.payload.id ? action.payload : image
-        ),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          galleryImages: state.data.galleryImages.map(image =>
+            image.id === action.payload.id ? action.payload : image
+          ),
+        },
       };
-      updateSchoolData({ galleryImages: updatedGalleryData.galleryImages }).catch(console.error);
-      return { ...state, data: updatedGalleryData };
     case 'DELETE_GALLERY_IMAGE':
-      const filteredGalleryData = {
-        ...state.data,
-        galleryImages: state.data.galleryImages.filter(image => image.id !== action.payload),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          galleryImages: state.data.galleryImages.filter(image => image.id !== action.payload),
+        },
       };
-      updateSchoolData({ galleryImages: filteredGalleryData.galleryImages }).catch(console.error);
-      return { ...state, data: filteredGalleryData };
     case 'ADD_NOTICE':
-      const newNoticesData = { ...state.data, notices: [...state.data.notices, action.payload] };
-      updateSchoolData({ notices: newNoticesData.notices }).catch(console.error);
-      return { ...state, data: newNoticesData };
+      return { ...state, data: { ...state.data, notices: [...state.data.notices, action.payload] } };
     case 'UPDATE_NOTICE':
-      const updatedNoticesData = {
-        ...state.data,
-        notices: state.data.notices.map(notice =>
-          notice.id === action.payload.id ? { ...notice, title: action.payload.title, content: action.payload.content } : notice
-        ),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          notices: state.data.notices.map(notice =>
+            notice.id === action.payload.id ? { ...notice, title: action.payload.title, content: action.payload.content } : notice
+          ),
+        },
       };
-      updateSchoolData({ notices: updatedNoticesData.notices }).catch(console.error);
-      return { ...state, data: updatedNoticesData };
     case 'DELETE_NOTICE':
-      const filteredNoticesData = {
-        ...state.data,
-        notices: state.data.notices.filter(notice => notice.id !== action.payload),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          notices: state.data.notices.filter(notice => notice.id !== action.payload),
+        },
       };
-      updateSchoolData({ notices: filteredNoticesData.notices }).catch(console.error);
-      return { ...state, data: filteredNoticesData };
     case 'ADD_ADMISSION_INQUIRY':
       return { ...state, admissionInquiries: [...state.admissionInquiries, action.payload] };
     case 'ADD_CONTACT_MESSAGE':
@@ -325,33 +313,37 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
     case 'INCREMENT_VISITORS':
       return { ...state, siteVisitors: state.siteVisitors + 1 };
     case 'ADD_LATEST_UPDATE':
-      const newUpdatesData = { 
-        ...state.data, 
-        latestUpdates: [...state.data.latestUpdates, action.payload] 
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          latestUpdates: [...state.data.latestUpdates, action.payload] 
+        } 
       };
-      updateSchoolData({ latestUpdates: newUpdatesData.latestUpdates }).catch(console.error);
-      return { ...state, data: newUpdatesData };
     case 'DELETE_LATEST_UPDATE':
-      const filteredUpdatesData = {
-        ...state.data,
-        latestUpdates: state.data.latestUpdates.filter(update => update.id !== action.payload),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          latestUpdates: state.data.latestUpdates.filter(update => update.id !== action.payload),
+        },
       };
-      updateSchoolData({ latestUpdates: filteredUpdatesData.latestUpdates }).catch(console.error);
-      return { ...state, data: filteredUpdatesData };
     case 'ADD_FOUNDER':
-      const newFoundersData = { 
-        ...state.data, 
-        founders: [...state.data.founders, action.payload] 
+      return { 
+        ...state, 
+        data: { 
+          ...state.data, 
+          founders: [...state.data.founders, action.payload] 
+        } 
       };
-      updateSchoolData({ founders: newFoundersData.founders }).catch(console.error);
-      return { ...state, data: newFoundersData };
     case 'DELETE_FOUNDER':
-      const filteredFoundersData = {
-        ...state.data,
-        founders: state.data.founders.filter(founder => founder.id !== action.payload),
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          founders: state.data.founders.filter(founder => founder.id !== action.payload),
+        },
       };
-      updateSchoolData({ founders: filteredFoundersData.founders }).catch(console.error);
-      return { ...state, data: filteredFoundersData };
     default:
       return state;
   }
@@ -361,11 +353,9 @@ const schoolReducer = (state: SchoolState, action: SchoolAction): SchoolState =>
 const SchoolContext = createContext<{
   state: SchoolState;
   dispatch: React.Dispatch<SchoolAction>;
-  isAuthenticated: boolean;
 }>({
   state: initialState,
   dispatch: () => null,
-  isAuthenticated: false,
 });
 
 export const useSchool = () => {
@@ -380,75 +370,19 @@ export const useSchool = () => {
 
 export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(schoolReducer, initialState);
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
-  const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
-    console.log('Setting up authentication and real-time listener...');
-    
-    // Monitor authentication state
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(!!user);
-      console.log('Authentication state changed:', user ? `Logged in as ${user.email}` : 'Not logged in');
-    });
-    
-    // Set up real-time listener that works for ALL pages
-    unsubscribeRef.current = subscribeToSchoolData(
-      (data) => {
-        console.log('Real-time data update received:', data);
-        dispatch({ type: 'SET_SCHOOL_DATA', payload: data });
-      },
-      (error) => {
-        console.error("Real-time subscription error:", error);
-        
-        // Handle permission errors gracefully
-        if (error.message.includes('permission-denied')) {
-          console.log('Using cached data due to permission restrictions');
-        }
-        
-        // Still set loading to false and use cached data
-        const cachedData = localStorage.getItem('schoolData');
-        if (cachedData) {
-          try {
-            const parsedData = JSON.parse(cachedData);
-            dispatch({ type: 'SET_SCHOOL_DATA', payload: { ...defaultSchoolData, ...parsedData } });
-          } catch (parseError) {
-            console.error('Failed to parse cached data:', parseError);
-            dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
-          }
-        } else {
-          dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData });
-        }
+    const loadData = async () => {
+      try {
+        const schoolData = await getSchoolData();
+        dispatch({ type: 'SET_SCHOOL_DATA', payload: schoolData });
+      } catch (error) {
+        console.error("Failed to load school data from Firestore:", error);
+        dispatch({ type: 'SET_SCHOOL_DATA', payload: defaultSchoolData }); // Fallback to defaults on error
       }
-    );
-
-    // Cleanup function
-    return () => {
-      if (unsubscribeRef.current) {
-        console.log('Cleaning up real-time listener...');
-        unsubscribeRef.current();
-      }
-      unsubscribeAuth();
-    };
-  }, []);
-
-  // Handle online/offline events to retry sync
-  useEffect(() => {
-    const handleOnline = () => {
-      console.log('Connection restored, data will sync automatically...');
     };
 
-    const handleOffline = () => {
-      console.log('Connection lost, changes will be queued for sync...');
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
+    loadData();
   }, []);
 
   if (state.loading) {
@@ -463,7 +397,7 @@ export const SchoolContextProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   return (
-    <SchoolContext.Provider value={{ state, dispatch, isAuthenticated }}>
+    <SchoolContext.Provider value={{ state, dispatch }}>
       {children}
     </SchoolContext.Provider>
   );

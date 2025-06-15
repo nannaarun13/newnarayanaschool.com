@@ -6,7 +6,6 @@ import { auth } from '@/lib/firebase';
 import { isUserAdmin } from '@/utils/authUtils';
 import { useToast } from '@/hooks/use-toast';
 import { Shield } from 'lucide-react';
-import SessionTimeoutWarning from '@/components/security/SessionTimeoutWarning';
 
 const RouteProtection = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
@@ -20,41 +19,50 @@ const RouteProtection = ({ children }: { children: React.ReactNode }) => {
       const onAuthRoute = location.pathname === '/login' || location.pathname === '/admin/register';
 
       if (user) {
-        // User is logged in - check admin status and approval
+        // User is logged in
         console.log('User logged in:', user.email);
         
-        try {
-          const isAdmin = await isUserAdmin(user.uid);
-          if (isAdmin) {
-            // User is an approved admin
-            if (onAuthRoute) {
-              navigate('/admin', { replace: true });
+        // Special handling for the hardcoded admin - always allow access
+        if (user.email === 'arunnanna3@gmail.com') {
+          console.log('Hardcoded admin user detected, allowing access');
+          if (onAuthRoute) {
+            navigate('/admin', { replace: true });
+          }
+        } else {
+          // For other users, check admin status and approval
+          try {
+            const isAdmin = await isUserAdmin(user.uid);
+            if (isAdmin) {
+              // User is an approved admin
+              if (onAuthRoute) {
+                navigate('/admin', { replace: true });
+              }
+            } else {
+              // User is not an approved admin
+              if (onAdminRoute && !onAuthRoute) {
+                toast({
+                  title: "Access Denied",
+                  description: "Your admin account is pending approval or not authorized.",
+                  variant: "destructive",
+                });
+                await auth.signOut();
+                navigate('/login', { replace: true });
+              } else if (onAuthRoute) {
+                await auth.signOut();
+              }
             }
-          } else {
-            // User is not an approved admin
+          } catch (error) {
+            console.error('Error checking admin status:', error);
+            // If there's an error checking admin status, deny access to admin routes
             if (onAdminRoute && !onAuthRoute) {
               toast({
                 title: "Access Denied",
-                description: "Your admin account is pending approval or not authorized.",
+                description: "Unable to verify admin status. Please try again later.",
                 variant: "destructive",
               });
               await auth.signOut();
               navigate('/login', { replace: true });
-            } else if (onAuthRoute) {
-              await auth.signOut();
             }
-          }
-        } catch (error) {
-          console.error('Error checking admin status:', error);
-          // If there's an error checking admin status, deny access to admin routes
-          if (onAdminRoute && !onAuthRoute) {
-            toast({
-              title: "Access Denied",
-              description: "Unable to verify admin status. Please try again later.",
-              variant: "destructive",
-            });
-            await auth.signOut();
-            navigate('/login', { replace: true });
           }
         }
       } else {
@@ -80,12 +88,7 @@ const RouteProtection = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  return (
-    <>
-      {children}
-      <SessionTimeoutWarning />
-    </>
-  );
+  return <>{children}</>;
 };
 
 export default RouteProtection;
