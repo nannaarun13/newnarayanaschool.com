@@ -8,6 +8,47 @@ import { Upload, X, Loader2 } from 'lucide-react';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
+// Helper function to resize and compress image
+async function resizeAndCompressImage(file: File, options = { maxWidth: 1200, quality: 0.8 }) : Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        // Calculate new size while maintaining aspect ratio
+        let { width, height } = img;
+        if (width > options.maxWidth) {
+          height = Math.round((height * options.maxWidth) / width);
+          width = options.maxWidth;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Unable to get canvas context'));
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Compression failed'));
+          },
+          'image/jpeg',
+          options.quality
+        );
+      };
+      img.onerror = reject;
+      if (typeof e.target?.result === 'string') {
+        img.src = e.target.result;
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void;
   onUploading?: (isUploading: boolean) => void;
@@ -28,7 +69,7 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
     setPreview(currentImage || '');
   }, [currentImage]);
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     if (!file || !file.type.startsWith('image/')) {
       toast({
         title: "Invalid File",
@@ -41,52 +82,64 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
     setIsUploading(true);
     onUploading?.(true);
 
-    // Show a local preview immediately for better UX
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setPreview(result);
-    };
-    reader.readAsDataURL(file);
+    try {
+      // 1. Show local preview ASAP (original, before resize for snappier UI)
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setPreview(result);
+      };
+      reader.readAsDataURL(file);
 
-    // Upload to Firebase Storage
-    const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
-    
-    uploadBytes(storageRef, file)
-      .then((snapshot) => {
-        console.log('Uploaded a blob or file!', snapshot);
-        return getDownloadURL(snapshot.ref);
-      })
-      .then((downloadURL) => {
-        console.log('File available at', downloadURL);
-        onImageUpload(downloadURL); // Pass the public storage URL to the parent
-        toast({
-          title: "Image Uploaded to Storage",
-          description: "Image is now ready to be saved to the gallery.",
+      // 2. Resize and compress the image before uploading
+      const compressedBlob = await resizeAndCompressImage(file, { maxWidth: 1200, quality: 0.8 });
+      const uploadFile = new File([compressedBlob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: "image/jpeg" });
+
+      // 3. Now upload to Firebase
+      const storageRef = ref(storage, `gallery/${Date.now()}_${uploadFile.name}`);
+      uploadBytes(storageRef, uploadFile)
+        .then((snapshot) => getDownloadURL(snapshot.ref))
+        .then((downloadURL) => {
+          onImageUpload(downloadURL); // Pass the public storage URL to the parent
+          toast({
+            title: "Image Uploaded to Storage",
+            description: "Image is now ready to be saved to the gallery.",
+          });
+        })
+        .catch((error) => {
+          console.error("Upload failed", error);
+          toast({
+            title: "Upload Failed",
+            description: "There was a problem uploading your image. Please try again.",
+            variant: "destructive",
+          });
+          // Clear preview on failure to prevent saving a broken link
+          setPreview('');
+          onImageUpload('');
+        })
+        .finally(() => {
+          setIsUploading(false);
+          onUploading?.(false);
         });
-      })
-      .catch((error) => {
-        console.error("Upload failed", error);
-        toast({
-          title: "Upload Failed",
-          description: "There was a problem uploading your image. Please try again.",
-          variant: "destructive",
-        });
-        // Clear preview on failure to prevent saving a broken link
-        setPreview(''); 
-        onImageUpload('');
-      })
-      .finally(() => {
-        setIsUploading(false);
-        onUploading?.(false);
+    } catch (error) {
+      console.error("Image processing failed", error);
+      toast({
+        title: "Image Processing Failed",
+        description: "Could not process the image for upload.",
+        variant: "destructive"
       });
+      setIsUploading(false);
+      onUploading?.(false);
+      setPreview('');
+      onImageUpload('');
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     const files = e.dataTransfer.files;
     if (files && files[0]) {
       handleFile(files[0]);
@@ -121,7 +174,7 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
   return (
     <div className="space-y-4">
       <Label>{label}</Label>
-      
+
       {preview ? (
         <div className="relative inline-block">
           <img
@@ -130,9 +183,9 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
             className="w-32 h-32 object-cover rounded-lg border"
           />
           {isUploading ? (
-             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
-                <Loader2 className="h-8 w-8 text-white animate-spin" />
-             </div>
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+              <Loader2 className="h-8 w-8 text-white animate-spin" />
+            </div>
           ) : (
             <Button
               type="button"
@@ -167,7 +220,7 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
           </Button>
         </div>
       )}
-      
+
       <Input
         ref={fileInputRef}
         type="file"
