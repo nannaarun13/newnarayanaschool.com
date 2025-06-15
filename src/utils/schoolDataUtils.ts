@@ -1,7 +1,8 @@
 
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { SchoolData, defaultSchoolData } from '@/contexts/SchoolContext';
+import { SchoolData } from '@/types';
+import { defaultSchoolData } from '@/data/defaults';
 
 const schoolConfigRef = () => doc(db, 'school', 'config');
 

@@ -1,4 +1,3 @@
-
 import {
   collection,
   addDoc,
@@ -10,7 +9,7 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { GalleryImage } from '@/contexts/SchoolContext';
+import { GalleryImage } from '@/types';
 
 const galleryCollectionRef = () => collection(db, 'gallery');
 
