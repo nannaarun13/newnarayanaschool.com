@@ -60,13 +60,19 @@ export const isUserAdmin = async (uid: string): Promise<boolean> => {
       return false;
     }
 
-    const user = await getDoc(doc(db, 'admins', uid));
-    if (!user.exists()) {
+    const q = query(collection(db, 'admins'), where('uid', '==', uid));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      console.log(`isUserAdmin check: No admin found with UID: ${uid}`);
       return false;
     }
-    
-    const userData = user.data();
-    return userData.status === 'approved';
+
+    const adminDoc = querySnapshot.docs[0];
+    const adminData = adminDoc.data();
+    const isAdmin = adminData.status === 'approved';
+    console.log(`isUserAdmin check for UID ${uid}: status is ${adminData.status}, isAdmin: ${isAdmin}`);
+    return isAdmin;
   } catch (error) {
     console.error('Error checking admin status:', error);
     return false;

@@ -1,6 +1,6 @@
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, query, collection, where, getDocs, updateDoc } from 'firebase/firestore';
 import { logAdminLogin, logFailedAdminLogin } from './loginActivityUtils';
 import { ensureDefaultAdmin, DEFAULT_ADMIN } from './adminUtils';
 import { persistentRateLimiter } from './persistentRateLimiter';
@@ -160,26 +160,45 @@ export const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     // Enhanced admin status verification with security checks
     console.log('Checking admin status for user:', user.uid);
     
-    let adminDoc = await getDoc(doc(db, 'admins', user.uid));
-    
-    if (!adminDoc.exists()) {
-      console.log('Admin record not found by UID, searching by email');
-      const q = query(
+    let adminDoc;
+    // First, try to find admin by UID
+    const adminQuery = query(collection(db, 'admins'), where('uid', '==', user.uid));
+    const adminSnapshot = await getDocs(adminQuery);
+
+    if (!adminSnapshot.empty) {
+      adminDoc = adminSnapshot.docs[0];
+      console.log('Found admin record by UID.');
+    } else {
+      // If not found by UID, try by email as a fallback.
+      // This handles legacy users or cases where the UID was not yet set.
+      console.log('Admin record not found by UID, searching by email.');
+      const emailQuery = query(
         collection(db, 'admins'), 
         where('email', '==', sanitizedEmail), 
         where('status', '==', 'approved')
       );
-      const querySnapshot = await getDocs(q);
+      const emailSnapshot = await getDocs(emailQuery);
       
-      if (querySnapshot.empty) {
-        console.log('No approved admin record found');
-        await auth.signOut();
-        await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
-        await logFailedAdminLogin(sanitizedEmail, 'Email not registered as admin or access pending approval');
-        throw new Error('This email is not registered as an admin or your access is pending approval.');
+      if (!emailSnapshot.empty) {
+        adminDoc = emailSnapshot.docs[0];
+        console.log('Found admin record by email.');
+        // Update the record with the UID for future logins
+        try {
+          const adminDocRef = doc(db, 'admins', adminDoc.id);
+          await updateDoc(adminDocRef, { uid: user.uid });
+          console.log(`Updated admin record ${adminDoc.id} with UID ${user.uid}.`);
+        } catch (updateError) {
+          console.error('Failed to update admin record with UID:', updateError);
+        }
       }
-      
-      adminDoc = querySnapshot.docs[0];
+    }
+    
+    if (!adminDoc) {
+      console.log('No approved admin record found');
+      await auth.signOut();
+      await persistentRateLimiter.recordFailedAttempt(`email:${sanitizedEmail}`);
+      await logFailedAdminLogin(sanitizedEmail, 'Email not registered as admin or access pending approval');
+      throw new Error('This email is not registered as an admin or your access is pending approval.');
     }
     
     const adminData = adminDoc.data();
