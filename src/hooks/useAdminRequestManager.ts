@@ -38,7 +38,7 @@ export const useAdminRequestManager = () => {
       const currentAdminEmail = currentUser?.email;
 
       if (approved) {
-        // Do NOT create Firebase Auth user here. Instead, mark as approved and notify
+        // Only update status (never create/set Auth password here)
         await updateDoc(doc(db, 'admins', request.id), {
           status: 'approved',
           approvedAt: new Date().toISOString(),
