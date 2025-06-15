@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from '@/hooks/use-toast';
 import { db, auth } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { registrationSchema, RegistrationFormData } from '@/utils/adminRegistrationSchema';
 
@@ -24,9 +24,6 @@ export const useAdminRegistration = (onSuccess: () => void) => {
     }
   });
 
-  // This function was causing the permission error and has been removed.
-  // Firebase Auth will still prevent duplicate emails.
-  /*
   const checkForDuplicates = async (email: string, phone: string): Promise<void> => {
     const emailQuery = query(collection(db, "admins"), where("email", "==", email));
     const phoneQuery = query(collection(db, "admins"), where("phone", "==", `+91${phone}`));
@@ -44,13 +41,12 @@ export const useAdminRegistration = (onSuccess: () => void) => {
       throw new Error('An admin request with this phone number already exists.');
     }
   };
-  */
 
   const handleRegistrationSubmit = async (values: RegistrationFormData) => {
     setLoading(true);
     
     try {
-      // The call to checkForDuplicates has been removed from here.
+      await checkForDuplicates(values.email, values.phone);
       
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
@@ -84,7 +80,7 @@ export const useAdminRegistration = (onSuccess: () => void) => {
       } else if (error.message.includes('already exists')) {
         errorMessage = error.message;
       } else if (error.code === 'permission-denied') {
-        errorMessage = "Permission denied. There might be a configuration issue. Please contact the system administrator.";
+        errorMessage = "Permission denied. Please contact the system administrator.";
       }
       
       toast({ 
