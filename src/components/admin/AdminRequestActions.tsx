@@ -21,9 +21,13 @@ const AdminRequestActions = ({
   onDeleteRequest 
 }: AdminRequestActionsProps) => {
   const isProtected = request.email === SUPER_ADMIN_EMAIL;
+
+  // Show Approve action for pending, revoked, or rejected statuses
+  const showApprove = ['pending', 'revoked', 'rejected'].includes(request.status);
+
   return (
     <div className="flex space-x-2">
-      {request.status === 'pending' && (
+      {showApprove && (
         <>
           <Button 
             variant="default" 
@@ -35,15 +39,17 @@ const AdminRequestActions = ({
           >
             <Check className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="destructive" 
-            size="sm"
-            disabled={actionLoading || isProtected}
-            onClick={() => onApproval(request, false)}
-            title={isProtected ? "This admin cannot be modified." : "Reject"}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          {request.status === 'pending' && (
+            <Button 
+              variant="destructive" 
+              size="sm"
+              disabled={actionLoading || isProtected}
+              onClick={() => onApproval(request, false)}
+              title={isProtected ? "This admin cannot be modified." : "Reject"}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </>
       )}
       {request.status === 'approved' && (
@@ -74,4 +80,3 @@ const AdminRequestActions = ({
 };
 
 export default AdminRequestActions;
-
