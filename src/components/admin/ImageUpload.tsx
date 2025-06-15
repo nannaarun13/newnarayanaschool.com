@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,7 @@ import { Upload, X, Loader2 } from 'lucide-react';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
+import { addGalleryImageToDb } from '@/utils/galleryUtils';
 
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void;
@@ -15,9 +15,17 @@ interface ImageUploadProps {
   currentImage?: string;
   label: string;
   accept?: string;
+  autoSaveToDatabase?: boolean;
 }
 
-const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept = "image/*" }: ImageUploadProps) => {
+const ImageUpload = ({ 
+  onImageUpload, 
+  onUploading, 
+  currentImage, 
+  label, 
+  accept = "image/*",
+  autoSaveToDatabase = false 
+}: ImageUploadProps) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -72,18 +80,48 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
             setIsUploading(false);
             onUploading?.(false);
           },
-          () => {
+          async () => {
             const uploadEndTime = Date.now();
             console.log(`Upload to Firebase Storage took ${uploadEndTime - uploadStartTime} ms.`);
-            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               onImageUpload(downloadURL);
+
+              // Auto-save to database if enabled
+              if (autoSaveToDatabase) {
+                console.log('Auto-saving image to database...');
+                const imageData = {
+                  url: downloadURL,
+                  altText: `Image uploaded on ${new Date().toLocaleDateString()}`,
+                  caption: `Image uploaded on ${new Date().toLocaleDateString()}`,
+                  category: 'General',
+                };
+                
+                await addGalleryImageToDb(imageData);
+                console.log('Image automatically saved to database');
+                
+                toast({
+                  title: "Image Saved",
+                  description: "Image has been uploaded and automatically saved to the gallery.",
+                });
+              } else {
+                toast({
+                  title: "Image Ready",
+                  description: "Image has been uploaded. You can now add details and save.",
+                });
+              }
+            } catch (error) {
+              console.error("Error getting download URL or saving to database:", error);
               toast({
-                title: "Image Ready",
-                description: "Image has been uploaded. You can now add details and save.",
+                title: "Error",
+                description: "Image uploaded but there was an issue saving it.",
+                variant: "destructive",
               });
-              setIsUploading(false);
-              onUploading?.(false);
-            });
+            }
+            
+            setIsUploading(false);
+            onUploading?.(false);
           }
         );
       } catch (error) {
