@@ -25,20 +25,8 @@ export const loginSchema = z.object({
     )
     .transform(email => email.toLowerCase().trim()),
   password: z.string()
-    .min(8, { message: "Password must be at least 8 characters." })
-    .max(100, { message: "Password too long." })
-    .refine(
-      password => {
-        // Check for common weak patterns
-        const hasUpper = /[A-Z]/.test(password);
-        const hasLower = /[a-z]/.test(password);
-        const hasNumber = /\d/.test(password);
-        const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
-        
-        return hasUpper && hasLower && hasNumber && hasSpecial;
-      },
-      { message: "Password must contain uppercase, lowercase, number, and special character." }
-    ),
+    .min(1, { message: "Password is required." })
+    .max(100, { message: "Password too long." }),
 });
 
 export const forgotPasswordSchema = z.object({

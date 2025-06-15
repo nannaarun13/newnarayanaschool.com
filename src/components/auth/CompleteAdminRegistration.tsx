@@ -12,9 +12,22 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { AdminUser } from '@/utils/authUtils';
 import { useNavigate } from 'react-router-dom';
+import PasswordRequirements from '@/components/admin/PasswordRequirements';
 
 const passwordSchema = z.object({
-  password: z.string().min(8, "Password must be at least 8 characters."),
+  password: z.string()
+    .min(8, { message: "Password must be at least 8 characters." })
+    .max(100, { message: "Password too long." })
+    .refine(
+      password => {
+        const hasUpper = /[A-Z]/.test(password);
+        const hasLower = /[a-z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+        return hasUpper && hasLower && hasNumber && hasSpecial;
+      },
+      { message: "Password must contain uppercase, lowercase, number, and special character." }
+    ),
   confirmPassword: z.string()
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -97,6 +110,7 @@ const CompleteAdminRegistration = ({ adminRequest }: CompleteAdminRegistrationPr
             </FormItem>
           )}
         />
+        <PasswordRequirements />
         <Button type="submit" disabled={loading} className="w-full bg-school-blue hover:bg-school-blue/90">
           {loading ? 'Completing Registration...' : 'Complete Registration'}
         </Button>
