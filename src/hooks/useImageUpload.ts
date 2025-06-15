@@ -60,6 +60,26 @@ export const useImageUpload = ({ onImageUpload, onUploading, currentImage }: Use
         },
         (error) => {
           console.error('[useImageUpload] Upload failed:', error);
+          
+          // Enhanced error handling for storage permission issues
+          let errorMessage = "There was a problem uploading your image. Please try again.";
+          
+          if (error.code === 'storage/unauthorized') {
+            errorMessage = "Upload failed: Storage permissions not configured. Please check Firebase Storage rules.";
+          } else if (error.code === 'storage/unauthenticated') {
+            errorMessage = "Upload failed: Authentication required. Please log in as an admin.";
+          } else if (error.code === 'storage/quota-exceeded') {
+            errorMessage = "Upload failed: Storage quota exceeded.";
+          } else if (error.code === 'storage/invalid-format') {
+            errorMessage = "Upload failed: Invalid file format.";
+          }
+          
+          toast({
+            title: "Upload Failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          
           throw error;
         },
         async () => {
@@ -75,6 +95,11 @@ export const useImageUpload = ({ onImageUpload, onUploading, currentImage }: Use
             });
           } catch (urlError) {
             console.error('[useImageUpload] Failed to get download URL:', urlError);
+            toast({
+              title: "Upload Failed",
+              description: "Failed to get image URL. Please try again.",
+              variant: "destructive",
+            });
             throw urlError;
           } finally {
             setIsUploading(false);
@@ -84,11 +109,6 @@ export const useImageUpload = ({ onImageUpload, onUploading, currentImage }: Use
       );
     } catch (error) {
       console.error("[useImageUpload] Upload failed:", error);
-      toast({
-        title: "Upload Failed",
-        description: "There was a problem uploading your image. Please try again.",
-        variant: "destructive",
-      });
       setPreview('');
       onImageUpload('');
       setIsUploading(false);
