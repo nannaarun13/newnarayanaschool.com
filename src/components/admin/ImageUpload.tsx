@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, X, Loader2 } from 'lucide-react';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void;
@@ -27,30 +29,57 @@ const ImageUpload = ({ onImageUpload, onUploading, currentImage, label, accept =
   }, [currentImage]);
 
   const handleFile = (file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setPreview(result);
-        setIsUploading(false);
-        onUploading?.(false);
-        onImageUpload(result); // Return the base64 data URL directly
-        toast({
-          title: "Image Uploaded",
-          description: "Image has been uploaded successfully.",
-        });
-      };
-      
-      setIsUploading(true);
-      onUploading?.(true);
-      reader.readAsDataURL(file);
-    } else {
+    if (!file || !file.type.startsWith('image/')) {
       toast({
         title: "Invalid File",
         description: "Please upload a valid image file.",
         variant: "destructive"
       });
+      return;
     }
+
+    setIsUploading(true);
+    onUploading?.(true);
+
+    // Show a local preview immediately for better UX
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setPreview(result);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to Firebase Storage
+    const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
+    
+    uploadBytes(storageRef, file)
+      .then((snapshot) => {
+        console.log('Uploaded a blob or file!', snapshot);
+        return getDownloadURL(snapshot.ref);
+      })
+      .then((downloadURL) => {
+        console.log('File available at', downloadURL);
+        onImageUpload(downloadURL); // Pass the public storage URL to the parent
+        toast({
+          title: "Image Uploaded to Storage",
+          description: "Image is now ready to be saved to the gallery.",
+        });
+      })
+      .catch((error) => {
+        console.error("Upload failed", error);
+        toast({
+          title: "Upload Failed",
+          description: "There was a problem uploading your image. Please try again.",
+          variant: "destructive",
+        });
+        // Clear preview on failure to prevent saving a broken link
+        setPreview(''); 
+        onImageUpload('');
+      })
+      .finally(() => {
+        setIsUploading(false);
+        onUploading?.(false);
+      });
   };
 
   const handleDrop = (e: React.DragEvent) => {
