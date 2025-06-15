@@ -16,8 +16,7 @@ service cloud.firestore {
     match /admins/{adminId} {
       // Allow creation only with proper validation and authenticated users
       allow create: if isValidAdminData(request.resource.data) &&
-                       request.auth != null &&
-                       request.auth.token.email_verified == true;
+                       request.auth != null;
       
       // Allow reading for authenticated users only
       allow read: if request.auth != null;
