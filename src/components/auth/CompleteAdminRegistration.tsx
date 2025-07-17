@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, runTransaction } from 'firebase/firestore';
 import { AdminUser } from '@/utils/authUtils';
 import { useNavigate } from 'react-router-dom';
 import PasswordRequirements from '@/components/admin/PasswordRequirements';
@@ -54,10 +54,23 @@ const CompleteAdminRegistration = ({ adminRequest }: CompleteAdminRegistrationPr
       const userCredential = await createUserWithEmailAndPassword(auth, adminRequest.email, values.password);
       const user = userCredential.user;
 
-      // Update the admin document in Firestore with the new UID
-      const adminDocRef = doc(db, 'admins', adminRequest.id);
-      await updateDoc(adminDocRef, {
+      // Create new admin document with UID as document ID and copy all data
+      const newAdminDocRef = doc(db, 'admins', user.uid);
+      const oldAdminDocRef = doc(db, 'admins', adminRequest.id);
+      
+      // Copy admin data to new document with UID as document ID
+      const adminData = {
+        ...adminRequest,
         uid: user.uid,
+        completedAt: new Date().toISOString()
+      };
+      
+      // Use transaction to safely migrate the document
+      await runTransaction(db, async (transaction) => {
+        // Create new document with UID as ID
+        transaction.set(newAdminDocRef, adminData);
+        // Delete old document
+        transaction.delete(oldAdminDocRef);
       });
 
       toast({
